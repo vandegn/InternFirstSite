@@ -238,16 +238,49 @@
     <p class="auth-footer">Already have an account? <a href="join.html">Sign in</a></p>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
 <script>
-document.getElementById('registerForm').addEventListener('submit', function(e) {
+const registerForm = document.getElementById('registerForm');
+const submitBtn = registerForm.querySelector('.btn-auth');
+
+registerForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-    const pw = document.getElementById('password').value;
-    const cpw = document.getElementById('confirmPassword').value;
-    if (pw !== cpw) {
+
+    const fullName = document.getElementById('fullName').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (password !== confirmPassword) {
         alert('Passwords do not match!');
         return;
     }
-    alert('Account created successfully! (Demo)');
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account...';
+
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                full_name: fullName,
+                phone: document.getElementById('phone').value,
+                gender: document.getElementById('gender').value
+            }
+        }
+    });
+
+    if (error) {
+        alert(error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+        return;
+    }
+
+    alert('Account created! Check your email for a confirmation link.');
+    window.location.href = 'join.html';
 });
 </script>
 </body>

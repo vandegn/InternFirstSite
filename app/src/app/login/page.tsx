@@ -1,16 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
-import { supabase, getProfile, DASHBOARD_ROUTES } from '@/lib/supabase';
+import { supabase, getProfile, DASHBOARD_ROUTES, isEduEmail } from '@/lib/supabase';
 
 type Role = 'student' | 'employer' | 'university_admin';
 
-export default function LoginPage() {
+const VALID_ROLES: Role[] = ['student', 'employer', 'university_admin'];
+
+function LoginForm() {
   const router = useRouter();
-  const [role, setRole] = useState<Role>('student');
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get('role');
+  const initialRole = VALID_ROLES.includes(roleParam as Role) ? (roleParam as Role) : 'student';
+  const [role, setRole] = useState<Role>(initialRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,6 +24,12 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if ((role === 'student' || role === 'university_admin') && !isEduEmail(email)) {
+      setError('Student and university accounts require a .edu email address.');
+      return;
+    }
+
     setLoading(true);
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -109,5 +120,13 @@ export default function LoginPage() {
         <p className="auth-footer">Don&apos;t have an account? <Link href="/register">Create one</Link></p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

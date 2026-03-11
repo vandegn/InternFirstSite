@@ -1,12 +1,48 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase, getEmployerByUserId, getEmployerListings } from '@/lib/supabase';
+
+type Listing = {
+  id: string;
+  title: string;
+  location: string | null;
+  is_remote: boolean;
+  compensation: string | null;
+  status: string;
+  created_at: string;
+};
 
 export default function EmployerDashboard() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [companyName, setCompanyName] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const employer = await getEmployerByUserId(user.id);
+      if (!employer) return;
+
+      setCompanyName(employer.company_name);
+      const data = await getEmployerListings(employer.id);
+      setListings(data);
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
+
+  const activeCount = listings.filter(l => l.status === 'active').length;
+
   return (
     <div className="dashboard-body">
       {/* Dashboard Header */}
       <header className="dash-header">
         <div className="dash-header-inner">
-          <Link href="/" className="logo">
+          <Link href="/home" className="logo">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
           </Link>
           <nav className="main-nav">
@@ -39,9 +75,9 @@ export default function EmployerDashboard() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               Home
             </Link>
-            <Link href="/dashboard/employer/listings" className="sidebar-link">
+            <Link href="/dashboard/employer/listings/new" className="sidebar-link">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-              My Listings
+              Post a Listing
             </Link>
             <Link href="/dashboard/employer/events" className="sidebar-link">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -76,34 +112,6 @@ export default function EmployerDashboard() {
         </aside>
 
         <main className="dash-main">
-          {/* Upcoming Interviews */}
-          <div className="dash-section">
-            <h3 className="dash-section-title">Upcoming Interviews</h3>
-            <div className="event-list">
-              <div className="event-item">
-                <div className="event-dot blue"></div>
-                <div className="event-info">
-                  <strong>Jonah Keshguerian</strong>
-                  <span>March 3, 2026</span>
-                </div>
-              </div>
-              <div className="event-item">
-                <div className="event-dot green"></div>
-                <div className="event-info">
-                  <strong>Ben Smith</strong>
-                  <span>March 7, 2026</span>
-                </div>
-              </div>
-              <div className="event-item">
-                <div className="event-dot purple"></div>
-                <div className="event-info">
-                  <strong>Max Van Dessel</strong>
-                  <span>March 10, 2026</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Stats - 4 column */}
           <div className="dash-stats four-col">
             <div className="stat-card">
@@ -112,7 +120,7 @@ export default function EmployerDashboard() {
               </div>
               <div>
                 <div className="stat-label">Active Listings</div>
-                <div className="stat-value">0</div>
+                <div className="stat-value">{activeCount}</div>
               </div>
             </div>
             <div className="stat-card">
@@ -146,48 +154,41 @@ export default function EmployerDashboard() {
 
           {/* My Listings */}
           <div className="dash-section">
-            <h3 className="dash-section-title">My Listings</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="dash-section-title">My Listings</h3>
+              <Link href="/dashboard/employer/listings/new" className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
+                + Post New Listing
+              </Link>
+            </div>
             <div className="listing-grid">
-              <div className="listing-card">
-                <div className="listing-header">
-                  <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="XYZ Company" className="listing-logo" />
-                  <button className="bookmark-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                  </button>
-                </div>
-                <h4>Software Engineer - Frontend</h4>
-                <p className="listing-company">XYZ Company</p>
-                <p className="listing-location">Raleigh, USA</p>
-                <div className="listing-tags">
-                  <span>Full-Time</span>
-                  <span>Remote</span>
-                  <span>React</span>
-                </div>
-                <div className="listing-footer">
-                  <span className="listing-salary">$20/hr</span>
-                  <span className="listing-time">Posted 2 days ago</span>
-                </div>
-              </div>
-              <div className="listing-card">
-                <div className="listing-header">
-                  <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="XYZ Company" className="listing-logo" />
-                  <button className="bookmark-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                  </button>
-                </div>
-                <h4>Product Manager</h4>
-                <p className="listing-company">XYZ Company</p>
-                <p className="listing-location">Raleigh, USA</p>
-                <div className="listing-tags">
-                  <span>Full-Time</span>
-                  <span>On-site</span>
-                  <span>Management</span>
-                </div>
-                <div className="listing-footer">
-                  <span className="listing-salary">$22/hr</span>
-                  <span className="listing-time">Posted 5 days ago</span>
-                </div>
-              </div>
+              {loading ? (
+                <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+              ) : listings.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
+                  No listings yet. Post your first internship!
+                </p>
+              ) : (
+                listings.map((listing) => (
+                  <div className="listing-card" key={listing.id}>
+                    <div className="listing-header">
+                      <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)' }}>
+                        {companyName.charAt(0)}
+                      </div>
+                    </div>
+                    <h4>{listing.title}</h4>
+                    <p className="listing-company">{companyName}</p>
+                    <p className="listing-location">{listing.location || 'Not specified'}</p>
+                    <div className="listing-tags">
+                      <span>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
+                      {listing.is_remote && <span>Remote</span>}
+                    </div>
+                    <div className="listing-footer">
+                      <span className="listing-salary">{listing.compensation || 'TBD'}</span>
+                      <span className="listing-time">{new Date(listing.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

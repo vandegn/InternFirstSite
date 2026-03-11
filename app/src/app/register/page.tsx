@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
-import { supabase, createProfileAndRoleData, type RoleData } from '@/lib/supabase';
+import { supabase, createProfileAndRoleData, isEduEmail, type RoleData } from '@/lib/supabase';
 
 type Role = 'student' | 'employer' | 'university_admin';
 
@@ -41,6 +41,11 @@ export default function RegisterPage() {
 
     if (role === 'employer' && !companyName) {
       setError('Company name is required.');
+      return;
+    }
+
+    if ((role === 'student' || role === 'university_admin') && !isEduEmail(email)) {
+      setError('Student and university accounts require a .edu email address.');
       return;
     }
 
@@ -153,7 +158,7 @@ export default function RegisterPage() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="website">Company Website</label>
-                  <input type="url" id="website" placeholder="https://example.com" value={website} onChange={e => setWebsite(e.target.value)} />
+                  <input type="text" id="website" placeholder="https://example.com" value={website} onChange={e => setWebsite(e.target.value)} />
                 </div>
               </>
             )}

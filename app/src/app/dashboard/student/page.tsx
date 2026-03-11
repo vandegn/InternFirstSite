@@ -1,14 +1,40 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase, getPartnerUniversity } from '@/lib/supabase';
 
 export default function StudentDashboard() {
+  const [partnerLogo, setPartnerLogo] = useState<string | null>(null);
+  const [partnerName, setPartnerName] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchPartner() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return;
+      const partner = await getPartnerUniversity(user.email);
+      if (partner) {
+        setPartnerLogo(partner.logo_url);
+        setPartnerName(partner.name);
+      }
+    }
+    fetchPartner();
+  }, []);
+
   return (
     <div className="dashboard-body">
       {/* Dashboard Header */}
       <header className="dash-header">
         <div className="dash-header-inner">
-          <Link href="/" className="logo">
+          <Link href="/home" className="logo">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
           </Link>
+          {partnerLogo && (
+            <>
+              <span className="logo-divider"></span>
+              <img src={partnerLogo} alt={partnerName || 'University'} className="partner-logo" />
+            </>
+          )}
           <nav className="main-nav">
             <ul>
               <li><Link href="/dashboard/student" className="active">Student</Link></li>

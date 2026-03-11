@@ -45,6 +45,10 @@ export async function createProfileAndRoleData(
 ) {
   const { role, fullName, email, phone, roleData } = opts;
 
+  if ((role === 'student' || role === 'university_admin') && !isEduEmail(email)) {
+    throw new Error('Student and university accounts require a .edu email address.');
+  }
+
   const { error: profileError } = await supabase.from('profiles').insert({
     user_id: userId,
     role,
@@ -78,4 +82,61 @@ export async function createProfileAndRoleData(
     });
     if (error) throw error;
   }
+}
+
+export function isEduEmail(email: string): boolean {
+  return email.trim().toLowerCase().endsWith('.edu');
+}
+
+export async function getPartnerUniversity(email: string) {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return null;
+
+  const { data, error } = await supabase
+    .from('universities')
+    .select('id, name, logo_url')
+    .eq('domain', domain)
+    .eq('partner', true)
+    .single();
+
+  if (error || !data) return null;
+  return data;
+}
+
+export async function getEmployerByUserId(userId: string) {
+  const { data, error } = await supabase
+    .from('employers')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function createListing(listing: {
+  employer_id: string;
+  title: string;
+  description: string;
+  location?: string;
+  is_remote?: boolean;
+  compensation?: string;
+  requirements?: string;
+}) {
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .insert(listing)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getEmployerListings(employerId: string) {
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .select('*')
+    .eq('employer_id', employerId)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return data;
 }

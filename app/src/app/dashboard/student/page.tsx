@@ -1,12 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase, getPartnerUniversity } from '@/lib/supabase';
 
 export default function StudentDashboard() {
   const [partnerLogo, setPartnerLogo] = useState<string | null>(null);
   const [partnerName, setPartnerName] = useState<string | null>(null);
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace('/login');
+  }
 
   useEffect(() => {
     async function fetchPartner() {
@@ -29,6 +48,7 @@ export default function StudentDashboard() {
           <Link href="/home" className="logo">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
           </Link>
+          <span className="portal-label">Student Dashboard</span>
           {partnerLogo && (
             <>
               <span className="logo-divider"></span>
@@ -37,9 +57,7 @@ export default function StudentDashboard() {
           )}
           <nav className="main-nav">
             <ul>
-              <li><Link href="/dashboard/student" className="active">Student</Link></li>
-              <li><Link href="/dashboard/employer">Employers</Link></li>
-              <li><Link href="/dashboard/university">University</Link></li>
+              <li><Link href="/dashboard/student" className="active">Dashboard</Link></li>
               <li><Link href="/about">About</Link></li>
               <li><Link href="/blog">Blog</Link></li>
               <li><Link href="/contact">Contact</Link></li>
@@ -50,8 +68,16 @@ export default function StudentDashboard() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input type="text" placeholder="Search..." />
             </div>
-            <div className="dash-avatar">
+            <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
               <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Ben Smith" />
+              {avatarOpen && (
+                <div className="avatar-dropdown">
+                  <button onClick={handleSignOut} className="avatar-dropdown-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -65,7 +91,7 @@ export default function StudentDashboard() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               Home
             </Link>
-            <Link href="/dashboard/student" className="sidebar-link">
+            <Link href="/dashboard/student/internships" className="sidebar-link">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
               Internships
             </Link>

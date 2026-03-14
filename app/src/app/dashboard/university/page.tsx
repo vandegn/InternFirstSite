@@ -1,6 +1,30 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function UniversityDashboard() {
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace('/login');
+  }
+
   return (
     <div className="dashboard-body">
       {/* Dashboard Header */}
@@ -9,11 +33,10 @@ export default function UniversityDashboard() {
           <Link href="/" className="logo">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
           </Link>
+          <span className="portal-label">University Dashboard</span>
           <nav className="main-nav">
             <ul>
-              <li><Link href="/dashboard/student">Student</Link></li>
-              <li><Link href="/dashboard/employer">Employers</Link></li>
-              <li><Link href="/dashboard/university" className="active">University</Link></li>
+              <li><Link href="/dashboard/university" className="active">Dashboard</Link></li>
               <li><Link href="/about">About</Link></li>
               <li><Link href="/blog">Blog</Link></li>
               <li><Link href="/contact">Contact</Link></li>
@@ -24,8 +47,16 @@ export default function UniversityDashboard() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input type="text" placeholder="Search..." />
             </div>
-            <div className="dash-avatar">
+            <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
               <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="Profile" />
+              {avatarOpen && (
+                <div className="avatar-dropdown">
+                  <button onClick={handleSignOut} className="avatar-dropdown-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

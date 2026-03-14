@@ -121,6 +121,7 @@ export async function createListing(listing: {
   is_remote?: boolean;
   compensation?: string;
   requirements?: string;
+  external_apply_url?: string;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -139,4 +140,55 @@ export async function getEmployerListings(employerId: string) {
     .order('created_at', { ascending: false });
   if (error) return [];
   return data;
+}
+
+export async function getActiveListings() {
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .select('*, employers(company_name, logo_url)')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return data;
+}
+
+export async function getListingById(id: string) {
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .select('*, employers(company_name, logo_url, website)')
+    .eq('id', id)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function getStudentByUserId(userId: string) {
+  const { data, error } = await supabase
+    .from('students')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function applyToListing(studentId: string, listingId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .insert({ student_id: studentId, listing_id: listingId })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getApplicationStatus(studentId: string, listingId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('status')
+    .eq('student_id', studentId)
+    .eq('listing_id', listingId)
+    .single();
+  if (error || !data) return null;
+  return data.status as string;
 }

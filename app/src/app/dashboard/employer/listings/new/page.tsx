@@ -13,6 +13,7 @@ export default function NewListingPage() {
   const [isRemote, setIsRemote] = useState(false);
   const [compensation, setCompensation] = useState('');
   const [requirements, setRequirements] = useState('');
+  const [externalApplyUrl, setExternalApplyUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +37,7 @@ export default function NewListingPage() {
         is_remote: isRemote,
         compensation: compensation || undefined,
         requirements: requirements || undefined,
+        external_apply_url: externalApplyUrl || undefined,
       });
 
       router.push('/dashboard/employer');
@@ -73,13 +75,23 @@ export default function NewListingPage() {
             </div>
             <div className="form-group">
               <label htmlFor="compensation">Compensation</label>
-              <input
-                type="text"
+              <select
                 id="compensation"
-                placeholder="e.g. $16-20/hr"
                 value={compensation}
                 onChange={(e) => setCompensation(e.target.value)}
-              />
+                style={{ width: '100%' }}
+              >
+                <option value="">Select compensation...</option>
+                <option value="Unpaid">Unpaid</option>
+                <option value="$10-15/hr">$10-15/hr</option>
+                <option value="$15-20/hr">$15-20/hr</option>
+                <option value="$20-25/hr">$20-25/hr</option>
+                <option value="$25-30/hr">$25-30/hr</option>
+                <option value="$30-35/hr">$30-35/hr</option>
+                <option value="$35-40/hr">$35-40/hr</option>
+                <option value="$40+/hr">$40+/hr</option>
+                <option value="Stipend">Stipend (flat rate)</option>
+              </select>
             </div>
             <div className="form-group">
               <label htmlFor="location">Location</label>
@@ -126,6 +138,20 @@ export default function NewListingPage() {
               onChange={(e) => setRequirements(e.target.value)}
               style={{ width: '100%', resize: 'vertical' }}
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="externalApplyUrl">External Application Link (optional)</label>
+            <input
+              type="text"
+              id="externalApplyUrl"
+              placeholder="e.g. jobs.lever.co/yourcompany/intern-role"
+              value={externalApplyUrl}
+              onChange={(e) => setExternalApplyUrl(e.target.value)}
+            />
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
+              If provided, applicants will be directed to this link instead of applying on InternFirst.
+            </p>
           </div>
 
           <button type="submit" className="btn-auth" disabled={loading}>

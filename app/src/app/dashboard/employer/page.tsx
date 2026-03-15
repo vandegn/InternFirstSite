@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, getEmployerListings } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, getEmployerListings, getProfile } from '@/lib/supabase';
 
 type Listing = {
   id: string;
@@ -20,6 +20,9 @@ export default function EmployerDashboard() {
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(true);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -42,6 +45,13 @@ export default function EmployerDashboard() {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const profile = await getProfile(user.id);
+      if (profile) {
+        setProfileName(profile.full_name);
+        setProfileEmail(profile.email);
+        setProfileAvatar(profile.avatar_url);
+      }
 
       const employer = await getEmployerByUserId(user.id);
       if (!employer) return;
@@ -79,7 +89,7 @@ export default function EmployerDashboard() {
               <input type="text" placeholder="Search..." />
             </div>
             <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="Profile" />
+              <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png'} alt={profileName || 'Profile'} />
               {avatarOpen && (
                 <div className="avatar-dropdown">
                   <button onClick={handleSignOut} className="avatar-dropdown-item">
@@ -366,9 +376,9 @@ export default function EmployerDashboard() {
         {/* Right sidebar - Employer profile */}
         <aside className="dash-profile">
           <div className="profile-card">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Max Van Dessel" className="profile-avatar" />
-            <h4>Max Van Dessel</h4>
-            <p className="profile-email">maxvand@gmail.com</p>
+            <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'} alt={profileName || 'Profile'} className="profile-avatar" />
+            <h4>{profileName || 'Employer'}</h4>
+            <p className="profile-email">{profileEmail}</p>
             <div className="profile-progress">
               <div className="progress-bar">
                 <div className="progress-fill" style={{ width: '100%' }}></div>

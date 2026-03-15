@@ -69,8 +69,16 @@ Students browse active listings at `/dashboard/student/internships` and view det
 
 ## Supabase Helpers (src/lib/supabase.ts)
 
-- **Auth/Profile:** `getProfile`, `createProfileAndRoleData`, `isEduEmail`, `getPartnerUniversity`
-- **Employers:** `getEmployerByUserId`, `getEmployerListings`
+- **Auth/Profile:** `getProfile`, `createProfileAndRoleData`, `isEduEmail`, `getPartnerUniversity`, `getAllUniversities`, `uploadImage`
+- **Employers:** `getEmployerByUserId`, `getEmployerListings`, `updateEmployer`
 - **Students:** `getStudentByUserId`
 - **Listings:** `createListing`, `getActiveListings`, `getListingById`
 - **Applications:** `applyToListing`, `getApplicationStatus`
+
+## Known Limitations & Future Work
+
+See `docs/TODO.md` for a tracked list of deferred items. Key items:
+- University admin email domain is not validated against the selected university's domain
+- Supabase Storage bucket for image uploads needs setup (`images` bucket, public)
+- Employer model is 1:1 (one account = one company); a `companies` table is planned
+- University dashboard uses hardcoded placeholder data

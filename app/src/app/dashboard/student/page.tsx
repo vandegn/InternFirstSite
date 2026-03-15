@@ -3,12 +3,15 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getPartnerUniversity } from '@/lib/supabase';
+import { supabase, getPartnerUniversity, getProfile } from '@/lib/supabase';
 
 export default function StudentDashboard() {
   const [partnerLogo, setPartnerLogo] = useState<string | null>(null);
   const [partnerName, setPartnerName] = useState<string | null>(null);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -28,16 +31,26 @@ export default function StudentDashboard() {
   }
 
   useEffect(() => {
-    async function fetchPartner() {
+    async function fetchUserData() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return;
-      const partner = await getPartnerUniversity(user.email);
-      if (partner) {
-        setPartnerLogo(partner.logo_url);
-        setPartnerName(partner.name);
+      if (!user) return;
+
+      const profile = await getProfile(user.id);
+      if (profile) {
+        setProfileName(profile.full_name);
+        setProfileEmail(profile.email);
+        setProfileAvatar(profile.avatar_url);
+      }
+
+      if (user.email) {
+        const partner = await getPartnerUniversity(user.email);
+        if (partner) {
+          setPartnerLogo(partner.logo_url);
+          setPartnerName(partner.name);
+        }
       }
     }
-    fetchPartner();
+    fetchUserData();
   }, []);
 
   return (
@@ -69,7 +82,7 @@ export default function StudentDashboard() {
               <input type="text" placeholder="Search..." />
             </div>
             <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Ben Smith" />
+              <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'} alt={profileName || 'Profile'} />
               {avatarOpen && (
                 <div className="avatar-dropdown">
                   <button onClick={handleSignOut} className="avatar-dropdown-item">
@@ -350,9 +363,9 @@ export default function StudentDashboard() {
         {/* Right sidebar - Profile */}
         <aside className="dash-profile">
           <div className="profile-card">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Ben Smith" className="profile-avatar" />
-            <h4>Ben Smith</h4>
-            <p className="profile-email">bensmith@isu.edu</p>
+            <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'} alt={profileName || 'Profile'} className="profile-avatar" />
+            <h4>{profileName || 'Student'}</h4>
+            <p className="profile-email">{profileEmail}</p>
             <div className="profile-progress">
               <div className="progress-bar">
                 <div className="progress-fill" style={{ width: '100%' }}></div>

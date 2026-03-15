@@ -28,6 +28,8 @@ export type RoleData = {
   graduationYear?: string;
   companyName?: string;
   website?: string;
+  companyDescription?: string;
+  logoUrl?: string;
   universityName?: string;
   jobTitle?: string;
   universityId?: string;
@@ -40,10 +42,11 @@ export async function createProfileAndRoleData(
     fullName: string;
     email: string;
     phone?: string;
+    avatarUrl?: string;
     roleData: RoleData;
   }
 ) {
-  const { role, fullName, email, phone, roleData } = opts;
+  const { role, fullName, email, phone, avatarUrl, roleData } = opts;
 
   if ((role === 'student' || role === 'university_admin') && !isEduEmail(email)) {
     throw new Error('Student and university accounts require a .edu email address.');
@@ -55,6 +58,7 @@ export async function createProfileAndRoleData(
     full_name: fullName,
     email,
     phone: phone || null,
+    avatar_url: avatarUrl || null,
   });
   if (profileError) throw profileError;
 
@@ -72,6 +76,8 @@ export async function createProfileAndRoleData(
       user_id: userId,
       company_name: roleData.companyName!,
       website: roleData.website || null,
+      description: roleData.companyDescription || null,
+      logo_url: roleData.logoUrl || null,
     });
     if (error) throw error;
   } else if (role === 'university_admin') {
@@ -82,6 +88,15 @@ export async function createProfileAndRoleData(
     });
     if (error) throw error;
   }
+}
+
+export async function getAllUniversities() {
+  const { data, error } = await supabase
+    .from('universities')
+    .select('id, name')
+    .order('name', { ascending: true });
+  if (error) return [];
+  return data;
 }
 
 export function isEduEmail(email: string): boolean {
@@ -110,6 +125,32 @@ export async function getEmployerByUserId(userId: string) {
     .eq('user_id', userId)
     .single();
   if (error || !data) return null;
+  return data;
+}
+
+export async function uploadImage(bucket: string, path: string, file: File) {
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, { upsert: true });
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function updateEmployer(employerId: string, fields: {
+  company_name?: string;
+  website?: string;
+  logo_url?: string;
+  description?: string;
+}) {
+  const { data, error } = await supabase
+    .from('employers')
+    .update(fields)
+    .eq('id', employerId)
+    .select()
+    .single();
+  if (error) throw error;
   return data;
 }
 

@@ -3,10 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, getProfile } from '@/lib/supabase';
 
 export default function UniversityDashboard() {
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -18,6 +21,20 @@ export default function UniversityDashboard() {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const profile = await getProfile(user.id);
+      if (profile) {
+        setProfileName(profile.full_name);
+        setProfileEmail(profile.email);
+        setProfileAvatar(profile.avatar_url);
+      }
+    }
+    fetchProfile();
   }, []);
 
   async function handleSignOut() {
@@ -48,7 +65,7 @@ export default function UniversityDashboard() {
               <input type="text" placeholder="Search..." />
             </div>
             <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="Profile" />
+              <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png'} alt={profileName || 'Profile'} />
               {avatarOpen && (
                 <div className="avatar-dropdown">
                   <button onClick={handleSignOut} className="avatar-dropdown-item">
@@ -307,9 +324,9 @@ export default function UniversityDashboard() {
         {/* Right sidebar - University profile */}
         <aside className="dash-profile">
           <div className="profile-card">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="Intern State University" className="profile-avatar" />
-            <h4>Intern State University</h4>
-            <p className="profile-email">info@isu.edu</p>
+            <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png'} alt={profileName || 'Profile'} className="profile-avatar" />
+            <h4>{profileName || 'University Admin'}</h4>
+            <p className="profile-email">{profileEmail}</p>
             <div className="profile-progress">
               <div className="progress-bar">
                 <div className="progress-fill" style={{ width: '100%' }}></div>

@@ -3035,6 +3035,40 @@ img { max-width: 100%; height: auto; display: block; }
 .role-fields { display: none; }
 .role-fields.active { display: contents; }
 
+.image-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.image-upload-area:hover {
+    border-color: var(--primary);
+    background: rgba(123, 97, 255, 0.03);
+}
+
+.image-upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+
+.image-upload-placeholder span {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.image-upload-preview {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
 .checkbox-group {
     display: flex;
     align-items: center;

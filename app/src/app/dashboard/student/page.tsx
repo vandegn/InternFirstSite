@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getPartnerUniversity } from '@/lib/supabase';
+import { supabase, getPartnerUniversity, getProfile } from '@/lib/supabase';
 
 export default function StudentDashboard() {
   const [partnerLogo, setPartnerLogo] = useState<string | null>(null);
   const [partnerName, setPartnerName] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [positionsCount, setPositionsCount] = useState(0);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -31,6 +33,13 @@ export default function StudentDashboard() {
     async function fetchPartner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) return;
+      const profile = await getProfile(user.id);
+      if (profile) setUserName(profile.full_name);
+      const { count } = await supabase
+        .from('internship_listings')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      setPositionsCount(count ?? 0);
       const partner = await getPartnerUniversity(user.email);
       if (partner) {
         setPartnerLogo(partner.logo_url);
@@ -45,7 +54,7 @@ export default function StudentDashboard() {
       {/* Dashboard Header */}
       <header className="dash-header">
         <div className="dash-header-inner">
-          <Link href="/home" className="logo">
+          <Link href="/" className="logo">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
           </Link>
           <span className="portal-label">Student Dashboard</span>
@@ -69,7 +78,9 @@ export default function StudentDashboard() {
               <input type="text" placeholder="Search..." />
             </div>
             <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Ben Smith" />
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: '0.9rem' }}>
+                {userName ? userName.charAt(0).toUpperCase() : '?'}
+              </div>
               {avatarOpen && (
                 <div className="avatar-dropdown">
                   <button onClick={handleSignOut} className="avatar-dropdown-item">
@@ -137,7 +148,7 @@ export default function StudentDashboard() {
               </div>
               <div>
                 <div className="stat-label">Positions Available</div>
-                <div className="stat-value">0</div>
+                <div className="stat-value">{positionsCount}</div>
               </div>
             </div>
             <div className="stat-card">
@@ -160,228 +171,20 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Upcoming Events */}
+          {/* Browse Internships */}
           <div className="dash-section">
-            <h3 className="dash-section-title">Upcoming Events</h3>
-            <div className="event-list">
-              <div className="event-item">
-                <div className="event-dot blue"></div>
-                <div className="event-info">
-                  <strong>Career Fair - IT</strong>
-                  <span>February 29, 2026</span>
-                </div>
-              </div>
-              <div className="event-item">
-                <div className="event-dot green"></div>
-                <div className="event-info">
-                  <strong>Career Fair - Law</strong>
-                  <span>March 7, 2026</span>
-                </div>
-              </div>
-              <div className="event-item">
-                <div className="event-dot purple"></div>
-                <div className="event-info">
-                  <strong>Club Meeting</strong>
-                  <span>March 28, 2026</span>
-                </div>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="dash-section-title">Browse Internships</h3>
+              <Link href="/dashboard/student/internships" className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
+                View All
+              </Link>
             </div>
-          </div>
-
-          {/* Browse Internships - 2 listing cards */}
-          <div className="dash-section">
-            <h3 className="dash-section-title">Browse Internships</h3>
-            <div className="listing-grid">
-              {/* Card 1 */}
-              <div className="listing-card">
-                <div className="listing-header">
-                  <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/image.svg" alt="XYZ Company" className="listing-logo" />
-                  <button className="bookmark-btn" aria-label="Bookmark">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                  </button>
-                </div>
-                <h4>Software Engineer - Frontend</h4>
-                <p className="listing-company">XYZ Company</p>
-                <p className="listing-location">California, USA</p>
-                <div className="listing-tags">
-                  <span>Direct Employment</span>
-                  <span>Full time</span>
-                  <span>Remote</span>
-                  <span>2-4 Years</span>
-                </div>
-                <div className="listing-footer">
-                  <span className="listing-salary">$16-20/hr</span>
-                  <span className="listing-time">an hour ago</span>
-                </div>
-                <span className="early-badge">Be an early applicant</span>
-              </div>
-
-              {/* Card 2 */}
-              <div className="listing-card">
-                <div className="listing-header">
-                  <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Icon.jpeg.svg" alt="XYZ Company" className="listing-logo" />
-                  <button className="bookmark-btn" aria-label="Bookmark">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                  </button>
-                </div>
-                <h4>Product Manager</h4>
-                <p className="listing-company">XYZ Company</p>
-                <p className="listing-location">Texas, USA</p>
-                <div className="listing-tags">
-                  <span>Direct Employment</span>
-                  <span>Full time</span>
-                  <span>Remote</span>
-                  <span>4-6 Years</span>
-                </div>
-                <div className="listing-footer">
-                  <span className="listing-salary">$16-20/hr</span>
-                  <span className="listing-time">2 hours ago</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* My Events - 2 listing cards */}
-          <div className="dash-section">
-            <h3 className="dash-section-title">My Events</h3>
-            <div className="listing-grid">
-              <div className="listing-card">
-                <div className="listing-header">
-                  <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/image.svg" alt="Career Fair" className="listing-logo" />
-                </div>
-                <h4>Career Fair - IT</h4>
-                <p className="listing-company">On Campus</p>
-                <p className="listing-location">Raleigh, USA</p>
-                <div className="listing-tags">
-                  <span>Vendors</span>
-                  <span>Ambassadors</span>
-                </div>
-                <div className="listing-footer">
-                  <span className="listing-time">Feb 3, 2026</span>
-                </div>
-              </div>
-              <div className="listing-card">
-                <div className="listing-header">
-                  <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Icon.jpeg.svg" alt="Career Fair" className="listing-logo" />
-                </div>
-                <h4>Career Fair - Law</h4>
-                <p className="listing-company">On Campus</p>
-                <p className="listing-location">Raleigh, USA</p>
-                <div className="listing-tags">
-                  <span>Vendors</span>
-                  <span>Ambassadors</span>
-                </div>
-                <div className="listing-footer">
-                  <span className="listing-time">Feb 2, 2026</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Resources - 3 resource cards */}
-          <div className="dash-section">
-            <h3 className="dash-section-title">Resources</h3>
-            <div className="resource-grid">
-              <div className="resource-card">
-                <div className="resource-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                </div>
-                <h4>Resume Advice</h4>
-                <p>Get expert tips on crafting a standout resume that catches recruiters&apos; attention.</p>
-              </div>
-              <div className="resource-card">
-                <div className="resource-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                </div>
-                <h4>Live Interview Prep</h4>
-                <p>Practice with real interview scenarios and get feedback to improve your performance.</p>
-              </div>
-              <div className="resource-card">
-                <div className="resource-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </div>
-                <h4>Career Coaching</h4>
-                <p>One-on-one sessions with experienced career coaches to guide your professional journey.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* News - 3 news cards */}
-          <div className="dash-section">
-            <h3 className="dash-section-title">News</h3>
-            <div className="news-grid">
-              <div className="news-card">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Rectangle-205.png" alt="News article" />
-                <div className="news-body">
-                  <div className="news-meta">
-                    <span>Feb 15, 2026</span>
-                    <span>Career Tips</span>
-                  </div>
-                  <h4>How to Land Your First Internship: A Complete Guide</h4>
-                  <Link href="/blog">Read More</Link>
-                </div>
-              </div>
-              <div className="news-card">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Rectangle-205-1.png" alt="News article" />
-                <div className="news-body">
-                  <div className="news-meta">
-                    <span>Feb 10, 2026</span>
-                    <span>Industry News</span>
-                  </div>
-                  <h4>Top 10 Companies Hiring Interns This Spring</h4>
-                  <Link href="/blog">Read More</Link>
-                </div>
-              </div>
-              <div className="news-card">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Rectangle-205-2.png" alt="News article" />
-                <div className="news-body">
-                  <div className="news-meta">
-                    <span>Feb 5, 2026</span>
-                    <span>Skills</span>
-                  </div>
-                  <h4>5 Skills Every Intern Needs to Succeed in 2026</h4>
-                  <Link href="/blog">Read More</Link>
-                </div>
-              </div>
-            </div>
+            <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
+              Browse available internships to find your next opportunity.
+            </p>
           </div>
         </main>
 
-        {/* Right sidebar - Profile */}
-        <aside className="dash-profile">
-          <div className="profile-card">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Ben Smith" className="profile-avatar" />
-            <h4>Ben Smith</h4>
-            <p className="profile-email">bensmith@isu.edu</p>
-            <div className="profile-progress">
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: '100%' }}></div>
-              </div>
-              <span>100% Complete</span>
-            </div>
-            <ul className="profile-checklist">
-              <li className="checked">Personal Info</li>
-              <li className="checked">Work Experience</li>
-              <li className="checked">Education</li>
-              <li className="checked">Training and Certifications</li>
-              <li className="checked">Skills</li>
-            </ul>
-            <div className="profile-settings">
-              <div className="profile-setting">
-                <span>Profile Visibility</span>
-                <strong>Public</strong>
-              </div>
-              <div className="profile-setting">
-                <span>Job Preferences</span>
-                <strong>No Preference Yet</strong>
-              </div>
-              <div className="profile-setting">
-                <span>Open To Work</span>
-                <strong className="status-green">Open to work</strong>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
     </div>
   );

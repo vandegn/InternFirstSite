@@ -5,8 +5,26 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+type DashEvent = {
+  id: string;
+  title: string;
+  event_type: string;
+  event_date: string;
+  location: string | null;
+  is_virtual: boolean;
+};
+
+const DOT_COLORS: Record<string, string> = {
+  career_fair: 'blue',
+  info_session: 'green',
+  workshop: 'purple',
+  networking: 'orange',
+  other: 'blue',
+};
+
 export default function UniversityDashboard() {
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<DashEvent[]>([]);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -18,6 +36,28 @@ export default function UniversityDashboard() {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: admin } = await supabase
+        .from('university_admins')
+        .select('university_id')
+        .eq('user_id', user.id)
+        .single();
+      if (!admin?.university_id) return;
+      const { data } = await supabase
+        .from('university_events')
+        .select('id, title, event_type, event_date, location, is_virtual')
+        .eq('university_id', admin.university_id)
+        .gte('event_date', new Date().toISOString().split('T')[0])
+        .order('event_date', { ascending: true })
+        .limit(3);
+      if (data) setUpcomingEvents(data);
+    }
+    fetchEvents();
   }, []);
 
   async function handleSignOut() {
@@ -96,29 +136,35 @@ export default function UniversityDashboard() {
         <main className="dash-main">
           {/* Upcoming Events */}
           <div className="dash-section">
-            <h3 className="dash-section-title">Upcoming Events</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="dash-section-title">Upcoming Events</h3>
+              <Link href="/dashboard/university/events/new" className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
+                + Create Event
+              </Link>
+            </div>
             <div className="event-list">
-              <div className="event-item">
-                <div className="event-dot blue"></div>
-                <div className="event-info">
-                  <strong>Career Fair - IT</strong>
-                  <span>February 29, 2026 - On Campus, Raleigh, USA</span>
-                </div>
-              </div>
-              <div className="event-item">
-                <div className="event-dot green"></div>
-                <div className="event-info">
-                  <strong>Career Fair - Law</strong>
-                  <span>March 7, 2026 - On Campus, Raleigh, USA</span>
-                </div>
-              </div>
-              <div className="event-item">
-                <div className="event-dot purple"></div>
-                <div className="event-info">
-                  <strong>Club Meeting</strong>
-                  <span>March 28, 2026 - On Campus, Raleigh, USA</span>
-                </div>
-              </div>
+              {upcomingEvents.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)', padding: '12px 0' }}>
+                  No upcoming events.{' '}
+                  <Link href="/dashboard/university/events/new" style={{ color: 'var(--primary)', fontWeight: 500 }}>Create one</Link> to get started!
+                </p>
+              ) : (
+                upcomingEvents.map((event) => {
+                  const date = new Date(event.event_date + 'T00:00:00');
+                  const formatted = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                  return (
+                    <Link href={`/dashboard/university/events`} key={event.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <div className="event-item" style={{ cursor: 'pointer' }}>
+                        <div className={`event-dot ${DOT_COLORS[event.event_type] || 'blue'}`}></div>
+                        <div className="event-info">
+                          <strong>{event.title}</strong>
+                          <span>{formatted} - {event.is_virtual ? 'Virtual' : event.location || 'Location TBD'}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
             </div>
           </div>
 

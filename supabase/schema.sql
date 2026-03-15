@@ -118,6 +118,38 @@ create table messages (
 );
 
 -- ============================================
+-- 9. UNIVERSITY EVENTS
+-- ============================================
+create table university_events (
+  id uuid primary key default gen_random_uuid(),
+  university_id uuid references universities(id) on delete cascade not null,
+  created_by uuid references university_admins(id) on delete cascade not null,
+  title text not null,
+  description text,
+  event_type text not null check (event_type in ('career_fair', 'info_session', 'workshop', 'networking', 'other')),
+  event_date date not null,
+  start_time time not null,
+  end_time time,
+  location text,
+  is_virtual boolean default false,
+  virtual_link text,
+  max_attendees integer,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+-- ============================================
+-- 10. EVENT REGISTRATIONS
+-- ============================================
+create table event_registrations (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid references university_events(id) on delete cascade not null,
+  student_id uuid references students(id) on delete cascade not null,
+  registered_at timestamptz default now() not null,
+  unique(event_id, student_id)
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 create index idx_profiles_user_id on profiles(user_id);
@@ -131,6 +163,10 @@ create index idx_applications_listing on applications(listing_id);
 create index idx_applications_status on applications(status);
 create index idx_messages_sender on messages(sender_id);
 create index idx_messages_receiver on messages(receiver_id);
+create index idx_events_university on university_events(university_id);
+create index idx_events_date on university_events(event_date);
+create index idx_event_registrations_event on event_registrations(event_id);
+create index idx_event_registrations_student on event_registrations(student_id);
 
 -- ============================================
 -- AUTO-UPDATE updated_at TRIGGER
@@ -150,6 +186,7 @@ create trigger set_university_admins_updated_at before update on university_admi
 create trigger set_universities_updated_at before update on universities for each row execute function update_updated_at();
 create trigger set_listings_updated_at before update on internship_listings for each row execute function update_updated_at();
 create trigger set_applications_updated_at before update on applications for each row execute function update_updated_at();
+create trigger set_events_updated_at before update on university_events for each row execute function update_updated_at();
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
@@ -162,6 +199,8 @@ alter table universities enable row level security;
 alter table internship_listings enable row level security;
 alter table applications enable row level security;
 alter table messages enable row level security;
+alter table university_events enable row level security;
+alter table event_registrations enable row level security;
 
 -- PROFILES: users can read all profiles, but only update their own
 create policy "Profiles are viewable by authenticated users"
@@ -246,3 +285,54 @@ create policy "Users can view own messages"
 create policy "Users can send messages"
   on messages for insert to authenticated
   with check (auth.uid() = sender_id);
+
+-- UNIVERSITY EVENTS: uni admins manage events at their university, students at that uni can view
+create policy "University admins can manage events at their university"
+  on university_events for all to authenticated
+  using (
+    university_id in (
+      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
+    )
+  );
+
+create policy "Students can view events at their university"
+  on university_events for select to authenticated
+  using (
+    university_id in (
+      select s.university_id from students s where s.user_id = auth.uid()
+    )
+  );
+
+-- EVENT REGISTRATIONS: students can register/view their own, uni admins can view all for their events
+create policy "Students can register for events at their university"
+  on event_registrations for insert to authenticated
+  with check (
+    student_id in (select id from students where user_id = auth.uid())
+    and event_id in (
+      select e.id from university_events e
+      join students s on s.university_id = e.university_id
+      where s.user_id = auth.uid()
+    )
+  );
+
+create policy "Students can view own registrations"
+  on event_registrations for select to authenticated
+  using (
+    student_id in (select id from students where user_id = auth.uid())
+  );
+
+create policy "Students can cancel own registrations"
+  on event_registrations for delete to authenticated
+  using (
+    student_id in (select id from students where user_id = auth.uid())
+  );
+
+create policy "University admins can view registrations for their events"
+  on event_registrations for select to authenticated
+  using (
+    event_id in (
+      select e.id from university_events e
+      join university_admins ua on ua.university_id = e.university_id
+      where ua.user_id = auth.uid()
+    )
+  );

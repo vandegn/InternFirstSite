@@ -1,15 +1,76 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+
+function useCountUp(target: number, duration = 1200) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (target === 0) { setValue(0); return; }
+    const start = performance.now();
+    function tick(now: number) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+
+  return value;
+}
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getPartnerUniversity, getProfile } from '@/lib/supabase';
+import { supabase, getPartnerUniversity, getProfile, getActiveListings } from '@/lib/supabase';
+
+type Listing = {
+  id: string;
+  title: string;
+  description: string;
+  location: string | null;
+  is_remote: boolean;
+  compensation: string | null;
+  created_at: string;
+  employers: {
+    company_name: string;
+    logo_url: string | null;
+  };
+};
+
+type Event = {
+  id: string;
+  title: string;
+  event_type: string;
+  event_date: string;
+  start_time: string;
+  end_time: string | null;
+  location: string | null;
+  is_virtual: boolean;
+  registration_count: number;
+};
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  career_fair: 'Career Fair',
+  info_session: 'Info Session',
+  workshop: 'Workshop',
+  networking: 'Networking',
+  other: 'Event',
+};
 
 export default function StudentDashboard() {
   const [partnerLogo, setPartnerLogo] = useState<string | null>(null);
   const [partnerName, setPartnerName] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [positionsCount, setPositionsCount] = useState(0);
+  const animatedPositions = useCountUp(positionsCount);
+  const [recentListings, setRecentListings] = useState<Listing[]>([]);
+  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -40,6 +101,36 @@ export default function StudentDashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
       setPositionsCount(count ?? 0);
+      const result = await getActiveListings(1, 3);
+      setRecentListings(result.data as Listing[]);
+
+      // Fetch recent events for the student's university
+      const { data: studentData } = await supabase
+        .from('students')
+        .select('university_id')
+        .eq('user_id', user.id)
+        .single();
+      if (studentData?.university_id) {
+        const { data: events } = await supabase
+          .from('university_events')
+          .select('id, title, event_type, event_date, start_time, end_time, location, is_virtual')
+          .eq('university_id', studentData.university_id)
+          .gte('event_date', new Date().toISOString().split('T')[0])
+          .order('event_date', { ascending: true })
+          .limit(3);
+        if (events && events.length > 0) {
+          // Get registration counts for these events
+          const eventIds = events.map(e => e.id);
+          const { data: regCounts } = await supabase
+            .from('event_registrations')
+            .select('event_id')
+            .in('event_id', eventIds);
+          const countMap: Record<string, number> = {};
+          regCounts?.forEach(r => { countMap[r.event_id] = (countMap[r.event_id] || 0) + 1; });
+          setRecentEvents(events.map(e => ({ ...e, registration_count: countMap[e.id] || 0 })));
+        }
+      }
+
       const partner = await getPartnerUniversity(user.email);
       if (partner) {
         setPartnerLogo(partner.logo_url);
@@ -106,7 +197,7 @@ export default function StudentDashboard() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
               Internships
             </Link>
-            <Link href="/dashboard/student" className="sidebar-link">
+            <Link href="/dashboard/student/events" className="sidebar-link">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               My Events
             </Link>
@@ -148,7 +239,7 @@ export default function StudentDashboard() {
               </div>
               <div>
                 <div className="stat-label">Positions Available</div>
-                <div className="stat-value">{positionsCount}</div>
+                <div className="stat-value">{animatedPositions}</div>
               </div>
             </div>
             <div className="stat-card">
@@ -175,13 +266,102 @@ export default function StudentDashboard() {
           <div className="dash-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 className="dash-section-title">Browse Internships</h3>
-              <Link href="/dashboard/student/internships" className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
-                View All
+              <Link href="/dashboard/student/internships" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', border: '1.5px solid var(--primary)', borderRadius: '999px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 500, textDecoration: 'none', transition: 'background 0.15s, color 0.15s', background: 'transparent' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--primary)'; }}
+              >
+                View All <span style={{ fontSize: '1.1rem' }}>&rarr;</span>
               </Link>
             </div>
-            <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
-              Browse available internships to find your next opportunity.
-            </p>
+            {recentListings.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
+                No internships available yet. Check back soon!
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
+                {recentListings.map((listing) => (
+                  <Link
+                    href={`/dashboard/student/internships/${listing.id}`}
+                    key={listing.id}
+                    style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <div className="listing-card" style={{ padding: '14px', cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        {listing.employers?.logo_url ? (
+                          <img src={listing.employers.logo_url} alt={listing.employers.company_name} className="listing-logo" style={{ width: 32, height: 32 }} />
+                        ) : (
+                          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem', flexShrink: 0 }}>
+                            {listing.employers?.company_name?.charAt(0) || '?'}
+                          </div>
+                        )}
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{listing.employers?.company_name}</span>
+                      </div>
+                      <h4 style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{listing.title}</h4>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{listing.location || 'Location not specified'}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{listing.compensation || 'TBD'}</span>
+                        {listing.is_remote && <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem' }}>Remote</span>}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Upcoming Events */}
+          <div className="dash-section" style={{ marginTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="dash-section-title">Upcoming Events</h3>
+              <Link href="/dashboard/student/events" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', border: '1.5px solid var(--primary)', borderRadius: '999px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 500, textDecoration: 'none', transition: 'background 0.15s, color 0.15s', background: 'transparent' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--primary)'; }}
+              >
+                View All <span style={{ fontSize: '1.1rem' }}>&rarr;</span>
+              </Link>
+            </div>
+            {recentEvents.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
+                No upcoming events. Check back soon!
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
+                {recentEvents.map((event) => {
+                  const date = new Date(event.event_date + 'T00:00:00');
+                  const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+                  const day = date.getDate();
+                  return (
+                    <Link
+                      href={`/dashboard/student/events/${event.id}`}
+                      key={event.id}
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                    >
+                      <div className="listing-card" style={{ padding: '14px', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1 }}>{month}</span>
+                            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1.1 }}>{day}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--primary-light)', padding: '2px 8px', borderRadius: '4px' }}>
+                            {EVENT_TYPE_LABELS[event.event_type] || 'Event'}
+                          </span>
+                        </div>
+                        <h4 style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{event.title}</h4>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                          {event.is_virtual ? 'Virtual' : event.location || 'Location TBD'}
+                          {' · '}
+                          {event.start_time?.slice(0, 5)}{event.end_time ? ` - ${event.end_time.slice(0, 5)}` : ''}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                          {event.registration_count} attending
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </main>
 

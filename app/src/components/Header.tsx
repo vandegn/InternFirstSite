@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
 const navLinks = [
-  { href: '/home', label: 'Home' },
+  { href: '/', label: 'Home' },
   { href: '/about', label: 'About' },
   { href: '/blog', label: 'Blog' },
   { href: '/contact', label: 'Contact' },
@@ -18,7 +18,7 @@ export default function Header() {
   return (
     <header className="header">
       <div className="header-inner">
-        <Link href="/home" className="logo">
+        <Link href="/" className="logo">
           <img
             src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png"
             alt="InternFirst"

@@ -173,24 +173,30 @@ export async function createListing(listing: {
   return data;
 }
 
-export async function getEmployerListings(employerId: string) {
-  const { data, error } = await supabase
+export async function getEmployerListings(employerId: string, page = 1, pageSize = 10) {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error, count } = await supabase
     .from('internship_listings')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('employer_id', employerId)
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return data;
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error) return { data: [], totalCount: 0 };
+  return { data: data ?? [], totalCount: count ?? 0 };
 }
 
-export async function getActiveListings() {
-  const { data, error } = await supabase
+export async function getActiveListings(page = 1, pageSize = 10) {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error, count } = await supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url)')
+    .select('*, employers(company_name, logo_url)', { count: 'exact' })
     .eq('status', 'active')
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return data;
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error) return { data: [], totalCount: 0 };
+  return { data: data ?? [], totalCount: count ?? 0 };
 }
 
 export async function getListingById(id: string) {

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, getEmployerByUserId, getEmployerListings, getProfile } from '@/lib/supabase';
+import Pagination from '@/components/Pagination';
 
 type Listing = {
   id: string;
@@ -15,6 +16,8 @@ type Listing = {
   created_at: string;
 };
 
+const PAGE_SIZE = 10;
+
 export default function EmployerDashboard() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [companyName, setCompanyName] = useState('');
@@ -23,8 +26,13 @@ export default function EmployerDashboard() {
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -41,8 +49,10 @@ export default function EmployerDashboard() {
     router.replace('/login');
   }
 
+  const [employerId, setEmployerId] = useState<string | null>(null);
+
   useEffect(() => {
-    async function fetchData() {
+    async function fetchEmployer() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -57,21 +67,30 @@ export default function EmployerDashboard() {
       if (!employer) return;
 
       setCompanyName(employer.company_name);
-      const data = await getEmployerListings(employer.id);
-      setListings(data);
-      setLoading(false);
+      setEmployerId(employer.id);
     }
-    fetchData();
+    fetchEmployer();
   }, []);
 
-  const activeCount = listings.filter(l => l.status === 'active').length;
+  useEffect(() => {
+    if (!employerId) return;
+    async function fetchListings() {
+      setLoading(true);
+      const result = await getEmployerListings(employerId!, currentPage, PAGE_SIZE);
+      setListings(result.data);
+      setTotalCount(result.totalCount);
+      setActiveCount(result.data.filter(l => l.status === 'active').length);
+      setLoading(false);
+    }
+    fetchListings();
+  }, [employerId, currentPage]);
 
   return (
     <div className="dashboard-body">
       {/* Dashboard Header */}
       <header className="dash-header">
         <div className="dash-header-inner">
-          <Link href="/home" className="logo">
+          <Link href="/" className="logo">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
           </Link>
           <span className="portal-label">Employer Dashboard</span>
@@ -196,36 +215,41 @@ export default function EmployerDashboard() {
                 + Post New Listing
               </Link>
             </div>
-            <div className="listing-grid">
-              {loading ? (
-                <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
-              ) : listings.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
-                  No listings yet. Post your first internship!
-                </p>
-              ) : (
-                listings.map((listing) => (
-                  <div className="listing-card" key={listing.id}>
-                    <div className="listing-header">
-                      <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)' }}>
-                        {companyName.charAt(0)}
+            {loading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+            ) : listings.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
+                No listings yet. Post your first internship!
+              </p>
+            ) : (
+              <>
+                <div className="listing-grid">
+                  {listings.map((listing) => (
+                    <div className="listing-card" key={listing.id}>
+                      <div className="listing-header">
+                        <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)' }}>
+                          {companyName.charAt(0)}
+                        </div>
+                      </div>
+                      <h4>{listing.title}</h4>
+                      <p className="listing-company">{companyName}</p>
+                      <p className="listing-location">{listing.location || 'Not specified'}</p>
+                      <div className="listing-tags">
+                        <span>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
+                        {listing.is_remote && <span>Remote</span>}
+                      </div>
+                      <div className="listing-footer">
+                        <span className="listing-salary">{listing.compensation || 'TBD'}</span>
+                        <span className="listing-time">{new Date(listing.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <h4>{listing.title}</h4>
-                    <p className="listing-company">{companyName}</p>
-                    <p className="listing-location">{listing.location || 'Not specified'}</p>
-                    <div className="listing-tags">
-                      <span>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
-                      {listing.is_remote && <span>Remote</span>}
-                    </div>
-                    <div className="listing-footer">
-                      <span className="listing-salary">{listing.compensation || 'TBD'}</span>
-                      <span className="listing-time">{new Date(listing.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                )}
+              </>
+            )}
           </div>
 
           {/* My Events */}

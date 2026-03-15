@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, getActiveListings } from '@/lib/supabase';
+import Pagination from '@/components/Pagination';
 
 type Listing = {
   id: string;
@@ -19,20 +20,28 @@ type Listing = {
   };
 };
 
+const PAGE_SIZE = 10;
+
 export default function BrowseInternships() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   useEffect(() => {
     async function fetchListings() {
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const data = await getActiveListings();
-      setListings(data as Listing[]);
+      const result = await getActiveListings(currentPage, PAGE_SIZE);
+      setListings(result.data as Listing[]);
+      setTotalCount(result.totalCount);
       setLoading(false);
     }
     fetchListings();
-  }, []);
+  }, [currentPage]);
 
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -63,38 +72,43 @@ export default function BrowseInternships() {
           <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>Check back soon for new opportunities!</p>
         </div>
       ) : (
-        <div className="listing-grid">
-          {listings.map((listing) => (
-            <Link
-              href={`/dashboard/student/internships/${listing.id}`}
-              key={listing.id}
-              style={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              <div className="listing-card" style={{ cursor: 'pointer', transition: 'box-shadow 0.15s' }}>
-                <div className="listing-header">
-                  {listing.employers?.logo_url ? (
-                    <img src={listing.employers.logo_url} alt={listing.employers.company_name} className="listing-logo" />
-                  ) : (
-                    <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '1.1rem' }}>
-                      {listing.employers?.company_name?.charAt(0) || '?'}
-                    </div>
-                  )}
+        <>
+          <div className="listing-grid">
+            {listings.map((listing) => (
+              <Link
+                href={`/dashboard/student/internships/${listing.id}`}
+                key={listing.id}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <div className="listing-card" style={{ cursor: 'pointer', transition: 'box-shadow 0.15s' }}>
+                  <div className="listing-header">
+                    {listing.employers?.logo_url ? (
+                      <img src={listing.employers.logo_url} alt={listing.employers.company_name} className="listing-logo" />
+                    ) : (
+                      <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '1.1rem' }}>
+                        {listing.employers?.company_name?.charAt(0) || '?'}
+                      </div>
+                    )}
+                  </div>
+                  <h4>{listing.title}</h4>
+                  <p className="listing-company">{listing.employers?.company_name}</p>
+                  <p className="listing-location">{listing.location || 'Location not specified'}</p>
+                  <div className="listing-tags">
+                    {listing.is_remote && <span>Remote</span>}
+                    {listing.location && !listing.is_remote && <span>On-site</span>}
+                  </div>
+                  <div className="listing-footer">
+                    <span className="listing-salary">{listing.compensation || 'TBD'}</span>
+                    <span className="listing-time">{timeAgo(listing.created_at)}</span>
+                  </div>
                 </div>
-                <h4>{listing.title}</h4>
-                <p className="listing-company">{listing.employers?.company_name}</p>
-                <p className="listing-location">{listing.location || 'Location not specified'}</p>
-                <div className="listing-tags">
-                  {listing.is_remote && <span>Remote</span>}
-                  {listing.location && !listing.is_remote && <span>On-site</span>}
-                </div>
-                <div className="listing-footer">
-                  <span className="listing-salary">{listing.compensation || 'TBD'}</span>
-                  <span className="listing-time">{timeAgo(listing.created_at)}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+          )}
+        </>
       )}
     </div>
   );

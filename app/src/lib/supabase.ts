@@ -331,6 +331,63 @@ export async function applyToListing(studentId: string, listingId: string) {
   return data;
 }
 
+export async function getEmployerApplications(employerId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .select(`
+      id,
+      status,
+      applied_at,
+      updated_at,
+      listing:internship_listings!inner(id, title, employer_id),
+      student:students!inner(
+        id,
+        major,
+        graduation_year,
+        bio,
+        user_id,
+        profile:profiles!students_user_id_fkey(full_name, email, avatar_url)
+      )
+    `)
+    .eq('listing.employer_id', employerId)
+    .order('applied_at', { ascending: false });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function updateApplicationStatus(applicationId: string, status: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .update({ status })
+    .eq('id', applicationId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getEmployerStats(employerId: string) {
+  // Get all listing IDs for this employer
+  const { data: listings } = await supabase
+    .from('internship_listings')
+    .select('id')
+    .eq('employer_id', employerId);
+  if (!listings || listings.length === 0) return { totalApplicants: 0, interviewing: 0, offered: 0 };
+
+  const listingIds = listings.map(l => l.id);
+  const { data: apps } = await supabase
+    .from('applications')
+    .select('status')
+    .in('listing_id', listingIds);
+  if (!apps) return { totalApplicants: 0, interviewing: 0, offered: 0 };
+
+  return {
+    totalApplicants: apps.length,
+    interviewing: apps.filter(a => a.status === 'interviewing').length,
+    offered: apps.filter(a => a.status === 'offered').length,
+  };
+}
+
 export async function getApplicationStatus(studentId: string, listingId: string) {
   const { data, error } = await supabase
     .from('applications')

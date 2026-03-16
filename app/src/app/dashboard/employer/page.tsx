@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, getEmployerListings, getProfile, getUnreadCount } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, getEmployerListings, getProfile, getUnreadCount, getEmployerStats, getEmployerApplications } from '@/lib/supabase';
 import Pagination from '@/components/Pagination';
 
 type Listing = {
@@ -30,6 +30,9 @@ export default function EmployerDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+  const [totalApplicants, setTotalApplicants] = useState(0);
+  const [interviewCount, setInterviewCount] = useState(0);
+  const [recentCandidates, setRecentCandidates] = useState<any[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -71,8 +74,15 @@ export default function EmployerDashboard() {
       setCompanyName(employer.company_name);
       setEmployerId(employer.id);
 
-      const unread = await getUnreadCount(user.id);
+      const [unread, stats, apps] = await Promise.all([
+        getUnreadCount(user.id),
+        getEmployerStats(employer.id),
+        getEmployerApplications(employer.id),
+      ]);
       setUnreadMessages(unread);
+      setTotalApplicants(stats.totalApplicants);
+      setInterviewCount(stats.interviewing);
+      setRecentCandidates(apps.slice(0, 3));
     }
     fetchEmployer();
   }, []);
@@ -139,6 +149,10 @@ export default function EmployerDashboard() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
               Post a Listing
             </Link>
+            <Link href="/dashboard/employer/applications" className="sidebar-link">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Applications
+            </Link>
             <Link href="/dashboard/employer/events" className="sidebar-link">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               My Events
@@ -196,7 +210,7 @@ export default function EmployerDashboard() {
               </div>
               <div>
                 <div className="stat-label">Total Applicants</div>
-                <div className="stat-value">0</div>
+                <div className="stat-value">{totalApplicants}</div>
               </div>
             </div>
             <div className="stat-card">
@@ -205,7 +219,7 @@ export default function EmployerDashboard() {
               </div>
               <div>
                 <div className="stat-label">Interviews</div>
-                <div className="stat-value">0</div>
+                <div className="stat-value">{interviewCount}</div>
               </div>
             </div>
             <div className="stat-card">
@@ -338,35 +352,49 @@ export default function EmployerDashboard() {
                 </div>
                 <div>
                   <div className="stat-label">Applications</div>
-                  <div className="stat-value">0</div>
+                  <div className="stat-value">{totalApplicants}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* My Candidates */}
+          {/* Recent Candidates */}
           <div className="dash-section">
-            <h3 className="dash-section-title">My Candidates</h3>
-            <div className="candidate-grid">
-              <div className="candidate-card">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Jonah" className="candidate-avatar" />
-                <h4>Jonah Keshguerian</h4>
-                <p>Applied for: Software Engineer</p>
-                <div className="match-badge">98% Match</div>
-              </div>
-              <div className="candidate-card">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Ben" className="candidate-avatar" />
-                <h4>Ben Smith</h4>
-                <p>Applied for: Product Manager</p>
-                <div className="match-badge">94% Match</div>
-              </div>
-              <div className="candidate-card">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png" alt="Luke" className="candidate-avatar" />
-                <h4>Luke Baltzell</h4>
-                <p>Applied for: Software Engineer</p>
-                <div className="match-badge">87% Match</div>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="dash-section-title">Recent Candidates</h3>
+              {recentCandidates.length > 0 && (
+                <Link href="/dashboard/employer/applications" style={{ color: 'var(--primary)', fontSize: '0.85rem', textDecoration: 'none', fontWeight: 500 }}>
+                  View All &rarr;
+                </Link>
+              )}
             </div>
+            {recentCandidates.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
+                No applicants yet. Candidates will appear here when students apply.
+              </p>
+            ) : (
+              <div className="candidate-grid">
+                {recentCandidates.map((app: any) => (
+                  <Link href="/dashboard/employer/applications" key={app.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div className="candidate-card" style={{ cursor: 'pointer' }}>
+                      <img
+                        src={app.student?.profile?.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
+                        alt={app.student?.profile?.full_name || 'Applicant'}
+                        className="candidate-avatar"
+                      />
+                      <h4>{app.student?.profile?.full_name || 'Unknown'}</h4>
+                      <p>Applied for: {app.listing?.title || 'Unknown'}</p>
+                      <div className="match-badge" style={{
+                        background: app.status === 'offered' ? '#d1fae5' : app.status === 'interviewing' ? '#dbeafe' : app.status === 'rejected' ? '#fee2e2' : undefined,
+                        color: app.status === 'offered' ? '#065f46' : app.status === 'interviewing' ? '#1e40af' : app.status === 'rejected' ? '#991b1b' : undefined,
+                      }}>
+                        {app.status === 'applied' ? 'New' : app.status === 'reviewed' ? 'Under Review' : app.status === 'interviewing' ? 'Interviewing' : app.status === 'offered' ? 'Offered' : 'Not Selected'}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* News */}

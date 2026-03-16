@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 InternFirstSite is a premium internship recruitment platform connecting students, employers, and universities. Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Supabase.
 
+**Core principle: Closed ecosystem.** Everything happens on the platform — job listings, applications, interviews, and hiring. There are no external job links or off-platform redirects. Students apply in-platform, employers review and manage candidates in-platform, and all communication stays within InternFirst.
+
 ## Repository Structure
 
 The Next.js application lives inside the `app/` subdirectory (not the repo root). All npm commands must be run from `app/`.
@@ -52,11 +54,11 @@ npm run lint     # ESLint
 
 ## Listing Flow
 
-Employers create listings at `/dashboard/employer/listings/new`. Compensation uses a preset dropdown (e.g. "$15-20/hr", "Unpaid", "Stipend"). Listings support an optional `external_apply_url` field.
+Employers create listings at `/dashboard/employer/listings/new`. Compensation uses a preset dropdown (e.g. "$15-20/hr", "Unpaid", "Stipend"). Industry is a required preset dropdown.
 
-Students browse active listings at `/dashboard/student/internships` and view details at `/dashboard/student/internships/[id]`. Two apply paths:
-- **In-platform:** If no external URL, student clicks "Apply Now" → creates row in `applications` table → shows status (Applied, Under Review, Interviewing, Offered, Not Selected)
-- **External:** If `external_apply_url` is set, shows "Apply Externally" button that opens the link in a new tab (auto-prepends `https://` if missing)
+Students browse active listings at `/dashboard/student/internships` (filterable by industry pills) and view details at `/dashboard/student/internships/[id]`. The student dashboard shows a "Recommended for You" section based on the student's major-to-industry mapping.
+
+All applications are in-platform: student clicks "Apply Now" → creates row in `applications` table → shows status (Applied, Under Review, Interviewing, Offered, Not Selected). There are no external application links.
 
 ## Key Conventions
 
@@ -72,8 +74,9 @@ Students browse active listings at `/dashboard/student/internships` and view det
 - **Auth/Profile:** `getProfile`, `createProfileAndRoleData`, `isEduEmail`, `getPartnerUniversity`, `getAllUniversities`, `uploadImage`
 - **Employers:** `getEmployerByUserId`, `getEmployerListings`, `updateEmployer`
 - **Students:** `getStudentByUserId`
-- **Listings:** `createListing`, `getActiveListings`, `getListingById`
+- **Listings:** `createListing`, `getActiveListings`, `getListingById`, `getRecommendedListings`
 - **Applications:** `applyToListing`, `getApplicationStatus`
+- **Constants:** `INDUSTRIES`, `MAJORS`, `MAJOR_TO_INDUSTRIES` in `src/lib/constants.ts`
 
 ## Known Limitations & Future Work
 

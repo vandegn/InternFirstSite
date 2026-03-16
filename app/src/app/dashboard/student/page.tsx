@@ -27,7 +27,8 @@ function useCountUp(target: number, duration = 1200) {
 }
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getPartnerUniversity, getProfile, getActiveListings } from '@/lib/supabase';
+import { supabase, getPartnerUniversity, getProfile, getActiveListings, getRecommendedListings, getStudentByUserId, getUnreadCount } from '@/lib/supabase';
+import { MAJOR_TO_INDUSTRIES } from '@/lib/constants';
 
 type Listing = {
   id: string;
@@ -69,7 +70,10 @@ export default function StudentDashboard() {
   const [positionsCount, setPositionsCount] = useState(0);
   const animatedPositions = useCountUp(positionsCount);
   const [recentListings, setRecentListings] = useState<Listing[]>([]);
+  const [recommendedListings, setRecommendedListings] = useState<Listing[]>([]);
+  const [studentMajor, setStudentMajor] = useState<string | null>(null);
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
@@ -104,20 +108,27 @@ export default function StudentDashboard() {
         setProfileAvatar(profile.avatar_url);
       }
 
-      const { count } = await supabase
-        .from('internship_listings')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+      const [{ count }, unread] = await Promise.all([
+        supabase.from('internship_listings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        getUnreadCount(user.id),
+      ]);
       setPositionsCount(count ?? 0);
+      setUnreadMessages(unread);
       const result = await getActiveListings(1, 3);
       setRecentListings(result.data as Listing[]);
 
-      // Fetch recent events for the student's university
-      const { data: studentData } = await supabase
-        .from('students')
-        .select('university_id')
-        .eq('user_id', user.id)
-        .single();
+      // Fetch student data for recommendations and events
+      const student = await getStudentByUserId(user.id);
+      if (student?.major) {
+        setStudentMajor(student.major);
+        const industries = MAJOR_TO_INDUSTRIES[student.major] || [];
+        if (industries.length > 0) {
+          const recommended = await getRecommendedListings(industries, 3);
+          setRecommendedListings(recommended as Listing[]);
+        }
+      }
+
+      const studentData = student;
       if (studentData?.university_id) {
         const { data: events } = await supabase
           .from('university_events')
@@ -208,9 +219,16 @@ export default function StudentDashboard() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               My Events
             </Link>
-            <Link href="/dashboard/student" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              My Inbox
+            <Link href="/dashboard/student/inbox" className="sidebar-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                My Inbox
+              </span>
+              {unreadMessages > 0 && (
+                <span style={{ background: 'var(--primary)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', minWidth: '20px', textAlign: 'center' }}>
+                  {unreadMessages}
+                </span>
+              )}
             </Link>
             <Link href="/dashboard/student" className="sidebar-link">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -268,6 +286,52 @@ export default function StudentDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Recommended for You */}
+          {recommendedListings.length > 0 && (
+            <div className="dash-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 className="dash-section-title" style={{ marginBottom: '2px' }}>Recommended for You</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>Based on your major: {studentMajor}</p>
+                </div>
+                <Link href="/dashboard/student/internships" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', border: '1.5px solid var(--primary)', borderRadius: '999px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 500, textDecoration: 'none', transition: 'background 0.15s, color 0.15s', background: 'transparent' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--primary)'; }}
+                >
+                  View All <span style={{ fontSize: '1.1rem' }}>&rarr;</span>
+                </Link>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
+                {recommendedListings.map((listing) => (
+                  <Link
+                    href={`/dashboard/student/internships/${listing.id}`}
+                    key={listing.id}
+                    style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <div className="listing-card" style={{ padding: '14px', cursor: 'pointer', borderLeft: '3px solid var(--primary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        {listing.employers?.logo_url ? (
+                          <img src={listing.employers.logo_url} alt={listing.employers.company_name} className="listing-logo" style={{ width: 32, height: 32 }} />
+                        ) : (
+                          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem', flexShrink: 0 }}>
+                            {listing.employers?.company_name?.charAt(0) || '?'}
+                          </div>
+                        )}
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{listing.employers?.company_name}</span>
+                      </div>
+                      <h4 style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{listing.title}</h4>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{listing.location || 'Location not specified'}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{listing.compensation || 'TBD'}</span>
+                        {listing.is_remote && <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem' }}>Remote</span>}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Browse Internships */}
           <div className="dash-section">

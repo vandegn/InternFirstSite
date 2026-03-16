@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, getActiveListings } from '@/lib/supabase';
+import { INDUSTRIES } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
 
 type Listing = {
@@ -13,6 +14,7 @@ type Listing = {
   is_remote: boolean;
   compensation: string | null;
   requirements: string | null;
+  industry: string;
   created_at: string;
   employers: {
     company_name: string;
@@ -27,6 +29,7 @@ export default function BrowseInternships() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedIndustry, setSelectedIndustry] = useState('');
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -35,13 +38,18 @@ export default function BrowseInternships() {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const result = await getActiveListings(currentPage, PAGE_SIZE);
+      const result = await getActiveListings(currentPage, PAGE_SIZE, selectedIndustry || undefined);
       setListings(result.data as Listing[]);
       setTotalCount(result.totalCount);
       setLoading(false);
     }
     fetchListings();
-  }, [currentPage]);
+  }, [currentPage, selectedIndustry]);
+
+  function handleIndustryFilter(industry: string) {
+    setSelectedIndustry(industry);
+    setCurrentPage(1);
+  }
 
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -59,6 +67,44 @@ export default function BrowseInternships() {
         <Link href="/dashboard/student" className="btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 16px', textDecoration: 'none' }}>
           Back to Dashboard
         </Link>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+        <button
+          onClick={() => handleIndustryFilter('')}
+          style={{
+            padding: '6px 16px',
+            borderRadius: '20px',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+            fontWeight: 500,
+            background: selectedIndustry === '' ? 'var(--primary)' : 'var(--primary-light)',
+            color: selectedIndustry === '' ? '#fff' : 'var(--primary)',
+            transition: 'var(--transition)',
+          }}
+        >
+          All
+        </button>
+        {INDUSTRIES.map((ind) => (
+          <button
+            key={ind}
+            onClick={() => handleIndustryFilter(ind)}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '20px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              background: selectedIndustry === ind ? 'var(--primary)' : 'var(--primary-light)',
+              color: selectedIndustry === ind ? '#fff' : 'var(--primary)',
+              transition: 'var(--transition)',
+            }}
+          >
+            {ind}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -94,6 +140,7 @@ export default function BrowseInternships() {
                   <p className="listing-company">{listing.employers?.company_name}</p>
                   <p className="listing-location">{listing.location || 'Location not specified'}</p>
                   <div className="listing-tags">
+                    <span>{listing.industry}</span>
                     {listing.is_remote && <span>Remote</span>}
                     {listing.location && !listing.is_remote && <span>On-site</span>}
                   </div>

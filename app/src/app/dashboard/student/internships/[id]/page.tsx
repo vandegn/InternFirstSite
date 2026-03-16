@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { supabase, getListingById, getStudentByUserId, applyToListing, getApplicationStatus } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import { supabase, getListingById, getStudentByUserId, applyToListing, getApplicationStatus, getEmployerUserIdByListingId, sendMessage } from '@/lib/supabase';
 
 type Listing = {
   id: string;
@@ -13,7 +14,7 @@ type Listing = {
   is_remote: boolean;
   compensation: string | null;
   requirements: string | null;
-  external_apply_url: string | null;
+  industry: string;
   created_at: string;
   employers: {
     company_name: string;
@@ -24,17 +25,21 @@ type Listing = {
 
 export default function InternshipDetail() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [listing, setListing] = useState<Listing | null>(null);
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [messageSending, setMessageSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setCurrentUserId(user.id);
 
       const [listingData, student] = await Promise.all([
         getListingById(id),
@@ -51,6 +56,21 @@ export default function InternshipDetail() {
     }
     fetchData();
   }, [id]);
+
+  async function handleMessageEmployer() {
+    if (!currentUserId) return;
+    setMessageSending(true);
+    try {
+      const employerUserId = await getEmployerUserIdByListingId(id);
+      if (!employerUserId) throw new Error('Employer not found');
+      // Send an intro message so the conversation appears in inbox
+      await sendMessage(currentUserId, employerUserId, `Hi! I'm interested in the "${listing?.title}" position.`);
+      router.push('/dashboard/student/inbox');
+    } catch {
+      setError('Failed to start conversation.');
+      setMessageSending(false);
+    }
+  }
 
   async function handleApply() {
     if (!studentId) return;
@@ -136,6 +156,10 @@ export default function InternshipDetail() {
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            {listing.industry}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Posted {new Date(listing.created_at).toLocaleDateString()}
           </div>
@@ -169,28 +193,28 @@ export default function InternshipDetail() {
 
         <div className="sidebar-divider" style={{ margin: '24px 0' }}></div>
 
-        {/* Apply section */}
-        {listing.external_apply_url ? (
-          <a
-            href={listing.external_apply_url.match(/^https?:\/\//) ? listing.external_apply_url : `https://${listing.external_apply_url}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary"
-            style={{ padding: '12px 32px', fontSize: '1rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-          >
-            Apply Externally
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
-        ) : applicationStatus ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: 'var(--bg-secondary, #f5f5f5)', borderRadius: '10px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <span style={{ fontWeight: 600 }}>Status: {statusLabels[applicationStatus] || applicationStatus}</span>
+        {/* Apply & Message section */}
+        {applicationStatus ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: 'var(--bg-secondary, #f5f5f5)', borderRadius: '10px', flex: 1 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span style={{ fontWeight: 600 }}>Status: {statusLabels[applicationStatus] || applicationStatus}</span>
+            </div>
+            <button
+              onClick={handleMessageEmployer}
+              disabled={messageSending}
+              style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '10px', border: '1.5px solid var(--primary)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Message Employer
+            </button>
           </div>
         ) : (
           <div>
             {error && (
               <p style={{ color: '#e53e3e', fontSize: '0.9rem', marginBottom: '12px' }}>{error}</p>
             )}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
               className="btn-primary"
               onClick={handleApply}
@@ -199,6 +223,15 @@ export default function InternshipDetail() {
             >
               {applying ? 'Applying...' : 'Apply Now'}
             </button>
+            <button
+              onClick={handleMessageEmployer}
+              disabled={messageSending}
+              style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '10px', border: '1.5px solid var(--primary)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Message Employer
+            </button>
+            </div>
           </div>
         )}
       </div>

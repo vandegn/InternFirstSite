@@ -162,7 +162,7 @@ export async function createListing(listing: {
   is_remote?: boolean;
   compensation?: string;
   requirements?: string;
-  external_apply_url?: string;
+  industry: string;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -186,13 +186,19 @@ export async function getEmployerListings(employerId: string, page = 1, pageSize
   return { data: data ?? [], totalCount: count ?? 0 };
 }
 
-export async function getActiveListings(page = 1, pageSize = 10) {
+export async function getActiveListings(page = 1, pageSize = 10, industry?: string) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const { data, error, count } = await supabase
+  let query = supabase
     .from('internship_listings')
     .select('*, employers(company_name, logo_url)', { count: 'exact' })
-    .eq('status', 'active')
+    .eq('status', 'active');
+
+  if (industry) {
+    query = query.eq('industry', industry);
+  }
+
+  const { data, error, count } = await query
     .order('created_at', { ascending: false })
     .range(from, to);
   if (error) return { data: [], totalCount: 0 };
@@ -207,6 +213,102 @@ export async function getListingById(id: string) {
     .single();
   if (error || !data) return null;
   return data;
+}
+
+export async function getRecommendedListings(industries: string[], limit = 3) {
+  if (industries.length === 0) return [];
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .select('*, employers(company_name, logo_url)')
+    .eq('status', 'active')
+    .in('industry', industries)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return data ?? [];
+}
+
+// ---- Messages ----
+
+export async function getConversations(userId: string) {
+  // Get all messages where user is sender or receiver, grouped by the other party
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*, sender:profiles!messages_sender_id_fkey(full_name, avatar_url, role), receiver:profiles!messages_receiver_id_fkey(full_name, avatar_url, role)')
+    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+    .order('sent_at', { ascending: false });
+  if (error || !data) return [];
+  // Group by the other user
+  const convMap = new Map<string, { otherUserId: string; otherName: string; otherAvatar: string | null; otherRole: string; lastMessage: string; lastSentAt: string; unreadCount: number }>();
+  for (const msg of data) {
+    const otherUserId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
+    const other = msg.sender_id === userId ? msg.receiver : msg.sender;
+    if (!convMap.has(otherUserId)) {
+      convMap.set(otherUserId, {
+        otherUserId,
+        otherName: other?.full_name || 'Unknown',
+        otherAvatar: other?.avatar_url || null,
+        otherRole: other?.role || '',
+        lastMessage: msg.body,
+        lastSentAt: msg.sent_at,
+        unreadCount: 0,
+      });
+    }
+    if (msg.receiver_id === userId && !msg.read) {
+      const conv = convMap.get(otherUserId)!;
+      conv.unreadCount++;
+    }
+  }
+  return Array.from(convMap.values());
+}
+
+export async function getMessagesWith(userId: string, otherUserId: string) {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*, sender:profiles!messages_sender_id_fkey(full_name, avatar_url)')
+    .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`)
+    .order('sent_at', { ascending: true });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function sendMessage(senderId: string, receiverId: string, body: string) {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({ sender_id: senderId, receiver_id: receiverId, body })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function markMessagesAsRead(userId: string, otherUserId: string) {
+  await supabase
+    .from('messages')
+    .update({ read: true })
+    .eq('receiver_id', userId)
+    .eq('sender_id', otherUserId)
+    .eq('read', false);
+}
+
+export async function getUnreadCount(userId: string) {
+  const { count, error } = await supabase
+    .from('messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('receiver_id', userId)
+    .eq('read', false);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function getEmployerUserIdByListingId(listingId: string) {
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .select('employers(user_id)')
+    .eq('id', listingId)
+    .single();
+  if (error || !data) return null;
+  return (data as any).employers?.user_id as string | null;
 }
 
 export async function getStudentByUserId(userId: string) {

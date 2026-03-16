@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
 import { supabase, createProfileAndRoleData, isEduEmail, DASHBOARD_ROUTES, uploadImage, getAllUniversities, type RoleData } from '@/lib/supabase';
+import { MAJORS } from '@/lib/constants';
 
 type Role = 'student' | 'employer' | 'university_admin';
 
@@ -18,6 +19,9 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   // Student fields
   const [major, setMajor] = useState('');
+  const [majorSearch, setMajorSearch] = useState('');
+  const [majorDropdownOpen, setMajorDropdownOpen] = useState(false);
+  const majorRef = useRef<HTMLDivElement>(null);
   const [graduationYear, setGraduationYear] = useState('');
   // Image upload
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -41,6 +45,20 @@ export default function RegisterPage() {
       getAllUniversities().then(setUniversities);
     }
   }, [role]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (majorRef.current && !majorRef.current.contains(e.target as Node)) {
+        setMajorDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredMajors = MAJORS.filter((m) =>
+    m.toLowerCase().includes(majorSearch.toLowerCase())
+  );
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -177,7 +195,64 @@ export default function RegisterPage() {
               <>
                 <div className="form-group">
                   <label htmlFor="major">Major</label>
-                  <input type="text" id="major" placeholder="e.g. Computer Science" value={major} onChange={e => setMajor(e.target.value)} />
+                  <div ref={majorRef} style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      id="major"
+                      placeholder="Search for your major..."
+                      value={majorDropdownOpen ? majorSearch : major || majorSearch}
+                      onChange={(e) => {
+                        setMajorSearch(e.target.value);
+                        setMajorDropdownOpen(true);
+                        if (!e.target.value) setMajor('');
+                      }}
+                      onFocus={() => setMajorDropdownOpen(true)}
+                      autoComplete="off"
+                    />
+                    {majorDropdownOpen && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        background: 'var(--bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)',
+                        boxShadow: 'var(--shadow-md)',
+                        zIndex: 50,
+                      }}>
+                        {filteredMajors.length === 0 ? (
+                          <div style={{ padding: '10px 14px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            No majors found
+                          </div>
+                        ) : (
+                          filteredMajors.map((m) => (
+                            <div
+                              key={m}
+                              onClick={() => {
+                                setMajor(m);
+                                setMajorSearch(m);
+                                setMajorDropdownOpen(false);
+                              }}
+                              style={{
+                                padding: '10px 14px',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                background: major === m ? 'var(--primary-light)' : 'transparent',
+                                color: major === m ? 'var(--primary)' : 'var(--text)',
+                              }}
+                              onMouseEnter={(e) => { if (major !== m) (e.target as HTMLElement).style.background = 'var(--bg-light)'; }}
+                              onMouseLeave={(e) => { (e.target as HTMLElement).style.background = major === m ? 'var(--primary-light)' : 'transparent'; }}
+                            >
+                              {m}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="form-group">
                   <label htmlFor="graduationYear">Graduation Year</label>

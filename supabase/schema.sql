@@ -86,6 +86,7 @@ create table internship_listings (
   is_remote boolean default false,
   compensation text,
   requirements text,
+  industry text not null default 'Other' check (industry in ('Technology', 'Finance', 'Healthcare', 'Marketing', 'Legal', 'Engineering', 'Education', 'Media', 'Nonprofit', 'Government', 'Retail', 'Other')),
   status text default 'active' check (status in ('active', 'closed')),
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
@@ -158,6 +159,7 @@ create index idx_students_university on students(university_id);
 create index idx_employers_verified on employers(verified);
 create index idx_listings_employer on internship_listings(employer_id);
 create index idx_listings_status on internship_listings(status);
+create index idx_listings_industry on internship_listings(industry);
 create index idx_applications_student on applications(student_id);
 create index idx_applications_listing on applications(listing_id);
 create index idx_applications_status on applications(status);

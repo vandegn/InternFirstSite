@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, getEmployerListings, getProfile } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, getEmployerListings, getProfile, getUnreadCount } from '@/lib/supabase';
 import Pagination from '@/components/Pagination';
 
 type Listing = {
@@ -13,6 +13,7 @@ type Listing = {
   is_remote: boolean;
   compensation: string | null;
   status: string;
+  industry: string;
   created_at: string;
 };
 
@@ -29,6 +30,7 @@ export default function EmployerDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const avatarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -68,6 +70,9 @@ export default function EmployerDashboard() {
 
       setCompanyName(employer.company_name);
       setEmployerId(employer.id);
+
+      const unread = await getUnreadCount(user.id);
+      setUnreadMessages(unread);
     }
     fetchEmployer();
   }, []);
@@ -138,9 +143,16 @@ export default function EmployerDashboard() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               My Events
             </Link>
-            <Link href="/dashboard/employer/inbox" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              My Inbox
+            <Link href="/dashboard/employer/inbox" className="sidebar-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                My Inbox
+              </span>
+              {unreadMessages > 0 && (
+                <span style={{ background: 'var(--primary)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', minWidth: '20px', textAlign: 'center' }}>
+                  {unreadMessages}
+                </span>
+              )}
             </Link>
             <Link href="/dashboard/employer/connect" className="sidebar-link">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -235,6 +247,7 @@ export default function EmployerDashboard() {
                       <p className="listing-company">{companyName}</p>
                       <p className="listing-location">{listing.location || 'Not specified'}</p>
                       <div className="listing-tags">
+                        <span>{listing.industry}</span>
                         <span>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
                         {listing.is_remote && <span>Remote</span>}
                       </div>

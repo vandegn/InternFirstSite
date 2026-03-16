@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, getEmployerByUserId, createListing } from '@/lib/supabase';
+import { INDUSTRIES } from '@/lib/constants';
 
 export default function NewListingPage() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function NewListingPage() {
   const [isRemote, setIsRemote] = useState(false);
   const [compensation, setCompensation] = useState('');
   const [requirements, setRequirements] = useState('');
-  const [externalApplyUrl, setExternalApplyUrl] = useState('');
+  const [industry, setIndustry] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +38,7 @@ export default function NewListingPage() {
         is_remote: isRemote,
         compensation: compensation || undefined,
         requirements: requirements || undefined,
-        external_apply_url: externalApplyUrl || undefined,
+        industry,
       });
 
       router.push('/dashboard/employer');
@@ -94,6 +95,21 @@ export default function NewListingPage() {
               </select>
             </div>
             <div className="form-group">
+              <label htmlFor="industry">Industry</label>
+              <select
+                id="industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                required
+                style={{ width: '100%' }}
+              >
+                <option value="">Select industry...</option>
+                {INDUSTRIES.map((ind) => (
+                  <option key={ind} value={ind}>{ind}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
               <label htmlFor="location">Location</label>
               <input
                 type="text"
@@ -138,20 +154,6 @@ export default function NewListingPage() {
               onChange={(e) => setRequirements(e.target.value)}
               style={{ width: '100%', resize: 'vertical' }}
             />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="externalApplyUrl">External Application Link (optional)</label>
-            <input
-              type="text"
-              id="externalApplyUrl"
-              placeholder="e.g. jobs.lever.co/yourcompany/intern-role"
-              value={externalApplyUrl}
-              onChange={(e) => setExternalApplyUrl(e.target.value)}
-            />
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
-              If provided, applicants will be directed to this link instead of applying on InternFirst.
-            </p>
           </div>
 
           <button type="submit" className="btn-auth" disabled={loading}>

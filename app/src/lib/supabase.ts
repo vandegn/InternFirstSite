@@ -339,6 +339,8 @@ export async function getEmployerApplications(employerId: string) {
       status,
       applied_at,
       updated_at,
+      resume_id,
+      resume:student_resumes(id, name, file_url),
       listing:internship_listings!inner(id, title, employer_id),
       student:students!inner(
         id,
@@ -397,4 +399,239 @@ export async function getApplicationStatus(studentId: string, listingId: string)
     .single();
   if (error || !data) return null;
   return data.status as string;
+}
+
+// ---- Student Resumes ----
+
+export async function uploadResume(studentId: string, file: File, displayName: string) {
+  const ext = file.name.split('.').pop();
+  const path = `resumes/${studentId}/${Date.now()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from('images')
+    .upload(path, file, { upsert: false });
+  if (uploadError) throw uploadError;
+
+  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path);
+
+  const { data, error } = await supabase
+    .from('student_resumes')
+    .insert({ student_id: studentId, name: displayName, file_url: urlData.publicUrl })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getStudentResumes(studentId: string) {
+  const { data, error } = await supabase
+    .from('student_resumes')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('uploaded_at', { ascending: false });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function deleteResume(resumeId: string) {
+  const { error } = await supabase
+    .from('student_resumes')
+    .delete()
+    .eq('id', resumeId);
+  if (error) throw error;
+}
+
+// ---- Student Applications ----
+
+export async function getStudentApplications(studentId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .select(`
+      id,
+      status,
+      applied_at,
+      updated_at,
+      resume_id,
+      listing:internship_listings!inner(
+        id, title, location, is_remote, compensation, industry,
+        employers:employers!inner(company_name, logo_url)
+      )
+    `)
+    .eq('student_id', studentId)
+    .order('applied_at', { ascending: false });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function getStudentStats(studentId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('status')
+    .eq('student_id', studentId);
+  if (error || !data) return { total: 0, offers: 0 };
+  return {
+    total: data.length,
+    offers: data.filter(a => a.status === 'offered').length,
+  };
+}
+
+// ---- Update student profile ----
+
+export async function updateStudent(studentId: string, fields: {
+  major?: string;
+  graduation_year?: number;
+  bio?: string;
+}) {
+  const { data, error } = await supabase
+    .from('students')
+    .update(fields)
+    .eq('id', studentId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProfile(userId: string, fields: {
+  full_name?: string;
+  phone?: string;
+  avatar_url?: string;
+}) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(fields)
+    .eq('user_id', userId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ---- Apply with resume ----
+
+export async function applyToListingWithResume(studentId: string, listingId: string, resumeId: string | null) {
+  const row: any = { student_id: studentId, listing_id: listingId };
+  if (resumeId) row.resume_id = resumeId;
+  const { data, error } = await supabase
+    .from('applications')
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ---- University Dashboard Stats ----
+
+export async function getUniversityStats(universityId: string) {
+  // Count students enrolled at this university
+  const { count: studentCount } = await supabase
+    .from('students')
+    .select('*', { count: 'exact', head: true })
+    .eq('university_id', universityId);
+
+  // Get all student IDs at this university
+  const { data: students } = await supabase
+    .from('students')
+    .select('id')
+    .eq('university_id', universityId);
+  const studentIds = students?.map(s => s.id) ?? [];
+
+  if (studentIds.length === 0) {
+    return { studentsEnrolled: studentCount ?? 0, totalApplications: 0, offers: 0, interviewing: 0 };
+  }
+
+  // Get all applications from these students
+  const { data: apps } = await supabase
+    .from('applications')
+    .select('status')
+    .in('student_id', studentIds);
+
+  const totalApplications = apps?.length ?? 0;
+  const offers = apps?.filter(a => a.status === 'offered').length ?? 0;
+  const interviewing = apps?.filter(a => a.status === 'interviewing').length ?? 0;
+
+  return { studentsEnrolled: studentCount ?? 0, totalApplications, offers, interviewing };
+}
+
+export async function getTopEmployersForUniversity(universityId: string, limit = 3) {
+  // Get student IDs for this university
+  const { data: students } = await supabase
+    .from('students')
+    .select('id')
+    .eq('university_id', universityId);
+  const studentIds = students?.map(s => s.id) ?? [];
+  if (studentIds.length === 0) return [];
+
+  // Get applications with listing/employer info
+  const { data: apps } = await supabase
+    .from('applications')
+    .select('listing:internship_listings!inner(employers:employers!inner(company_name))')
+    .in('student_id', studentIds);
+  if (!apps || apps.length === 0) return [];
+
+  // Count applications per employer
+  const counts: Record<string, number> = {};
+  for (const app of apps) {
+    const listing = Array.isArray(app.listing) ? app.listing[0] : app.listing;
+    const employer = listing ? (Array.isArray((listing as any).employers) ? (listing as any).employers[0] : (listing as any).employers) : null;
+    const name = employer?.company_name;
+    if (name) counts[name] = (counts[name] || 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, count]) => ({ name, count }));
+}
+
+export async function getPlacementCities(universityId: string) {
+  // Get student IDs
+  const { data: students } = await supabase
+    .from('students')
+    .select('id')
+    .eq('university_id', universityId);
+  const studentIds = students?.map(s => s.id) ?? [];
+  if (studentIds.length === 0) return [];
+
+  // Get offered applications with listing location
+  const { data: apps } = await supabase
+    .from('applications')
+    .select('listing:internship_listings!inner(location)')
+    .eq('status', 'offered')
+    .in('student_id', studentIds);
+  if (!apps || apps.length === 0) return [];
+
+  const counts: Record<string, number> = {};
+  for (const app of apps) {
+    const listing = Array.isArray(app.listing) ? app.listing[0] : app.listing;
+    const loc = (listing as any)?.location;
+    if (loc) counts[loc] = (counts[loc] || 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([city, count]) => ({ city, count }));
+}
+
+// ---- Listing Management (Edit/Close) ----
+
+export async function updateListing(listingId: string, fields: {
+  title?: string;
+  description?: string;
+  location?: string;
+  is_remote?: boolean;
+  compensation?: string;
+  requirements?: string;
+  industry?: string;
+  status?: string;
+}) {
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .update(fields)
+    .eq('id', listingId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { supabase, getListingById, getStudentByUserId, applyToListing, getApplicationStatus, getEmployerUserIdByListingId, sendMessage } from '@/lib/supabase';
+import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes } from '@/lib/supabase';
 
 type Listing = {
   id: string;
@@ -32,6 +32,9 @@ export default function InternshipDetail() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [showApplyForm, setShowApplyForm] = useState(false);
+  const [resumes, setResumes] = useState<{ id: string; name: string; file_url: string; uploaded_at: string }[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [messageSending, setMessageSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,8 +52,13 @@ export default function InternshipDetail() {
       if (listingData) setListing(listingData as Listing);
       if (student) {
         setStudentId(student.id);
-        const status = await getApplicationStatus(student.id, id);
+        const [status, studentResumes] = await Promise.all([
+          getApplicationStatus(student.id, id),
+          getStudentResumes(student.id),
+        ]);
         if (status) setApplicationStatus(status);
+        setResumes(studentResumes);
+        if (studentResumes.length > 0) setSelectedResumeId(studentResumes[0].id);
       }
       setLoading(false);
     }
@@ -77,8 +85,9 @@ export default function InternshipDetail() {
     setApplying(true);
     setError(null);
     try {
-      await applyToListing(studentId, id);
+      await applyToListingWithResume(studentId, id, selectedResumeId);
       setApplicationStatus('applied');
+      setShowApplyForm(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to apply. Please try again.';
       setError(message);
@@ -214,24 +223,104 @@ export default function InternshipDetail() {
             {error && (
               <p style={{ color: '#e53e3e', fontSize: '0.9rem', marginBottom: '12px' }}>{error}</p>
             )}
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button
-              className="btn-primary"
-              onClick={handleApply}
-              disabled={applying}
-              style={{ padding: '12px 32px', fontSize: '1rem' }}
-            >
-              {applying ? 'Applying...' : 'Apply Now'}
-            </button>
-            <button
-              onClick={handleMessageEmployer}
-              disabled={messageSending}
-              style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '10px', border: '1.5px solid var(--primary)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Message Employer
-            </button>
-            </div>
+            {!showApplyForm ? (
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <button
+                  className="btn-primary"
+                  onClick={() => setShowApplyForm(true)}
+                  style={{ padding: '12px 32px', fontSize: '1rem' }}
+                >
+                  Apply Now
+                </button>
+                <button
+                  onClick={handleMessageEmployer}
+                  disabled={messageSending}
+                  style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '10px', border: '1.5px solid var(--primary)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Message Employer
+                </button>
+              </div>
+            ) : (
+              <div style={{ background: 'var(--bg-secondary, #f9fafb)', borderRadius: 'var(--radius, 12px)', padding: '20px', border: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Submit Application</h4>
+
+                {resumes.length > 0 ? (
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 500, display: 'block', marginBottom: '8px' }}>Select a Resume</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {resumes.map((r) => (
+                        <label
+                          key={r.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+                            borderRadius: 'var(--radius-sm, 8px)',
+                            border: selectedResumeId === r.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                            background: selectedResumeId === r.id ? 'var(--primary-light, #ede9fe)' : 'var(--bg)',
+                            cursor: 'pointer', transition: 'all 0.15s',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="resume"
+                            value={r.id}
+                            checked={selectedResumeId === r.id}
+                            onChange={() => setSelectedResumeId(r.id)}
+                            style={{ accentColor: 'var(--primary)' }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{r.name}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                              Uploaded {new Date(r.uploaded_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <a href={r.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>View</a>
+                        </label>
+                      ))}
+                      <label
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+                          borderRadius: 'var(--radius-sm, 8px)',
+                          border: selectedResumeId === null ? '2px solid var(--primary)' : '1px solid var(--border)',
+                          background: selectedResumeId === null ? 'var(--primary-light, #ede9fe)' : 'var(--bg)',
+                          cursor: 'pointer', transition: 'all 0.15s',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="resume"
+                          checked={selectedResumeId === null}
+                          onChange={() => setSelectedResumeId(null)}
+                          style={{ accentColor: 'var(--primary)' }}
+                        />
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Apply without a resume</span>
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                    No resumes uploaded yet. You can <a href="/dashboard/student/settings" style={{ color: 'var(--primary)' }}>upload one in Settings</a> or apply without one.
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <button
+                    className="btn-primary"
+                    onClick={handleApply}
+                    disabled={applying}
+                    style={{ padding: '10px 28px', fontSize: '0.95rem' }}
+                  >
+                    {applying ? 'Submitting...' : 'Submit Application'}
+                  </button>
+                  <button
+                    onClick={() => setShowApplyForm(false)}
+                    style={{ padding: '10px 20px', fontSize: '0.9rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

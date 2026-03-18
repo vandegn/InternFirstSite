@@ -251,25 +251,27 @@ export default function EmployerDashboard() {
               <>
                 <div className="listing-grid">
                   {listings.map((listing) => (
-                    <div className="listing-card" key={listing.id}>
-                      <div className="listing-header">
-                        <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)' }}>
-                          {companyName.charAt(0)}
+                    <Link href={`/dashboard/employer/listings/${listing.id}/edit`} key={listing.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <div className="listing-card" style={{ cursor: 'pointer' }}>
+                        <div className="listing-header">
+                          <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)' }}>
+                            {companyName.charAt(0)}
+                          </div>
+                        </div>
+                        <h4>{listing.title}</h4>
+                        <p className="listing-company">{companyName}</p>
+                        <p className="listing-location">{listing.location || 'Not specified'}</p>
+                        <div className="listing-tags">
+                          <span>{listing.industry}</span>
+                          <span style={listing.status === 'closed' ? { background: '#fee2e2', color: '#991b1b' } : undefined}>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
+                          {listing.is_remote && <span>Remote</span>}
+                        </div>
+                        <div className="listing-footer">
+                          <span className="listing-salary">{listing.compensation || 'TBD'}</span>
+                          <span className="listing-time">{new Date(listing.created_at).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <h4>{listing.title}</h4>
-                      <p className="listing-company">{companyName}</p>
-                      <p className="listing-location">{listing.location || 'Not specified'}</p>
-                      <div className="listing-tags">
-                        <span>{listing.industry}</span>
-                        <span>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
-                        {listing.is_remote && <span>Remote</span>}
-                      </div>
-                      <div className="listing-footer">
-                        <span className="listing-salary">{listing.compensation || 'TBD'}</span>
-                        <span className="listing-time">{new Date(listing.created_at).toLocaleDateString()}</span>
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
                 {totalPages > 1 && (

@@ -9,6 +9,12 @@ type Application = {
   status: string;
   applied_at: string;
   updated_at: string;
+  resume_id: string | null;
+  resume: {
+    id: string;
+    name: string;
+    file_url: string;
+  } | null;
   listing: {
     id: string;
     title: string;
@@ -65,6 +71,7 @@ export default function EmployerApplications() {
       const normalized = apps.map((app: any) => ({
         ...app,
         listing: Array.isArray(app.listing) ? app.listing[0] : app.listing,
+        resume: Array.isArray(app.resume) ? app.resume[0] || null : app.resume,
         student: (() => {
           const s = Array.isArray(app.student) ? app.student[0] : app.student;
           return s ? { ...s, profile: Array.isArray(s.profile) ? s.profile[0] : s.profile } : s;
@@ -241,6 +248,28 @@ export default function EmployerApplications() {
                       <div style={{ marginBottom: '16px' }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Bio</span>
                         <p style={{ fontSize: '0.9rem', margin: '4px 0 0', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{app.student.bio}</p>
+                      </div>
+                    )}
+                    {app.resume && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Resume</span>
+                        <div style={{ marginTop: '4px' }}>
+                          <a
+                            href={app.resume.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '6px',
+                              padding: '6px 14px', borderRadius: 'var(--radius-sm, 8px)',
+                              border: '1px solid var(--primary)', color: 'var(--primary)',
+                              fontSize: '0.85rem', fontWeight: 500, textDecoration: 'none',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            {app.resume.name}
+                          </a>
+                        </div>
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

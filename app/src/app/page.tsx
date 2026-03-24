@@ -8,7 +8,7 @@ const portals = [
     title: 'Student',
     subtitle: 'Find your dream internship',
     description: 'Browse thousands of opportunities, apply with one click, and launch your career.',
-    gradient: 'linear-gradient(135deg, #7B61FF 0%, #4a2fbf 100%)',
+    gradient: 'linear-gradient(135deg, #1A2D49 0%, #0f1d33 100%)',
     icon: (
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 10v6M2 10l10-5 10 5-10 5z" />

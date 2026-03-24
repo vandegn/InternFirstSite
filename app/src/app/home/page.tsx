@@ -346,21 +346,21 @@ export default function Home() {
             <ul className="cta-features">
               <li>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <circle cx="10" cy="10" r="10" fill="#7B61FF" />
+                  <circle cx="10" cy="10" r="10" fill="#1A2D49" />
                   <path d="M6 10l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Seamless Searching
               </li>
               <li>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <circle cx="10" cy="10" r="10" fill="#7B61FF" />
+                  <circle cx="10" cy="10" r="10" fill="#1A2D49" />
                   <path d="M6 10l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Get Top Talent For Your Project
               </li>
               <li>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <circle cx="10" cy="10" r="10" fill="#7B61FF" />
+                  <circle cx="10" cy="10" r="10" fill="#1A2D49" />
                   <path d="M6 10l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Protected Payments System

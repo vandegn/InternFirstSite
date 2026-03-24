@@ -10,17 +10,21 @@
 }
 
 :root {
-    --primary: #7B61FF;
-    --primary-dark: #6246ea;
-    --primary-light: #ede9fe;
-    --dark: #1a1a2e;
-    --dark-2: #16213e;
+    --primary: #1A2D49;
+    --primary-dark: #0f1d33;
+    --primary-light: #e8ecf1;
+    --accent: #9FC63C;
+    --accent-dark: #8ab32e;
+    --accent-light: #eef5da;
+    --grey-light: #DFE0E1;
+    --dark: #1A2D49;
+    --dark-2: #0f1d33;
     --text: #2d2d2d;
     --text-secondary: #6b7280;
     --text-light: #9ca3af;
-    --bg: #ffffff;
-    --bg-light: #f8f9fb;
-    --bg-section: #fafafe;
+    --bg: #F8F9FC;
+    --bg-light: #F8F9FC;
+    --bg-section: #f0f2f7;
     --border: #e5e7eb;
     --radius: 12px;
     --radius-lg: 20px;
@@ -30,14 +34,14 @@
     --shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
     --transition: 0.2s ease;
 
-    --auth-green: #8fb100;
-    --auth-green-dark: #7a9800;
+    --auth-green: #9FC63C;
+    --auth-green-dark: #8ab32e;
 }
 
 html { scroll-behavior: smooth; }
 
 body {
-    font-family: var(--font-dm-sans), 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--text);
     background: var(--bg);
     line-height: 1.6;
@@ -80,6 +84,9 @@ img { max-width: 100%; height: auto; display: block; }
 .logo img {
     height: 42px;
     width: auto;
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-sm);
+    padding: 2px;
 }
 
 .main-nav ul {
@@ -156,7 +163,7 @@ img { max-width: 100%; height: auto; display: block; }
 .hero {
     padding: 80px 0 60px;
     text-align: center;
-    background: linear-gradient(180deg, #faf8ff 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #eef0f5 0%, var(--bg) 100%);
 }
 
 .hero-badge {
@@ -550,7 +557,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .matched-inner {
-    background: linear-gradient(135deg, #7B61FF 0%, #a78bfa 50%, #c084fc 100%);
+    background: linear-gradient(135deg, #1A2D49 0%, #2a4470 50%, #3b5998 100%);
     border-radius: var(--radius-lg);
     padding: 80px 60px;
     text-align: center;
@@ -597,7 +604,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .btn-white:hover {
-    background: #f0ecff;
+    background: var(--primary-light);
 }
 
 /* ========================================
@@ -2056,7 +2063,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .portal-label {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--primary);
@@ -2140,7 +2147,7 @@ img { max-width: 100%; height: auto; display: block; }
     padding: 10px 14px;
     border: none;
     background: none;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 0.9rem;
     font-weight: 500;
     color: var(--text-primary);
@@ -2273,7 +2280,7 @@ img { max-width: 100%; height: auto; display: block; }
 
 .stat-icon.blue { background: #e0f2fe; color: #0369a1; }
 .stat-icon.green { background: #dcfce7; color: #15803d; }
-.stat-icon.purple { background: #ede9fe; color: #7c3aed; }
+.stat-icon.purple { background: var(--primary-light); color: var(--primary); }
 .stat-icon.orange { background: #fff7ed; color: #c2410c; }
 
 .stat-label {

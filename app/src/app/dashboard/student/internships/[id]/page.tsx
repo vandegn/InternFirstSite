@@ -256,7 +256,7 @@ export default function InternshipDetail() {
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
                             borderRadius: 'var(--radius-sm, 8px)',
                             border: selectedResumeId === r.id ? '2px solid var(--primary)' : '1px solid var(--border)',
-                            background: selectedResumeId === r.id ? 'var(--primary-light, #ede9fe)' : 'var(--bg)',
+                            background: selectedResumeId === r.id ? 'var(--primary-light, #e8ecf1)' : 'var(--bg)',
                             cursor: 'pointer', transition: 'all 0.15s',
                           }}
                         >
@@ -282,7 +282,7 @@ export default function InternshipDetail() {
                           display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
                           borderRadius: 'var(--radius-sm, 8px)',
                           border: selectedResumeId === null ? '2px solid var(--primary)' : '1px solid var(--border)',
-                          background: selectedResumeId === null ? 'var(--primary-light, #ede9fe)' : 'var(--bg)',
+                          background: selectedResumeId === null ? 'var(--primary-light, #e8ecf1)' : 'var(--bg)',
                           cursor: 'pointer', transition: 'all 0.15s',
                         }}
                       >

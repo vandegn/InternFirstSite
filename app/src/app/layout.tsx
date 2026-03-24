@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { DM_Sans } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-dm-sans',
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={dmSans.variable}>{children}</body>
+      <body className={inter.variable}>{children}</body>
     </html>
   );
 }

@@ -26,23 +26,8 @@ function useCountUp(target: number, duration = 1200) {
   return value;
 }
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { supabase, getPartnerUniversity, getProfile, getActiveListings, getRecommendedListings, getStudentByUserId, getUnreadCount, getStudentStats } from '@/lib/supabase';
-import { MAJOR_TO_INDUSTRIES } from '@/lib/constants';
-
-type Listing = {
-  id: string;
-  title: string;
-  description: string;
-  location: string | null;
-  is_remote: boolean;
-  compensation: string | null;
-  created_at: string;
-  employers: {
-    company_name: string;
-    logo_url: string | null;
-  };
-};
+import { supabase, getProfile, getStudentByUserId, getStudentStats, getStudentApplications } from '@/lib/supabase';
+import Calendar, { CalendarEvent } from '@/components/Calendar';
 
 type Event = {
   id: string;
@@ -56,6 +41,26 @@ type Event = {
   registration_count: number;
 };
 
+type StudentApplication = {
+  id: string;
+  status: string;
+  applied_at: string;
+  updated_at: string;
+  resume_id: string | null;
+  listing: {
+    id: string;
+    title: string;
+    location: string | null;
+    is_remote: boolean;
+    compensation: string | null;
+    industry: string | null;
+    employers: {
+      company_name: string;
+      logo_url: string | null;
+    };
+  };
+};
+
 const EVENT_TYPE_LABELS: Record<string, string> = {
   career_fair: 'Career Fair',
   info_session: 'Info Session',
@@ -65,40 +70,16 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function StudentDashboard() {
-  const [partnerLogo, setPartnerLogo] = useState<string | null>(null);
-  const [partnerName, setPartnerName] = useState<string | null>(null);
   const [positionsCount, setPositionsCount] = useState(0);
   const [applicationCount, setApplicationCount] = useState(0);
   const [offerCount, setOfferCount] = useState(0);
   const animatedPositions = useCountUp(positionsCount);
   const animatedApplications = useCountUp(applicationCount);
   const animatedOffers = useCountUp(offerCount);
-  const [recentListings, setRecentListings] = useState<Listing[]>([]);
-  const [recommendedListings, setRecommendedListings] = useState<Listing[]>([]);
   const [studentMajor, setStudentMajor] = useState<string | null>(null);
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
   const [profileName, setProfileName] = useState('');
-  const [profileEmail, setProfileEmail] = useState('');
-  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
-  const avatarRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
-        setAvatarOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.replace('/login');
-  }
 
   useEffect(() => {
     async function fetchUserData() {
@@ -108,33 +89,26 @@ export default function StudentDashboard() {
       const profile = await getProfile(user.id);
       if (profile) {
         setProfileName(profile.full_name);
-        setProfileEmail(profile.email);
-        setProfileAvatar(profile.avatar_url);
       }
 
-      const [{ count }, unread] = await Promise.all([
+      const [{ count }] = await Promise.all([
         supabase.from('internship_listings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        getUnreadCount(user.id),
       ]);
       setPositionsCount(count ?? 0);
-      setUnreadMessages(unread);
-      const result = await getActiveListings(1, 3);
-      setRecentListings(result.data as Listing[]);
 
       // Fetch student data for recommendations, events, and stats
       const student = await getStudentByUserId(user.id);
       if (student) {
-        const stats = await getStudentStats(student.id);
+        const [stats, apps] = await Promise.all([
+          getStudentStats(student.id),
+          getStudentApplications(student.id),
+        ]);
         setApplicationCount(stats.total);
         setOfferCount(stats.offers);
+        setStudentApplications(apps as unknown as StudentApplication[]);
       }
       if (student?.major) {
         setStudentMajor(student.major);
-        const industries = MAJOR_TO_INDUSTRIES[student.major] || [];
-        if (industries.length > 0) {
-          const recommended = await getRecommendedListings(industries, 3);
-          setRecommendedListings(recommended as Listing[]);
-        }
       }
 
       const studentData = student;
@@ -145,7 +119,7 @@ export default function StudentDashboard() {
           .eq('university_id', studentData.university_id)
           .gte('event_date', new Date().toISOString().split('T')[0])
           .order('event_date', { ascending: true })
-          .limit(3);
+          .limit(10);
         if (events && events.length > 0) {
           const eventIds = events.map(e => e.id);
           const { data: regCounts } = await supabase
@@ -157,259 +131,58 @@ export default function StudentDashboard() {
           setRecentEvents(events.map(e => ({ ...e, registration_count: countMap[e.id] || 0 })));
         }
       }
-
-      if (user.email) {
-        const partner = await getPartnerUniversity(user.email);
-        if (partner) {
-          setPartnerLogo(partner.logo_url);
-          setPartnerName(partner.name);
-        }
-      }
     }
     fetchUserData();
   }, []);
 
   return (
-    <div className="dashboard-body">
-      {/* Dashboard Header */}
-      <header className="dash-header">
-        <div className="dash-header-inner">
-          <Link href="/" className="logo">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
-          </Link>
-          <span className="portal-label">Student Dashboard</span>
-          {partnerLogo && (
-            <>
-              <span className="logo-divider"></span>
-              <img src={partnerLogo} alt={partnerName || 'University'} className="partner-logo" />
-            </>
-          )}
-          <nav className="main-nav">
-            <ul>
-              <li><Link href="/dashboard/student" className="active">Dashboard</Link></li>
-              <li><Link href="/about">About</Link></li>
-              <li><Link href="/blog">Blog</Link></li>
-              <li><Link href="/contact">Contact</Link></li>
-            </ul>
-          </nav>
-          <div className="dash-header-right">
-            <div className="dash-search">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" placeholder="Search..." />
-            </div>
-            <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
-              <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'} alt={profileName || 'Profile'} />
-              {avatarOpen && (
-                <div className="avatar-dropdown">
-                  <button onClick={handleSignOut} className="avatar-dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
+    <>
+      {/* Stats: 3 stat cards */}
+      <div className="dash-stats">
+        <div className="stat-card">
+          <div className="stat-icon blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
+          </div>
+          <div>
+            <div className="stat-label">Positions Available</div>
+            <div className="stat-value">{animatedPositions}</div>
           </div>
         </div>
-      </header>
-
-      <div className="dash-layout">
-        {/* Sidebar */}
-        <aside className="dash-sidebar">
-          <nav className="sidebar-nav">
-            <Link href="/dashboard/student" className="sidebar-link active">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              Home
-            </Link>
-            <Link href="/dashboard/student/internships" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
-              Internships
-            </Link>
-            <Link href="/dashboard/student/applications" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              My Applications
-            </Link>
-            <Link href="/dashboard/student/events" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              My Events
-            </Link>
-            <Link href="/dashboard/student/inbox" className="sidebar-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                My Inbox
-              </span>
-              {unreadMessages > 0 && (
-                <span style={{ background: 'var(--primary)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', minWidth: '20px', textAlign: 'center' }}>
-                  {unreadMessages}
-                </span>
-              )}
-            </Link>
-            <Link href="/dashboard/student" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              Connect
-            </Link>
-            <Link href="/dashboard/student" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-              News
-            </Link>
-            <Link href="/career-resources" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              Resources
-            </Link>
-            <div className="sidebar-divider"></div>
-            <Link href="/dashboard/student/settings" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg>
-              Settings
-            </Link>
-            <Link href="/dashboard/student" className="sidebar-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Help Center
-            </Link>
-          </nav>
-        </aside>
-
-        {/* Main content */}
-        <main className="dash-main">
-          {/* Stats: 3 stat cards */}
-          <div className="dash-stats">
-            <div className="stat-card">
-              <div className="stat-icon blue">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
-              </div>
-              <div>
-                <div className="stat-label">Positions Available</div>
-                <div className="stat-value">{animatedPositions}</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon green">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              </div>
-              <div>
-                <div className="stat-label">Applications</div>
-                <div className="stat-value">{animatedApplications}</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon purple">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </div>
-              <div>
-                <div className="stat-label">Offers</div>
-                <div className="stat-value">{animatedOffers}</div>
-              </div>
-            </div>
+        <div className="stat-card">
+          <div className="stat-icon green">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           </div>
-
-          {/* Recommended for You */}
-          {recommendedListings.length > 0 && (
-            <div className="dash-section">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 className="dash-section-title" style={{ marginBottom: '2px' }}>Recommended for You</h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>Based on your major: {studentMajor}</p>
-                </div>
-                <Link href="/dashboard/student/internships" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', border: '1.5px solid var(--primary)', borderRadius: '999px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 500, textDecoration: 'none', transition: 'background 0.15s, color 0.15s', background: 'transparent' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--primary)'; }}
-                >
-                  View All <span style={{ fontSize: '1.1rem' }}>&rarr;</span>
-                </Link>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
-                {recommendedListings.map((listing) => (
-                  <Link
-                    href={`/dashboard/student/internships/${listing.id}`}
-                    key={listing.id}
-                    style={{ textDecoration: 'none', color: 'inherit' }}
-                  >
-                    <div className="listing-card" style={{ padding: '14px', cursor: 'pointer', borderLeft: '3px solid var(--primary)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                        {listing.employers?.logo_url ? (
-                          <img src={listing.employers.logo_url} alt={listing.employers.company_name} className="listing-logo" style={{ width: 32, height: 32 }} />
-                        ) : (
-                          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem', flexShrink: 0 }}>
-                            {listing.employers?.company_name?.charAt(0) || '?'}
-                          </div>
-                        )}
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{listing.employers?.company_name}</span>
-                      </div>
-                      <h4 style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{listing.title}</h4>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{listing.location || 'Location not specified'}</p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{listing.compensation || 'TBD'}</span>
-                        {listing.is_remote && <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem' }}>Remote</span>}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Browse Internships */}
-          <div className="dash-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="dash-section-title">Browse Internships</h3>
-              <Link href="/dashboard/student/internships" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', border: '1.5px solid var(--primary)', borderRadius: '999px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 500, textDecoration: 'none', transition: 'background 0.15s, color 0.15s', background: 'transparent' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--primary)'; }}
-              >
-                View All <span style={{ fontSize: '1.1rem' }}>&rarr;</span>
-              </Link>
-            </div>
-            {recentListings.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
-                No internships available yet. Check back soon!
-              </p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
-                {recentListings.map((listing) => (
-                  <Link
-                    href={`/dashboard/student/internships/${listing.id}`}
-                    key={listing.id}
-                    style={{ textDecoration: 'none', color: 'inherit' }}
-                  >
-                    <div className="listing-card" style={{ padding: '14px', cursor: 'pointer' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                        {listing.employers?.logo_url ? (
-                          <img src={listing.employers.logo_url} alt={listing.employers.company_name} className="listing-logo" style={{ width: 32, height: 32 }} />
-                        ) : (
-                          <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem', flexShrink: 0 }}>
-                            {listing.employers?.company_name?.charAt(0) || '?'}
-                          </div>
-                        )}
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{listing.employers?.company_name}</span>
-                      </div>
-                      <h4 style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{listing.title}</h4>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{listing.location || 'Location not specified'}</p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{listing.compensation || 'TBD'}</span>
-                        {listing.is_remote && <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem' }}>Remote</span>}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+          <div>
+            <div className="stat-label">Applications</div>
+            <div className="stat-value">{animatedApplications}</div>
           </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon purple">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <div className="stat-label">Offers</div>
+            <div className="stat-value">{animatedOffers}</div>
+          </div>
+        </div>
+      </div>
 
-          {/* Upcoming Events */}
-          <div className="dash-section" style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="dash-section-title">Upcoming Events</h3>
-              <Link href="/dashboard/student/events" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', border: '1.5px solid var(--primary)', borderRadius: '999px', color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 500, textDecoration: 'none', transition: 'background 0.15s, color 0.15s', background: 'transparent' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--primary)'; }}
-              >
-                View All <span style={{ fontSize: '1.1rem' }}>&rarr;</span>
-              </Link>
-            </div>
+      {/* 3-Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr 260px', gap: '24px', marginTop: '24px' }}>
+
+        {/* ── Left Column: Events ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* School Events */}
+          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '16px' }}>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text, #1a1a1a)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px', marginRight: '6px' }}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
+              School Events
+            </h3>
             {recentEvents.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>
-                No upcoming events. Check back soon!
-              </p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px 0' }}>No upcoming events.</p>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {recentEvents.map((event) => {
                   const date = new Date(event.event_date + 'T00:00:00');
                   const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
@@ -420,26 +193,176 @@ export default function StudentDashboard() {
                       key={event.id}
                       style={{ textDecoration: 'none', color: 'inherit' }}
                     >
-                      <div className="listing-card" style={{ padding: '14px', cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1 }}>{month}</span>
-                            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1.1 }}>{day}</span>
+                      <div style={{
+                        padding: '10px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border, #e5e7eb)',
+                        cursor: 'pointer',
+                        transition: 'box-shadow 0.15s, border-color 0.15s',
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(123,97,255,0.1)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)'; e.currentTarget.style.boxShadow = 'none'; }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 6, background: 'var(--primary-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ fontSize: '0.5rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1 }}>{month}</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1.1 }}>{day}</span>
                           </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--primary-light)', padding: '2px 8px', borderRadius: '4px' }}>
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 600,
+                            color: 'var(--primary)',
+                            background: 'var(--primary-light)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            whiteSpace: 'nowrap',
+                          }}>
                             {EVENT_TYPE_LABELS[event.event_type] || 'Event'}
                           </span>
                         </div>
-                        <h4 style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{event.title}</h4>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                        <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '3px', lineHeight: 1.3 }}>{event.title}</h4>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
                           {event.is_virtual ? 'Virtual' : event.location || 'Location TBD'}
-                          {' · '}
+                          {' \u00B7 '}
                           {event.start_time?.slice(0, 5)}{event.end_time ? ` - ${event.end_time.slice(0, 5)}` : ''}
                         </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                          {event.registration_count} attending
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+            <Link href="/dashboard/student/events" style={{
+              display: 'block',
+              textAlign: 'center',
+              marginTop: '12px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'var(--primary)',
+              textDecoration: 'none',
+            }}>
+              View All Events &rarr;
+            </Link>
+          </div>
+
+          {/* Local Employer Events placeholder */}
+          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '16px' }}>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text, #1a1a1a)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px', marginRight: '6px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Local Employer Events
+            </h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px 0', lineHeight: 1.5 }}>
+              Employer-hosted events in your area will appear here soon.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Center Column: Applications + Calendar ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
+          {/* My Applications Overview */}
+          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>My Applications</h3>
+              <Link href="/dashboard/student/applications" style={{
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: 'var(--primary)',
+                textDecoration: 'none',
+              }}>
+                View All &rarr;
+              </Link>
+            </div>
+            {studentApplications.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>No applications yet. Start exploring internships!</p>
+                <Link href="/dashboard/student/internships" style={{
+                  display: 'inline-block',
+                  marginTop: '12px',
+                  padding: '8px 20px',
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                }}>
+                  Browse Internships
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                {studentApplications.slice(0, 5).map((app) => {
+                  const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+                    applied: { label: 'Applied', color: '#2563eb', bg: '#eff6ff' },
+                    under_review: { label: 'Under Review', color: '#d97706', bg: '#fffbeb' },
+                    reviewing: { label: 'Under Review', color: '#d97706', bg: '#fffbeb' },
+                    interviewing: { label: 'Interview Requested', color: '#7c3aed', bg: '#f5f3ff' },
+                    interview_scheduled: { label: 'Interview Scheduled', color: '#059669', bg: '#ecfdf5' },
+                    offered: { label: 'Offer Extended', color: '#059669', bg: '#ecfdf5' },
+                    rejected: { label: 'Not Selected', color: '#dc2626', bg: '#fef2f2' },
+                    closed: { label: 'Closed', color: '#6b7280', bg: '#f3f4f6' },
+                    not_selected: { label: 'Not Selected', color: '#dc2626', bg: '#fef2f2' },
+                  };
+                  const status = statusConfig[app.status] || { label: app.status, color: '#6b7280', bg: '#f3f4f6' };
+                  const listing = app.listing;
+                  const employer = listing?.employers;
+                  const appliedDate = new Date(app.applied_at);
+                  const dateStr = appliedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                  return (
+                    <Link
+                      href={`/dashboard/student/internships/${listing?.id}`}
+                      key={app.id}
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 8px',
+                        borderBottom: '1px solid var(--border, #f3f4f6)',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                        borderRadius: '6px',
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg, #f9fafb)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        {/* Company logo */}
+                        {employer?.logo_url ? (
+                          <img src={employer.logo_url} alt={employer.company_name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem', flexShrink: 0 }}>
+                            {employer?.company_name?.charAt(0) || '?'}
+                          </div>
+                        )}
+                        {/* Job info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {listing?.title || 'Untitled Position'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            {employer?.company_name || 'Unknown Company'}
+                          </div>
                         </div>
+                        {/* Status badge */}
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          color: status.color,
+                          background: status.bg,
+                          padding: '3px 10px',
+                          borderRadius: '999px',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                        }}>
+                          {status.label}
+                        </span>
+                        {/* Date */}
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', flexShrink: 0, minWidth: '48px', textAlign: 'right' }}>
+                          {dateStr}
+                        </span>
                       </div>
                     </Link>
                   );
@@ -447,44 +370,96 @@ export default function StudentDashboard() {
               </div>
             )}
           </div>
-        </main>
 
-        {/* Right sidebar - Profile */}
-        <aside className="dash-profile">
-          <div className="profile-card">
-            <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'} alt={profileName || 'Profile'} className="profile-avatar" />
-            <h4>{profileName || 'Student'}</h4>
-            <p className="profile-email">{profileEmail}</p>
-            <div className="profile-progress">
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: '100%' }}></div>
+          {/* Calendar */}
+          <Calendar
+            events={recentEvents.map((event): CalendarEvent => ({
+              id: event.id,
+              title: event.title,
+              date: event.event_date,
+              type: event.event_type === 'career_fair' ? 'career_fair'
+                : event.event_type === 'info_session' ? 'info_session'
+                : event.event_type === 'networking' ? 'event'
+                : event.event_type === 'workshop' ? 'event'
+                : 'event',
+              time: event.start_time?.slice(0, 5) || undefined,
+              location: event.is_virtual ? 'Virtual' : event.location || undefined,
+            }))}
+          />
+        </div>
+
+        {/* ── Right Column: Industry News ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '16px' }}>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '4px', color: 'var(--text, #1a1a1a)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px', marginRight: '6px' }}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              Industry News
+            </h3>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: '0 0 14px 0' }}>
+              {studentMajor ? `Curated for ${studentMajor} majors` : 'Curated for your field'}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Placeholder article 1 */}
+              <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border, #e5e7eb)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)'; }}
+              >
+                <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px', lineHeight: 1.4 }}>
+                  Top Skills Employers Are Looking For in 2026
+                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                  <span>InternFirst Blog</span>
+                  <span>Mar 22, 2026</span>
+                </div>
               </div>
-              <span>100% Complete</span>
-            </div>
-            <ul className="profile-checklist">
-              <li className="checked">Personal Info</li>
-              <li className="checked">Work Experience</li>
-              <li className="checked">Education</li>
-              <li className="checked">Training and Certifications</li>
-              <li className="checked">Skills</li>
-            </ul>
-            <div className="profile-settings">
-              <div className="profile-setting">
-                <span>Profile Visibility</span>
-                <strong>Public</strong>
+
+              {/* Placeholder article 2 */}
+              <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border, #e5e7eb)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)'; }}
+              >
+                <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px', lineHeight: 1.4 }}>
+                  How to Stand Out in Your Internship Application
+                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                  <span>Career Insights</span>
+                  <span>Mar 20, 2026</span>
+                </div>
               </div>
-              <div className="profile-setting">
-                <span>Job Preferences</span>
-                <strong>No Preference Yet</strong>
+
+              {/* Placeholder article 3 */}
+              <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border, #e5e7eb)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)'; }}
+              >
+                <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px', lineHeight: 1.4 }}>
+                  Remote Internships: What to Expect and How to Succeed
+                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                  <span>The Intern Guide</span>
+                  <span>Mar 18, 2026</span>
+                </div>
               </div>
-              <div className="profile-setting">
-                <span>Open To Work</span>
-                <strong className="status-green">Open to work</strong>
+
+              {/* Placeholder article 4 */}
+              <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border, #e5e7eb)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)'; }}
+              >
+                <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px', lineHeight: 1.4 }}>
+                  Networking Tips for College Students Breaking Into the Industry
+                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                  <span>Campus Weekly</span>
+                  <span>Mar 15, 2026</span>
+                </div>
               </div>
             </div>
           </div>
-        </aside>
+        </div>
+
       </div>
-    </div>
+    </>
   );
 }

@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase, getProfile, DASHBOARD_ROUTES } from '@/lib/supabase';
+import DashboardShell from '@/components/DashboardShell';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkAccess() {
@@ -32,13 +34,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
 
+      setRole(profile.role);
       setAuthorized(true);
     }
 
     checkAccess();
   }, [pathname, router]);
 
-  if (!authorized) {
+  if (!authorized || !role) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#888' }}>
         Loading...
@@ -46,5 +49,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  return <>{children}</>;
+  return (
+    <DashboardShell role={role}>
+      {children}
+    </DashboardShell>
+  );
 }

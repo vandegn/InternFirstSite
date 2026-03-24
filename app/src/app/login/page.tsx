@@ -102,7 +102,7 @@ function LoginForm() {
               <input type="checkbox" id="remember" />
               <label htmlFor="remember">Remember me</label>
             </div>
-            <a href="#" className="forgot-link">Forgot password?</a>
+            <Link href="/forgot-password" className="forgot-link">Forgot password?</Link>
           </div>
 
           <button type="submit" className="btn-auth" disabled={loading}>

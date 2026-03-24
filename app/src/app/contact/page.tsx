@@ -1,7 +1,44 @@
+'use client';
+
+import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 export default function ContactPage() {
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  function update(field: string, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setStatus('idle');
+    setErrorMsg('');
+
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setErrorMsg(data.error || 'Something went wrong. Please try again.');
+      setStatus('error');
+      setLoading(false);
+      return;
+    }
+
+    setStatus('success');
+    setForm({ name: '', email: '', subject: '', message: '' });
+    setLoading(false);
+  }
+
   return (
     <>
       <Header />
@@ -17,8 +54,6 @@ export default function ContactPage() {
         <div className="container">
           <div className="contact-grid">
             <div className="contact-info">
-
-              {/* Email Card */}
               <div className="contact-card">
                 <div className="contact-card-icon">
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -27,10 +62,9 @@ export default function ContactPage() {
                   </svg>
                 </div>
                 <h3>Email</h3>
-                <p>info@internfirst.com</p>
+                <p>info@intern-first.com</p>
               </div>
 
-              {/* Location Card */}
               <div className="contact-card">
                 <div className="contact-card-icon">
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -42,7 +76,6 @@ export default function ContactPage() {
                 <p>United States</p>
               </div>
 
-              {/* Social Media Card */}
               <div className="contact-card">
                 <div className="contact-card-icon">
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -53,31 +86,90 @@ export default function ContactPage() {
                 <h3>Social Media</h3>
                 <p>Follow us on LinkedIn &amp; Twitter</p>
               </div>
-
             </div>
 
             <div className="contact-form-wrap">
               <h2>Send us a message</h2>
-              <form className="contact-form">
+
+              {status === 'success' && (
+                <div
+                  style={{
+                    background: '#f0fdf4',
+                    color: '#15803d',
+                    fontSize: '13px',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    marginBottom: '20px',
+                  }}
+                >
+                  Message sent. We&apos;ll get back to you soon.
+                </div>
+              )}
+
+              {status === 'error' && (
+                <div
+                  style={{
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    fontSize: '13px',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    marginBottom: '20px',
+                  }}
+                >
+                  {errorMsg}
+                </div>
+              )}
+
+              <form className="contact-form" onSubmit={handleSubmit}>
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="name">Full Name</label>
-                    <input type="text" id="name" placeholder="John Doe" required />
+                    <input
+                      type="text"
+                      id="name"
+                      placeholder="Your full name"
+                      required
+                      value={form.name}
+                      onChange={(e) => update('name', e.target.value)}
+                    />
                   </div>
                   <div className="form-group">
                     <label htmlFor="email">Email Address</label>
-                    <input type="email" id="email" placeholder="john@example.com" required />
+                    <input
+                      type="email"
+                      id="email"
+                      placeholder="you@example.com"
+                      required
+                      value={form.email}
+                      onChange={(e) => update('email', e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="form-group">
                   <label htmlFor="subject">Subject</label>
-                  <input type="text" id="subject" placeholder="How can we help?" />
+                  <input
+                    type="text"
+                    id="subject"
+                    placeholder="How can we help?"
+                    value={form.subject}
+                    onChange={(e) => update('subject', e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
                   <label htmlFor="message">Message</label>
-                  <textarea id="message" rows={5} placeholder="Your message..." required></textarea>
+                  <textarea
+                    id="message"
+                    rows={5}
+                    placeholder="Your message..."
+                    required
+                    value={form.message}
+                    onChange={(e) => update('message', e.target.value)}
+                  />
                 </div>
-                <button type="submit" className="btn-primary">Send Message</button>
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {loading ? 'Sending...' : 'Send Message'}
+                </button>
               </form>
             </div>
           </div>

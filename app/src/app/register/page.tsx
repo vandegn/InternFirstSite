@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
-import { supabase, createProfileAndRoleData, isEduEmail, DASHBOARD_ROUTES, uploadImage, getAllUniversities, type RoleData } from '@/lib/supabase';
+import { supabase, isEduEmail, getAllUniversities } from '@/lib/supabase';
 import { MAJORS } from '@/lib/constants';
 
 type Role = 'student' | 'employer' | 'university_admin';
@@ -23,10 +23,6 @@ export default function RegisterPage() {
   const [majorDropdownOpen, setMajorDropdownOpen] = useState(false);
   const majorRef = useRef<HTMLDivElement>(null);
   const [graduationYear, setGraduationYear] = useState('');
-  // Image upload
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   // Employer fields
   const [companyName, setCompanyName] = useState('');
   const [website, setWebsite] = useState('');
@@ -60,17 +56,6 @@ export default function RegisterPage() {
     m.toLowerCase().includes(majorSearch.toLowerCase())
   );
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Image must be under 2MB.');
-      return;
-    }
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -98,54 +83,34 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const { data, error: authError } = await supabase.auth.signUp({
+      // Build user_metadata with role-specific fields
+      const metadata: Record<string, string> = { role, fullName, phone };
+
+      if (role === 'student') {
+        metadata.major = major;
+        metadata.graduationYear = graduationYear;
+      } else if (role === 'employer') {
+        metadata.companyName = companyName;
+        metadata.website = website;
+        metadata.companyDescription = companyDescription;
+      } else if (role === 'university_admin') {
+        metadata.universityId = universityId;
+        metadata.jobTitle = jobTitle;
+      }
+
+      const { error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName, role },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: metadata,
         },
       });
 
       if (authError) throw authError;
 
-      const userId = data.user!.id;
-
-      // Auto-login immediately so the session is active for uploads and DB writes
-      await supabase.auth.signInWithPassword({ email, password });
-
-      // Upload image if provided (needs active session for storage RLS)
-      let imageUrl: string | undefined;
-      if (imageFile) {
-        const ext = imageFile.name.split('.').pop();
-        const folder = role === 'student' ? 'avatars' : 'logos';
-        const path = `${folder}/${userId}.${ext}`;
-        imageUrl = await uploadImage('images', path, imageFile);
-      }
-
-      const roleData: RoleData = {};
-      if (role === 'student') {
-        roleData.major = major;
-        roleData.graduationYear = graduationYear;
-      } else if (role === 'employer') {
-        roleData.companyName = companyName;
-        roleData.website = website;
-        roleData.companyDescription = companyDescription;
-        roleData.logoUrl = imageUrl;
-      } else if (role === 'university_admin') {
-        roleData.universityId = universityId;
-        roleData.jobTitle = jobTitle;
-      }
-
-      await createProfileAndRoleData(userId, {
-        role,
-        fullName,
-        email,
-        phone,
-        avatarUrl: imageUrl,
-        roleData,
-      });
-
-      router.push(DASHBOARD_ROUTES[role] || '/dashboard/student');
+      // Redirect to verify-email page
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -265,20 +230,6 @@ export default function RegisterPage() {
                     <option value="2030">2030</option>
                   </select>
                 </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label>Profile Picture (optional)</label>
-                  <div className="image-upload-area" onClick={() => fileInputRef.current?.click()}>
-                    {imagePreview ? (
-                      <img src={imagePreview} alt="Preview" className="image-upload-preview" style={{ borderRadius: '50%' }} />
-                    ) : (
-                      <div className="image-upload-placeholder">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        <span>Click to upload photo</span>
-                      </div>
-                    )}
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-                  </div>
-                </div>
               </>
             )}
 
@@ -296,20 +247,6 @@ export default function RegisterPage() {
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label htmlFor="companyDescription">Company Description</label>
                   <textarea id="companyDescription" placeholder="Tell students about your company..." rows={3} value={companyDescription} onChange={e => setCompanyDescription(e.target.value)} style={{ width: '100%', resize: 'vertical' }} />
-                </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label>Company Logo (optional)</label>
-                  <div className="image-upload-area" onClick={() => fileInputRef.current?.click()}>
-                    {imagePreview ? (
-                      <img src={imagePreview} alt="Preview" className="image-upload-preview" />
-                    ) : (
-                      <div className="image-upload-placeholder">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        <span>Click to upload logo</span>
-                      </div>
-                    )}
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-                  </div>
                 </div>
               </>
             )}
@@ -334,20 +271,6 @@ export default function RegisterPage() {
                 <div className="form-group">
                   <label htmlFor="jobTitle">Your Title</label>
                   <input type="text" id="jobTitle" placeholder="e.g. Career Services Director" value={jobTitle} onChange={e => setJobTitle(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label>University Logo (optional)</label>
-                  <div className="image-upload-area" onClick={() => fileInputRef.current?.click()}>
-                    {imagePreview ? (
-                      <img src={imagePreview} alt="Preview" className="image-upload-preview" />
-                    ) : (
-                      <div className="image-upload-placeholder">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-                        <span>Click to upload logo</span>
-                      </div>
-                    )}
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-                  </div>
                 </div>
               </>
             )}

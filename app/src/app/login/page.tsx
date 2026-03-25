@@ -21,6 +21,17 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Map callback error codes to user-friendly messages
+  const ERROR_MESSAGES: Record<string, string> = {
+    missing_code: 'Verification link was invalid. Please try again.',
+    verification_failed: 'Email verification failed. Please try again or request a new link.',
+    no_user: 'Something went wrong during verification. Please try again.',
+    profile_creation_failed: 'Account verified but profile setup failed. Please try logging in — if the issue persists, contact support.',
+  };
+
+  const errorParam = searchParams.get('error');
+  const callbackError = errorParam ? ERROR_MESSAGES[errorParam] || '' : '';
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -38,6 +49,11 @@ function LoginForm() {
     });
 
     if (authError) {
+      // Supabase returns this message when email is not confirmed
+      if (authError.message === 'Email not confirmed') {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
       setError(authError.message);
       setLoading(false);
       return;
@@ -71,6 +87,7 @@ function LoginForm() {
 
         <RoleSelector selected={role} onChange={setRole} />
 
+        {callbackError && <div className="auth-error" style={{ display: 'block' }}>{callbackError}</div>}
         {error && <div className="auth-error" style={{ display: 'block' }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>

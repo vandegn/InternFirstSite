@@ -15,6 +15,7 @@ export default function NewListingPage() {
   const [compensation, setCompensation] = useState('');
   const [requirements, setRequirements] = useState('');
   const [industry, setIndustry] = useState('');
+  const [applicationDeadline, setApplicationDeadline] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +40,7 @@ export default function NewListingPage() {
         compensation: compensation || undefined,
         requirements: requirements || undefined,
         industry,
+        application_deadline: applicationDeadline || undefined,
       });
 
       router.push('/dashboard/employer');
@@ -117,6 +119,15 @@ export default function NewListingPage() {
                 placeholder="e.g. Raleigh, NC"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="applicationDeadline">Application Deadline</label>
+              <input
+                type="date"
+                id="applicationDeadline"
+                value={applicationDeadline}
+                onChange={(e) => setApplicationDeadline(e.target.value)}
               />
             </div>
             <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 28 }}>

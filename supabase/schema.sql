@@ -87,10 +87,41 @@ create table internship_listings (
   compensation text,
   requirements text,
   industry text not null default 'Other' check (industry in ('Technology', 'Finance', 'Healthcare', 'Marketing', 'Legal', 'Engineering', 'Education', 'Media', 'Nonprofit', 'Government', 'Retail', 'Other')),
-  status text default 'active' check (status in ('active', 'closed')),
+  status text default 'active' check (status in ('active', 'paused', 'closed')),
+  application_deadline date,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
+
+-- ============================================
+-- 6b. LISTING VIEWS (analytics tracking)
+-- ============================================
+create table listing_views (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  viewer_id uuid references profiles(user_id),
+  viewed_at timestamptz default now() not null
+);
+
+create index idx_listing_views_listing on listing_views(listing_id);
+create index idx_listing_views_viewer on listing_views(viewer_id);
+
+-- RLS for listing_views
+alter table listing_views enable row level security;
+
+create policy "Employers can view analytics for their listings"
+  on listing_views for select to authenticated
+  using (
+    listing_id in (
+      select il.id from internship_listings il
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  );
+
+create policy "Authenticated users can insert views"
+  on listing_views for insert to authenticated
+  with check (true);
 
 -- ============================================
 -- 7. APPLICATIONS

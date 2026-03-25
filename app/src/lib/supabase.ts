@@ -163,6 +163,7 @@ export async function createListing(listing: {
   compensation?: string;
   requirements?: string;
   industry: string;
+  application_deadline?: string;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -353,7 +354,10 @@ export async function getEmployerApplications(employerId: string) {
     `)
     .eq('listing.employer_id', employerId)
     .order('applied_at', { ascending: false });
-  if (error) return [];
+  if (error) {
+    console.error('[getEmployerApplications] Error:', error.message, error);
+    return [];
+  }
   return data ?? [];
 }
 
@@ -508,6 +512,70 @@ export async function updateProfile(userId: string, fields: {
 
 // ---- Apply with resume ----
 
+// ---- Listing Analytics ----
+
+export async function getListingViewCounts(employerId: string) {
+  const { data: listings } = await supabase
+    .from('internship_listings')
+    .select('id')
+    .eq('employer_id', employerId);
+  if (!listings || listings.length === 0) return {};
+
+  const listingIds = listings.map(l => l.id);
+  const { data: views } = await supabase
+    .from('listing_views')
+    .select('listing_id')
+    .in('listing_id', listingIds);
+  if (!views) return {};
+
+  const counts: Record<string, number> = {};
+  for (const v of views) {
+    counts[v.listing_id] = (counts[v.listing_id] || 0) + 1;
+  }
+  return counts;
+}
+
+export async function trackListingView(listingId: string, viewerId: string | null) {
+  await supabase.from('listing_views').insert({
+    listing_id: listingId,
+    viewer_id: viewerId,
+  });
+}
+
+// ---- Employer Listings with full details ----
+
+export async function getEmployerListingsWithStats(employerId: string) {
+  const { data: listings, error } = await supabase
+    .from('internship_listings')
+    .select('*')
+    .eq('employer_id', employerId)
+    .order('created_at', { ascending: false });
+  if (error || !listings) return [];
+
+  const listingIds = listings.map(l => l.id);
+  if (listingIds.length === 0) return listings.map(l => ({ ...l, applicant_count: 0, view_count: 0 }));
+
+  const [{ data: apps }, { data: views }] = await Promise.all([
+    supabase.from('applications').select('listing_id').in('listing_id', listingIds),
+    supabase.from('listing_views').select('listing_id').in('listing_id', listingIds),
+  ]);
+
+  const appCounts: Record<string, number> = {};
+  for (const a of apps || []) {
+    appCounts[a.listing_id] = (appCounts[a.listing_id] || 0) + 1;
+  }
+  const viewCounts: Record<string, number> = {};
+  for (const v of views || []) {
+    viewCounts[v.listing_id] = (viewCounts[v.listing_id] || 0) + 1;
+  }
+
+  return listings.map(l => ({
+    ...l,
+    applicant_count: appCounts[l.id] || 0,
+    view_count: viewCounts[l.id] || 0,
+  }));
+}
+
 export async function applyToListingWithResume(studentId: string, listingId: string, resumeId: string | null) {
   const row: any = { student_id: studentId, listing_id: listingId };
   if (resumeId) row.resume_id = resumeId;
@@ -625,6 +693,7 @@ export async function updateListing(listingId: string, fields: {
   requirements?: string;
   industry?: string;
   status?: string;
+  application_deadline?: string | null;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')

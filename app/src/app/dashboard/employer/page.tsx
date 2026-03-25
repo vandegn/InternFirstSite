@@ -242,7 +242,7 @@ export default function EmployerDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="dash-section-title">Recent Candidates</h3>
           {recentCandidates.length > 0 && (
-            <Link href="/dashboard/employer/applications" style={{ color: 'var(--primary)', fontSize: '0.85rem', textDecoration: 'none', fontWeight: 500 }}>
+            <Link href="/dashboard/employer/posted-jobs" style={{ color: 'var(--primary)', fontSize: '0.85rem', textDecoration: 'none', fontWeight: 500 }}>
               View All &rarr;
             </Link>
           )}
@@ -254,7 +254,7 @@ export default function EmployerDashboard() {
         ) : (
           <div className="candidate-grid">
             {recentCandidates.map((app: any) => (
-              <Link href="/dashboard/employer/applications" key={app.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Link href="/dashboard/employer/posted-jobs" key={app.id} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div className="candidate-card" style={{ cursor: 'pointer' }}>
                   <img
                     src={app.student?.profile?.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}

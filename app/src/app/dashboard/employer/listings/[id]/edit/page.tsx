@@ -19,6 +19,7 @@ export default function EditListingPage() {
   const [requirements, setRequirements] = useState('');
   const [industry, setIndustry] = useState('');
   const [status, setStatus] = useState('active');
+  const [applicationDeadline, setApplicationDeadline] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -48,6 +49,7 @@ export default function EditListingPage() {
         setRequirements(listing.requirements || '');
         setIndustry(listing.industry || '');
         setStatus(listing.status || 'active');
+        setApplicationDeadline(listing.application_deadline || '');
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -72,6 +74,7 @@ export default function EditListingPage() {
         compensation: compensation || undefined,
         requirements: requirements || undefined,
         industry,
+        application_deadline: applicationDeadline || null,
       });
 
       router.push('/dashboard/employer');
@@ -190,6 +193,15 @@ export default function EditListingPage() {
                 onChange={(e) => setLocation(e.target.value)}
               />
             </div>
+            <div className="form-group">
+              <label htmlFor="applicationDeadline">Application Deadline</label>
+              <input
+                type="date"
+                id="applicationDeadline"
+                value={applicationDeadline}
+                onChange={(e) => setApplicationDeadline(e.target.value)}
+              />
+            </div>
             <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 28 }}>
               <input
                 type="checkbox"
@@ -232,40 +244,71 @@ export default function EditListingPage() {
           </button>
         </form>
 
-        <div style={{ marginTop: 16 }}>
-          {status === 'active' ? (
+        <div style={{ marginTop: 16, display: 'flex', gap: '12px' }}>
+          {status === 'active' && (
+            <>
+              <button
+                onClick={() => { setTogglingStatus(true); updateListing(id, { status: 'paused' }).then(() => setStatus('paused')).finally(() => setTogglingStatus(false)); }}
+                disabled={togglingStatus}
+                style={{
+                  flex: 1, padding: '12px 24px', borderRadius: 8,
+                  border: '2px solid #d97706', background: 'transparent', color: '#d97706',
+                  fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
+                  opacity: togglingStatus ? 0.6 : 1,
+                }}
+              >
+                {togglingStatus ? 'Pausing...' : 'Pause Listing'}
+              </button>
+              <button
+                onClick={handleToggleStatus}
+                disabled={togglingStatus}
+                style={{
+                  flex: 1, padding: '12px 24px', borderRadius: 8,
+                  border: '2px solid #e53e3e', background: 'transparent', color: '#e53e3e',
+                  fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
+                  opacity: togglingStatus ? 0.6 : 1,
+                }}
+              >
+                {togglingStatus ? 'Closing...' : 'Close Listing'}
+              </button>
+            </>
+          )}
+          {status === 'paused' && (
+            <>
+              <button
+                onClick={() => { setTogglingStatus(true); updateListing(id, { status: 'active' }).then(() => setStatus('active')).finally(() => setTogglingStatus(false)); }}
+                disabled={togglingStatus}
+                style={{
+                  flex: 1, padding: '12px 24px', borderRadius: 8,
+                  border: 'none', background: '#38a169', color: '#fff',
+                  fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
+                  opacity: togglingStatus ? 0.6 : 1,
+                }}
+              >
+                {togglingStatus ? 'Resuming...' : 'Resume Listing'}
+              </button>
+              <button
+                onClick={handleToggleStatus}
+                disabled={togglingStatus}
+                style={{
+                  flex: 1, padding: '12px 24px', borderRadius: 8,
+                  border: '2px solid #e53e3e', background: 'transparent', color: '#e53e3e',
+                  fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
+                  opacity: togglingStatus ? 0.6 : 1,
+                }}
+              >
+                {togglingStatus ? 'Closing...' : 'Close Listing'}
+              </button>
+            </>
+          )}
+          {status === 'closed' && (
             <button
               onClick={handleToggleStatus}
               disabled={togglingStatus}
               style={{
-                width: '100%',
-                padding: '12px 24px',
-                borderRadius: 8,
-                border: '2px solid #e53e3e',
-                background: 'transparent',
-                color: '#e53e3e',
-                fontWeight: 600,
-                fontSize: '1rem',
-                cursor: togglingStatus ? 'not-allowed' : 'pointer',
-                opacity: togglingStatus ? 0.6 : 1,
-              }}
-            >
-              {togglingStatus ? 'Closing...' : 'Close Listing'}
-            </button>
-          ) : (
-            <button
-              onClick={handleToggleStatus}
-              disabled={togglingStatus}
-              style={{
-                width: '100%',
-                padding: '12px 24px',
-                borderRadius: 8,
-                border: 'none',
-                background: '#38a169',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: '1rem',
-                cursor: togglingStatus ? 'not-allowed' : 'pointer',
+                width: '100%', padding: '12px 24px', borderRadius: 8,
+                border: 'none', background: '#38a169', color: '#fff',
+                fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
                 opacity: togglingStatus ? 0.6 : 1,
               }}
             >

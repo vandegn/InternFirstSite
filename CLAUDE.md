@@ -44,7 +44,7 @@ npm run lint     # ESLint
 
 **Route protection:** `src/app/dashboard/layout.tsx` wraps all dashboard routes with client-side auth checks. It verifies the user is logged in, has a profile, and is accessing the correct dashboard for their role. Unauthorized users get redirected to `/login`, `/register`, or their correct dashboard. There is no middleware — all checks run in a `useEffect`.
 
-**Auth flow:** Supabase Auth (email/password + Google OAuth) → `profiles` table stores role → role-based redirect to dashboard. `.edu` email required for students and university admins. Key auth helpers are in `src/lib/supabase.ts` (`getProfile`, `createProfileAndRoleData`, `isEduEmail`).
+**Auth flow:** Supabase Auth (email/password + Google OAuth) → email verification required (Supabase built-in, skipped for OAuth) → `/auth/callback` server route creates profile + role data from `user_metadata` → role-based redirect to dashboard. Unverified users are redirected to `/verify-email`. `.edu` email required for students and university admins. Key auth helpers are in `src/lib/supabase.ts` (`getProfile`, `createProfileAndRoleData`, `isEduEmail`).
 
 **Database:** Supabase PostgreSQL with RLS enabled on all tables. Core tables: `profiles`, `students`, `employers`, `university_admins`, `universities`, `internship_listings`, `applications`, `messages`. Schema is in `supabase/schema.sql`.
 

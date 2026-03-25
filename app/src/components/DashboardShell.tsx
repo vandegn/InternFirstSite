@@ -253,13 +253,12 @@ export default function DashboardShell({ children, role }: { children: React.Rea
             minWidth: sidebarWidth,
             background: '#fff',
             borderRight: '1px solid var(--border)',
-            padding: '20px 0',
+            padding: 0,
             transition: 'width 0.2s ease, min-width 0.2s ease',
             overflow: 'visible',
-            position: 'sticky',
-            top: 64,
-            height: 'calc(100vh - 64px)',
-            overflowY: 'auto',
+            position: 'relative',
+            flexShrink: 0,
+            zIndex: 20,
           }}
         >
           {/* Collapse/expand arrow on the right edge */}
@@ -267,10 +266,9 @@ export default function DashboardShell({ children, role }: { children: React.Rea
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
-              position: 'absolute',
-              top: '50%',
-              right: '-12px',
-              transform: 'translateY(-50%)',
+              position: 'fixed',
+              top: 'calc(50vh + 32px)',
+              left: sidebarWidth - 12,
               width: '24px',
               height: '24px',
               borderRadius: '50%',
@@ -280,9 +278,9 @@ export default function DashboardShell({ children, role }: { children: React.Rea
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              zIndex: 10,
+              zIndex: 50,
               boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-              transition: 'background 0.15s',
+              transition: 'background 0.15s, left 0.2s ease',
               color: 'var(--text-secondary)',
               padding: 0,
             }}
@@ -297,7 +295,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', position: 'sticky', top: 64, maxHeight: 'calc(100vh - 64px)', overflowY: 'auto', paddingTop: '20px', paddingBottom: '20px' }}>
             {navItems.map((item, i) => {
               if (item.href === '__divider__') {
                 return <div key={`div-${i}`} className="sidebar-divider" style={collapsed ? { margin: '12px 8px' } : undefined} />;

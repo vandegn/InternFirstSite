@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { supabase, getProfile, getStudentByUserId, updateProfile, updateStudent, getStudentResumes, uploadResume, deleteResume } from '@/lib/supabase';
+import { supabase, getProfile, getStudentByUserId, updateProfile, updateStudent, getStudentResumes, uploadResume, deleteResume, uploadImage } from '@/lib/supabase';
 import { MAJORS } from '@/lib/constants';
 
 interface Resume {
@@ -21,9 +21,9 @@ export default function StudentSettings() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [savingPersonal, setSavingPersonal] = useState(false);
-  const [personalSuccess, setPersonalSuccess] = useState(false);
-  const [personalError, setPersonalError] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Academic info
   const [major, setMajor] = useState('');
@@ -31,9 +31,11 @@ export default function StudentSettings() {
   const [showMajorDropdown, setShowMajorDropdown] = useState(false);
   const [graduationYear, setGraduationYear] = useState<number | ''>('');
   const [bio, setBio] = useState('');
-  const [savingAcademic, setSavingAcademic] = useState(false);
-  const [academicSuccess, setAcademicSuccess] = useState(false);
-  const [academicError, setAcademicError] = useState('');
+
+  // Unified save state
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // Resumes
   const [resumes, setResumes] = useState<Resume[]>([]);
@@ -91,43 +93,56 @@ export default function StudentSettings() {
     m.toLowerCase().includes(majorSearch.toLowerCase())
   );
 
-  async function handleSavePersonal(e: React.FormEvent) {
-    e.preventDefault();
-    setPersonalError('');
-    setPersonalSuccess(false);
-    setSavingPersonal(true);
-    try {
-      await updateProfile(userId, {
-        full_name: fullName,
-        phone: phone || undefined,
-        avatar_url: avatarUrl || undefined,
-      });
-      setPersonalSuccess(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to save. Please try again.';
-      setPersonalError(message);
-    } finally {
-      setSavingPersonal(false);
+  function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    setAvatarFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAvatarPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setAvatarPreview(null);
     }
   }
 
-  async function handleSaveAcademic(e: React.FormEvent) {
+  async function handleSaveAll(e: React.FormEvent) {
     e.preventDefault();
-    setAcademicError('');
-    setAcademicSuccess(false);
-    setSavingAcademic(true);
+    setSaveError('');
+    setSaveSuccess(false);
+    setSaving(true);
     try {
+      // Upload avatar file if one was selected
+      let finalAvatarUrl = avatarUrl;
+      if (avatarFile) {
+        const ext = avatarFile.name.split('.').pop() || 'jpg';
+        const path = `avatars/${userId}.${ext}`;
+        finalAvatarUrl = await uploadImage('images', path, avatarFile);
+        setAvatarUrl(finalAvatarUrl);
+        setAvatarFile(null);
+        setAvatarPreview(null);
+        if (avatarInputRef.current) avatarInputRef.current.value = '';
+      }
+
+      // Save profile (personal info)
+      await updateProfile(userId, {
+        full_name: fullName,
+        phone: phone || undefined,
+        avatar_url: finalAvatarUrl || undefined,
+      });
+
+      // Save student (academic info)
       await updateStudent(studentId, {
         major: major || undefined,
         graduation_year: graduationYear ? Number(graduationYear) : undefined,
         bio: bio || undefined,
       });
-      setAcademicSuccess(true);
+
+      setSaveSuccess(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to save. Please try again.';
-      setAcademicError(message);
+      setSaveError(message);
     } finally {
-      setSavingAcademic(false);
+      setSaving(false);
     }
   }
 
@@ -171,6 +186,8 @@ export default function StudentSettings() {
     );
   }
 
+  const displayAvatar = avatarPreview || avatarUrl;
+
   return (
     <div className="dash-main" style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
       <Link href="/dashboard/student" style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '24px' }}>
@@ -181,18 +198,18 @@ export default function StudentSettings() {
       <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px' }}>Student Settings</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Manage your personal info, academic details, and resumes.</p>
 
-      {/* Personal Information */}
-      <div className="profile-card" style={{ padding: '32px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>Personal Information</h3>
+      {saveError && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{saveError}</div>}
+      {saveSuccess && (
+        <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
+          Settings saved successfully.
+        </div>
+      )}
 
-        {personalError && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{personalError}</div>}
-        {personalSuccess && (
-          <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
-            Personal info updated successfully.
-          </div>
-        )}
+      <form onSubmit={handleSaveAll}>
+        {/* Personal Information */}
+        <div className="profile-card" style={{ padding: '32px', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>Personal Information</h3>
 
-        <form onSubmit={handleSavePersonal}>
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label htmlFor="fullName">Full Name</label>
             <input
@@ -216,39 +233,86 @@ export default function StudentSettings() {
           </div>
 
           <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label htmlFor="avatarUrl">Avatar URL</label>
-            <input
-              type="text"
-              id="avatarUrl"
-              placeholder="https://example.com/avatar.jpg"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-            />
-            {avatarUrl && (
-              <div style={{ marginTop: '12px' }}>
-                <img src={avatarUrl} alt="Avatar preview" style={{ maxWidth: 80, maxHeight: 80, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+            <label>Profile Photo</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                border: '2px solid var(--border)',
+                overflow: 'hidden',
+                background: '#f3f4f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                {displayAvatar ? (
+                  <img src={displayAvatar} alt="Avatar preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                )}
               </div>
-            )}
+              <div>
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/*"
+                  onChange={handleAvatarFileChange}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '0.85rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    color: 'var(--text)',
+                  }}
+                >
+                  {displayAvatar ? 'Change Photo' : 'Upload Photo'}
+                </button>
+                {displayAvatar && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAvatarFile(null);
+                      setAvatarPreview(null);
+                      setAvatarUrl('');
+                      if (avatarInputRef.current) avatarInputRef.current.value = '';
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '0.85rem',
+                      border: '1px solid #fca5a5',
+                      borderRadius: 'var(--radius-sm)',
+                      background: '#fff',
+                      cursor: 'pointer',
+                      color: '#dc2626',
+                      marginLeft: '8px',
+                    }}
+                  >
+                    Remove
+                  </button>
+                )}
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '6px' }}>
+                  JPG, PNG or GIF. Max 5MB.
+                </p>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <button type="submit" className="btn-primary" disabled={savingPersonal} style={{ padding: '12px 32px', fontSize: '1rem' }}>
-            {savingPersonal ? 'Saving...' : 'Save Personal Info'}
-          </button>
-        </form>
-      </div>
+        {/* Academic Information */}
+        <div className="profile-card" style={{ padding: '32px', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>Academic Information</h3>
 
-      {/* Academic Information */}
-      <div className="profile-card" style={{ padding: '32px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>Academic Information</h3>
-
-        {academicError && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{academicError}</div>}
-        {academicSuccess && (
-          <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
-            Academic info updated successfully.
-          </div>
-        )}
-
-        <form onSubmit={handleSaveAcademic}>
           <div className="form-group" style={{ marginBottom: '20px', position: 'relative' }} ref={majorDropdownRef}>
             <label htmlFor="major">Major</label>
             <input
@@ -321,7 +385,7 @@ export default function StudentSettings() {
             />
           </div>
 
-          <div className="form-group" style={{ marginBottom: '28px' }}>
+          <div className="form-group" style={{ marginBottom: '0' }}>
             <label htmlFor="bio">Bio</label>
             <textarea
               id="bio"
@@ -332,14 +396,15 @@ export default function StudentSettings() {
               style={{ width: '100%', resize: 'vertical' }}
             />
           </div>
+        </div>
 
-          <button type="submit" className="btn-primary" disabled={savingAcademic} style={{ padding: '12px 32px', fontSize: '1rem' }}>
-            {savingAcademic ? 'Saving...' : 'Save Academic Info'}
-          </button>
-        </form>
-      </div>
+        {/* Single Save Button */}
+        <button type="submit" className="btn-primary" disabled={saving} style={{ padding: '14px 40px', fontSize: '1rem', marginBottom: '24px' }}>
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </form>
 
-      {/* Resumes */}
+      {/* Resumes (separate section, not part of the main save form) */}
       <div className="profile-card" style={{ padding: '32px' }}>
         <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>My Resumes</h3>
 

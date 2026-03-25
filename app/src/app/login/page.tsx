@@ -51,6 +51,7 @@ function LoginForm() {
     if (authError) {
       // Supabase returns this message when email is not confirmed
       if (authError.message === 'Email not confirmed') {
+        setLoading(false);
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         return;
       }

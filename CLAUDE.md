@@ -78,6 +78,14 @@ All applications are in-platform: student clicks "Apply Now" → creates row in 
 - **Applications:** `applyToListing`, `getApplicationStatus`
 - **Constants:** `INDUSTRIES`, `MAJORS`, `MAJOR_TO_INDUSTRIES` in `src/lib/constants.ts`
 
+## Test Accounts
+
+| Role | Email | Password |
+|------|-------|----------|
+| Student | vandegn@miamioh.edu | 111111 |
+| Employer | chud@htn.org | 123456 |
+| University | helen@unc.edu | 111111 |
+
 ## Known Limitations & Future Work
 
 See `docs/TODO.md` for a tracked list of deferred items. Key items:

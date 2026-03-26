@@ -60,9 +60,14 @@ function LoginForm() {
       return;
     }
 
-    const profile = await getProfile(data.user.id);
-    const dashRole = profile?.role || role;
-    router.push(DASHBOARD_ROUTES[dashRole] || '/dashboard/student');
+    try {
+      const profile = await getProfile(data.user.id);
+      const dashRole = profile?.role || role;
+      router.push(DASHBOARD_ROUTES[dashRole] || '/dashboard/student');
+    } catch {
+      setError('Login succeeded but failed to load your profile. Please try again.');
+      setLoading(false);
+    }
   }
 
   async function handleGoogleLogin() {

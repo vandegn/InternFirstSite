@@ -369,3 +369,194 @@ create policy "University admins can view registrations for their events"
       where ua.user_id = auth.uid()
     )
   );
+
+-- ============================================
+-- 11. STUDENT SKILLS
+-- ============================================
+create table student_skills (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id) on delete cascade not null,
+  name text not null,
+  is_custom boolean default false,
+  created_at timestamptz default now() not null,
+  unique(student_id, name)
+);
+
+create index idx_student_skills_student on student_skills(student_id);
+
+alter table student_skills enable row level security;
+
+create policy "Students can view own skills"
+  on student_skills for select to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can insert own skills"
+  on student_skills for insert to authenticated
+  with check (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can delete own skills"
+  on student_skills for delete to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Employers can view skills of applicants"
+  on student_skills for select to authenticated
+  using (
+    student_id in (
+      select s.id from students s
+      join applications a on a.student_id = s.id
+      join internship_listings il on a.listing_id = il.id
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- 12. STUDENT EXPERIENCES
+-- ============================================
+create table student_experiences (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id) on delete cascade not null,
+  type text not null check (type in ('internship', 'project', 'campus_involvement')),
+  title text not null,
+  organization text,
+  location text,
+  description text,
+  technologies text,
+  link text,
+  start_date date,
+  end_date date,
+  is_current boolean default false,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+create index idx_student_experiences_student on student_experiences(student_id);
+create index idx_student_experiences_type on student_experiences(type);
+
+create trigger set_student_experiences_updated_at before update on student_experiences for each row execute function update_updated_at();
+
+alter table student_experiences enable row level security;
+
+create policy "Students can view own experiences"
+  on student_experiences for select to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can insert own experiences"
+  on student_experiences for insert to authenticated
+  with check (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can update own experiences"
+  on student_experiences for update to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can delete own experiences"
+  on student_experiences for delete to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Employers can view experiences of applicants"
+  on student_experiences for select to authenticated
+  using (
+    student_id in (
+      select s.id from students s
+      join applications a on a.student_id = s.id
+      join internship_listings il on a.listing_id = il.id
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- 13. STUDENT ORGANIZATIONS
+-- ============================================
+create table student_organizations (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id) on delete cascade not null,
+  type text not null check (type in ('greek_life', 'club')),
+  name text not null,
+  chapter text,
+  role text,
+  join_date date,
+  end_date date,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+create index idx_student_organizations_student on student_organizations(student_id);
+
+create trigger set_student_organizations_updated_at before update on student_organizations for each row execute function update_updated_at();
+
+alter table student_organizations enable row level security;
+
+create policy "Students can view own organizations"
+  on student_organizations for select to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can insert own organizations"
+  on student_organizations for insert to authenticated
+  with check (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can update own organizations"
+  on student_organizations for update to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can delete own organizations"
+  on student_organizations for delete to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Employers can view organizations of applicants"
+  on student_organizations for select to authenticated
+  using (
+    student_id in (
+      select s.id from students s
+      join applications a on a.student_id = s.id
+      join internship_listings il on a.listing_id = il.id
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- 14. UNIVERSITY-EMPLOYER PARTNERSHIPS
+-- ============================================
+create table university_employer_partnerships (
+  id uuid primary key default gen_random_uuid(),
+  university_id uuid references universities(id) on delete cascade not null,
+  employer_id uuid references employers(id) on delete cascade not null,
+  status text not null default 'active' check (status in ('active', 'inactive')),
+  created_at timestamptz default now() not null,
+  unique(university_id, employer_id)
+);
+
+create index idx_uep_university on university_employer_partnerships(university_id);
+create index idx_uep_employer on university_employer_partnerships(employer_id);
+create index idx_uep_status on university_employer_partnerships(status);
+
+alter table university_employer_partnerships enable row level security;
+
+create policy "Authenticated users can view active partnerships"
+  on university_employer_partnerships for select to authenticated
+  using (true);
+
+create policy "University admins can insert partnerships for their university"
+  on university_employer_partnerships for insert to authenticated
+  with check (
+    university_id in (
+      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
+    )
+  );
+
+create policy "University admins can update partnerships for their university"
+  on university_employer_partnerships for update to authenticated
+  using (
+    university_id in (
+      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
+    )
+  );
+
+create policy "University admins can delete partnerships for their university"
+  on university_employer_partnerships for delete to authenticated
+  using (
+    university_id in (
+      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
+    )
+  );

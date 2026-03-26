@@ -684,6 +684,245 @@ export async function getPlacementCities(universityId: string) {
 
 // ---- Listing Management (Edit/Close) ----
 
+// ---- Student Skills ----
+
+export async function getStudentSkills(studentId: string) {
+  const { data, error } = await supabase
+    .from('student_skills')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('name', { ascending: true });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function addStudentSkill(studentId: string, name: string, isCustom: boolean) {
+  const { data, error } = await supabase
+    .from('student_skills')
+    .insert({ student_id: studentId, name, is_custom: isCustom })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function removeStudentSkill(skillId: string) {
+  const { error } = await supabase
+    .from('student_skills')
+    .delete()
+    .eq('id', skillId);
+  if (error) throw error;
+}
+
+// ---- Student Experiences ----
+
+export async function getStudentExperiences(studentId: string, type?: string) {
+  let query = supabase
+    .from('student_experiences')
+    .select('*')
+    .eq('student_id', studentId);
+  if (type) query = query.eq('type', type);
+  const { data, error } = await query.order('start_date', { ascending: false });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function addStudentExperience(studentId: string, experience: {
+  type: string;
+  title: string;
+  organization?: string;
+  location?: string;
+  description?: string;
+  technologies?: string;
+  link?: string;
+  start_date?: string;
+  end_date?: string;
+  is_current?: boolean;
+}) {
+  const { data, error } = await supabase
+    .from('student_experiences')
+    .insert({ student_id: studentId, ...experience })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateStudentExperience(experienceId: string, fields: {
+  title?: string;
+  organization?: string;
+  location?: string;
+  description?: string;
+  technologies?: string;
+  link?: string;
+  start_date?: string;
+  end_date?: string | null;
+  is_current?: boolean;
+}) {
+  const { data, error } = await supabase
+    .from('student_experiences')
+    .update(fields)
+    .eq('id', experienceId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteStudentExperience(experienceId: string) {
+  const { error } = await supabase
+    .from('student_experiences')
+    .delete()
+    .eq('id', experienceId);
+  if (error) throw error;
+}
+
+// ---- Student Organizations ----
+
+export async function getStudentOrganizations(studentId: string, type?: string) {
+  let query = supabase
+    .from('student_organizations')
+    .select('*')
+    .eq('student_id', studentId);
+  if (type) query = query.eq('type', type);
+  const { data, error } = await query.order('join_date', { ascending: false });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function addStudentOrganization(studentId: string, org: {
+  type: string;
+  name: string;
+  chapter?: string;
+  role?: string;
+  join_date?: string;
+  end_date?: string;
+}) {
+  const { data, error } = await supabase
+    .from('student_organizations')
+    .insert({ student_id: studentId, ...org })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateStudentOrganization(orgId: string, fields: {
+  name?: string;
+  chapter?: string;
+  role?: string;
+  join_date?: string;
+  end_date?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('student_organizations')
+    .update(fields)
+    .eq('id', orgId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteStudentOrganization(orgId: string) {
+  const { error } = await supabase
+    .from('student_organizations')
+    .delete()
+    .eq('id', orgId);
+  if (error) throw error;
+}
+
+// ---- Events ----
+
+export async function getEventById(eventId: string) {
+  const { data, error } = await supabase
+    .from('university_events')
+    .select('*, university:universities(name, logo_url)')
+    .eq('id', eventId)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function getEventRegistrationCount(eventId: string) {
+  const { count, error } = await supabase
+    .from('event_registrations')
+    .select('*', { count: 'exact', head: true })
+    .eq('event_id', eventId);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function registerForEvent(eventId: string, studentId: string) {
+  const { data, error } = await supabase
+    .from('event_registrations')
+    .insert({ event_id: eventId, student_id: studentId })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function unregisterFromEvent(eventId: string, studentId: string) {
+  const { error } = await supabase
+    .from('event_registrations')
+    .delete()
+    .eq('event_id', eventId)
+    .eq('student_id', studentId);
+  if (error) throw error;
+}
+
+export async function isRegisteredForEvent(eventId: string, studentId: string) {
+  const { data, error } = await supabase
+    .from('event_registrations')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('student_id', studentId)
+    .maybeSingle();
+  if (error) return false;
+  return !!data;
+}
+
+// ---- University Partner Listings ----
+
+export async function getUniversityPartnerListings(
+  universityId: string,
+  page = 1,
+  pageSize = 20,
+  industry?: string
+) {
+  const { data: partnerships } = await supabase
+    .from('university_employer_partnerships')
+    .select('employer_id')
+    .eq('university_id', universityId)
+    .eq('status', 'active');
+
+  if (!partnerships || partnerships.length === 0) {
+    return { data: [], totalCount: 0 };
+  }
+
+  const employerIds = partnerships.map(p => p.employer_id);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('internship_listings')
+    .select('*, employers(company_name, logo_url)', { count: 'exact' })
+    .eq('status', 'active')
+    .in('employer_id', employerIds);
+
+  if (industry) {
+    query = query.eq('industry', industry);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) return { data: [], totalCount: 0 };
+  return { data: data ?? [], totalCount: count ?? 0 };
+}
+
 export async function updateListing(listingId: string, fields: {
   title?: string;
   description?: string;

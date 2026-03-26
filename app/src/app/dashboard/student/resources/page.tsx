@@ -17,8 +17,9 @@ const FREE_RESOURCES = [
         <polyline points="10 9 9 9 8 9" />
       </svg>
     ),
-    buttonLabel: 'Coming Soon',
-    disabled: true,
+    buttonLabel: 'Read Guide',
+    href: '/dashboard/student/resources/resume-guide',
+    disabled: false,
   },
   {
     title: 'Interview Tips',
@@ -28,8 +29,9 @@ const FREE_RESOURCES = [
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
-    buttonLabel: 'Coming Soon',
-    disabled: true,
+    buttonLabel: 'Read Guide',
+    href: '/dashboard/student/resources/interview-tips',
+    disabled: false,
   },
   {
     title: 'Career Development Articles',
@@ -41,8 +43,9 @@ const FREE_RESOURCES = [
         <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
     ),
-    buttonLabel: 'Coming Soon',
-    disabled: true,
+    buttonLabel: 'Browse Articles',
+    href: '/dashboard/student/resources/career-articles',
+    disabled: false,
   },
   {
     title: 'Blogs & Educational Content',
@@ -54,6 +57,7 @@ const FREE_RESOURCES = [
       </svg>
     ),
     buttonLabel: 'Coming Soon',
+    href: '',
     disabled: true,
   },
 ];
@@ -144,23 +148,39 @@ export default function StudentResources() {
             </div>
             <h4 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>{resource.title}</h4>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.55, margin: 0, flex: 1 }}>{resource.description}</p>
-            <button
-              disabled={resource.disabled}
-              style={{
-                padding: '10px 20px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border)',
-                background: resource.disabled ? 'var(--bg)' : 'var(--primary)',
-                color: resource.disabled ? 'var(--text-secondary)' : '#fff',
-                cursor: resource.disabled ? 'default' : 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                alignSelf: 'flex-start',
-                opacity: resource.disabled ? 0.7 : 1,
-              }}
-            >
-              {resource.buttonLabel}
-            </button>
+            {resource.disabled ? (
+              <button
+                disabled
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'default',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  alignSelf: 'flex-start',
+                  opacity: 0.7,
+                }}
+              >
+                {resource.buttonLabel}
+              </button>
+            ) : (
+              <Link
+                href={resource.href}
+                className="btn-primary"
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '0.9rem',
+                  textDecoration: 'none',
+                  display: 'inline-block',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                {resource.buttonLabel}
+              </Link>
+            )}
           </div>
         ))}
 

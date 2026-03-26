@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase, getProfile, getStudentByUserId, getPartnerUniversity, getStudentResumes } from '@/lib/supabase';
+import { supabase, getProfile, getStudentByUserId, getPartnerUniversity, getStudentResumes, getStudentSkills, getStudentExperiences, getStudentOrganizations } from '@/lib/supabase';
 
 interface Resume {
   id: string;
@@ -10,6 +10,10 @@ interface Resume {
   file_url: string;
   uploaded_at: string;
 }
+
+interface Skill { id: string; name: string; is_custom: boolean; }
+interface Experience { id: string; type: string; title: string; organization?: string; location?: string; description?: string; technologies?: string; link?: string; start_date?: string; end_date?: string; is_current?: boolean; }
+interface Org { id: string; type: string; name: string; chapter?: string; role?: string; join_date?: string; end_date?: string; }
 
 export default function StudentProfile() {
   const [loading, setLoading] = useState(true);
@@ -22,6 +26,12 @@ export default function StudentProfile() {
   const [graduationYear, setGraduationYear] = useState<number | null>(null);
   const [schoolName, setSchoolName] = useState('');
   const [resumes, setResumes] = useState<Resume[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [internships, setInternships] = useState<Experience[]>([]);
+  const [projects, setProjects] = useState<Experience[]>([]);
+  const [campusInvolvements, setCampusInvolvements] = useState<Experience[]>([]);
+  const [greekLife, setGreekLife] = useState<Org[]>([]);
+  const [clubs, setClubs] = useState<Org[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -42,6 +52,18 @@ export default function StudentProfile() {
 
         const studentResumes = await getStudentResumes(student.id);
         setResumes(studentResumes);
+
+        const [studentSkills, allExperiences, allOrganizations] = await Promise.all([
+          getStudentSkills(student.id),
+          getStudentExperiences(student.id),
+          getStudentOrganizations(student.id),
+        ]);
+        setSkills(studentSkills);
+        setInternships(allExperiences.filter((e: Experience) => e.type === 'internship'));
+        setProjects(allExperiences.filter((e: Experience) => e.type === 'project'));
+        setCampusInvolvements(allExperiences.filter((e: Experience) => e.type === 'campus_involvement'));
+        setGreekLife(allOrganizations.filter((o: Org) => o.type === 'greek_life'));
+        setClubs(allOrganizations.filter((o: Org) => o.type === 'club'));
       }
 
       if (user.email) {
@@ -94,6 +116,19 @@ export default function StudentProfile() {
     marginBottom: '8px',
     color: 'var(--text-primary)',
   };
+
+  function formatDate(dateStr?: string) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
+
+  const emptyState = (text: string) => (
+    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic', margin: 0 }}>
+      {text}{' '}
+      <Link href="/dashboard/student/settings" style={{ color: 'var(--primary)' }}>Add in Settings</Link>.
+    </p>
+  );
 
   return (
     <div className="dash-main" style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
@@ -288,32 +323,19 @@ export default function StudentProfile() {
       {/* Skills */}
       <div style={sectionCard}>
         <h2 style={sectionTitle}>Skills</h2>
-        <div style={placeholderBox}>
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '12px', opacity: 0.5 }}>
-            <polyline points="16 18 22 12 16 6"/>
-            <polyline points="8 6 2 12 8 18"/>
-          </svg>
-          <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: '6px' }}>
-            Add your skills to improve job matching
-          </p>
-          <p style={{ fontSize: '0.85rem', margin: 0 }}>
-            List technical skills, tools, languages, and soft skills so recruiters can find you and you get better internship recommendations.
-          </p>
-          <div style={{
-            marginTop: '16px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 20px',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            color: 'var(--text-secondary)',
-            fontSize: '0.85rem',
-            cursor: 'default',
-          }}>
-            Coming Soon
+        {skills.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {skills.map((s) => (
+              <span key={s.id} style={{
+                padding: '6px 14px', borderRadius: '20px', fontSize: '0.85rem',
+                background: 'var(--accent-light)', color: 'var(--primary)', fontWeight: 500,
+                border: '1px solid var(--border)',
+              }}>
+                {s.name}
+              </span>
+            ))}
           </div>
-        </div>
+        ) : emptyState('No skills added yet.')}
       </div>
 
       {/* Experience */}
@@ -323,126 +345,79 @@ export default function StudentProfile() {
         {/* Internships */}
         <div style={{ marginBottom: '20px' }}>
           <h3 style={subSectionTitle}>Internships</h3>
-          <div style={placeholderBox}>
-            <p style={{ margin: 0 }}>
-              Add past or current internship experiences to showcase your professional background.
-            </p>
-            <div style={{
-              marginTop: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              color: 'var(--text-secondary)',
-              fontSize: '0.85rem',
-              cursor: 'default',
-            }}>
-              Coming Soon
+          {internships.length > 0 ? internships.map((exp) => (
+            <div key={exp.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                  {formatDate(exp.start_date)} — {exp.is_current ? 'Present' : formatDate(exp.end_date)}
+                </div>
+              </div>
+              {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{exp.organization}{exp.location ? ` · ${exp.location}` : ''}</div>}
+              {exp.description && <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
             </div>
-          </div>
+          )) : emptyState('No internship experiences added yet.')}
         </div>
 
         {/* Projects */}
         <div style={{ marginBottom: '20px' }}>
           <h3 style={subSectionTitle}>Projects</h3>
-          <div style={placeholderBox}>
-            <p style={{ margin: 0 }}>
-              Highlight personal, academic, or open source projects you have worked on.
-            </p>
-            <div style={{
-              marginTop: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              color: 'var(--text-secondary)',
-              fontSize: '0.85rem',
-              cursor: 'default',
-            }}>
-              Coming Soon
+          {projects.length > 0 ? projects.map((exp) => (
+            <div key={exp.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
+              {exp.technologies && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{exp.technologies}</div>}
+              {exp.description && <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
+              {exp.link && <a href={exp.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontSize: '0.85rem', display: 'inline-block', marginTop: '4px' }}>{exp.link}</a>}
             </div>
-          </div>
+          )) : emptyState('No projects added yet.')}
         </div>
 
         {/* Campus Involvement */}
         <div>
           <h3 style={subSectionTitle}>Campus Involvement</h3>
-          <div style={placeholderBox}>
-            <p style={{ margin: 0 }}>
-              Share your involvement in student organizations, leadership roles, and campus activities.
-            </p>
-            <div style={{
-              marginTop: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              color: 'var(--text-secondary)',
-              fontSize: '0.85rem',
-              cursor: 'default',
-            }}>
-              Coming Soon
+          {campusInvolvements.length > 0 ? campusInvolvements.map((exp) => (
+            <div key={exp.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                  {formatDate(exp.start_date)} — {exp.is_current ? 'Present' : formatDate(exp.end_date)}
+                </div>
+              </div>
+              {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{exp.organization}</div>}
+              {exp.description && <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
             </div>
-          </div>
+          )) : emptyState('No campus involvement added yet.')}
         </div>
       </div>
 
-      {/* Optional Attributes */}
+      {/* Organizations */}
       <div style={sectionCard}>
-        <h2 style={sectionTitle}>Optional Attributes</h2>
+        <h2 style={sectionTitle}>Organizations</h2>
 
         {/* Greek Life */}
         <div style={{ marginBottom: '20px' }}>
           <h3 style={subSectionTitle}>Greek Life</h3>
-          <div style={placeholderBox}>
-            <p style={{ margin: 0 }}>
-              Add your fraternity or sorority affiliation if applicable.
-            </p>
-            <div style={{
-              marginTop: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              color: 'var(--text-secondary)',
-              fontSize: '0.85rem',
-              cursor: 'default',
-            }}>
-              Coming Soon
+          {greekLife.length > 0 ? greekLife.map((org) => (
+            <div key={org.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{org.name}{org.chapter ? ` — ${org.chapter}` : ''}</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                {org.role && `${org.role} · `}{formatDate(org.join_date) && `Joined ${formatDate(org.join_date)}`}
+              </div>
             </div>
-          </div>
+          )) : emptyState('No Greek life added.')}
         </div>
 
         {/* Clubs / Organizations */}
         <div>
           <h3 style={subSectionTitle}>Clubs / Organizations</h3>
-          <div style={placeholderBox}>
-            <p style={{ margin: 0 }}>
-              List clubs, honor societies, or professional organizations you belong to.
-            </p>
-            <div style={{
-              marginTop: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              color: 'var(--text-secondary)',
-              fontSize: '0.85rem',
-              cursor: 'default',
-            }}>
-              Coming Soon
+          {clubs.length > 0 ? clubs.map((org) => (
+            <div key={org.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{org.name}</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                {org.role && `${org.role} · `}{formatDate(org.join_date)}{org.end_date ? ` — ${formatDate(org.end_date)}` : formatDate(org.join_date) ? ' — Present' : ''}
+              </div>
             </div>
-          </div>
+          )) : emptyState('No clubs or organizations added.')}
         </div>
       </div>
     </div>

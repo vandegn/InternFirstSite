@@ -138,6 +138,45 @@ export const MAJOR_TO_INDUSTRIES: Record<string, string[]> = {
   'Other': [],
 };
 
+export const SKILLS = [
+  // Programming Languages
+  'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'C', 'Go', 'Rust', 'Ruby',
+  'PHP', 'Swift', 'Kotlin', 'R', 'MATLAB', 'SQL', 'Scala', 'Perl', 'Dart', 'Shell/Bash',
+  // Web & Frameworks
+  'React', 'Next.js', 'Angular', 'Vue.js', 'Node.js', 'Express.js', 'Django', 'Flask',
+  'Spring Boot', '.NET', 'Ruby on Rails', 'Laravel', 'Svelte', 'Tailwind CSS',
+  // Mobile
+  'React Native', 'Flutter', 'iOS Development', 'Android Development',
+  // Data & ML
+  'Machine Learning', 'Data Analysis', 'Data Visualization', 'Pandas', 'NumPy',
+  'TensorFlow', 'PyTorch', 'Scikit-learn', 'Tableau', 'Power BI', 'Excel (Advanced)',
+  'Jupyter Notebooks', 'Natural Language Processing', 'Computer Vision',
+  // Cloud & DevOps
+  'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'CI/CD', 'Git',
+  'Linux', 'Terraform', 'Jenkins',
+  // Databases
+  'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Firebase', 'Supabase', 'GraphQL',
+  // Design
+  'Figma', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe InDesign', 'Sketch',
+  'UI/UX Design', 'Wireframing', 'Prototyping',
+  // Business & Finance
+  'Financial Modeling', 'Financial Analysis', 'Project Management', 'Market Research',
+  'Business Development', 'Consulting', 'Accounting', 'Budgeting',
+  'Strategic Planning', 'Sales',
+  // Marketing
+  'Digital Marketing', 'SEO/SEM', 'Social Media Marketing', 'Content Writing',
+  'Google Analytics', 'Email Marketing', 'Copywriting',
+  // Soft Skills
+  'Public Speaking', 'Leadership', 'Teamwork', 'Problem Solving',
+  'Written Communication', 'Critical Thinking', 'Time Management',
+  'Adaptability', 'Conflict Resolution', 'Mentoring',
+  // Other Technical
+  'AutoCAD', 'SolidWorks', 'SPSS', 'Stata', 'LabVIEW', 'Revit',
+  'GIS/ArcGIS', 'Blender', '3D Modeling', 'Video Editing',
+] as const;
+
+export type Skill = (typeof SKILLS)[number];
+
 export const MAJORS = [
   'Accounting',
   'Actuarial Science',

@@ -34,6 +34,7 @@ export default function StudentEvents() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [registeredSet, setRegisteredSet] = useState<Set<string>>(new Set());
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -46,7 +47,7 @@ export default function StudentEvents() {
       // Get student's university
       const { data: studentData } = await supabase
         .from('students')
-        .select('university_id')
+        .select('id, university_id')
         .eq('user_id', user.id)
         .single();
 
@@ -76,13 +77,16 @@ export default function StudentEvents() {
 
       if (eventsData && eventsData.length > 0) {
         const eventIds = eventsData.map(e => e.id);
-        const { data: regCounts } = await supabase
-          .from('event_registrations')
-          .select('event_id')
-          .in('event_id', eventIds);
+        const [{ data: regCounts }, { data: myRegs }] = await Promise.all([
+          supabase.from('event_registrations').select('event_id').in('event_id', eventIds),
+          studentData?.id
+            ? supabase.from('event_registrations').select('event_id').eq('student_id', studentData.id).in('event_id', eventIds)
+            : Promise.resolve({ data: [] }),
+        ]);
         const countMap: Record<string, number> = {};
         regCounts?.forEach(r => { countMap[r.event_id] = (countMap[r.event_id] || 0) + 1; });
         setEvents(eventsData.map(e => ({ ...e, registration_count: countMap[e.id] || 0 })));
+        setRegisteredSet(new Set(myRegs?.map(r => r.event_id) ?? []));
       } else {
         setEvents([]);
       }
@@ -152,6 +156,9 @@ export default function StudentEvents() {
                     <div className="listing-tags">
                       <span>{EVENT_TYPE_LABELS[event.event_type] || 'Event'}</span>
                       {event.is_virtual && <span>Virtual</span>}
+                      {registeredSet.has(event.id) && (
+                        <span style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', fontWeight: 600 }}>Registered</span>
+                      )}
                     </div>
                     <div className="listing-footer">
                       <span className="listing-salary">

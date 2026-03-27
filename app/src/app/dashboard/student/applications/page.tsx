@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase, getStudentByUserId, getStudentApplications } from '@/lib/supabase';
 
@@ -62,6 +62,17 @@ export default function MyApplications() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [statusOpen, setStatusOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   useEffect(() => {
     async function fetchApplications() {
@@ -122,25 +133,69 @@ export default function MyApplications() {
         marginBottom: '24px',
         flexWrap: 'wrap',
       }}>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border)',
-            fontSize: '0.9rem',
-            background: 'var(--bg)',
-            color: 'inherit',
-            cursor: 'pointer',
-          }}
-        >
-          {FILTER_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div ref={statusRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => setStatusOpen(!statusOpen)}
+            style={{
+              padding: '8px 32px 8px 12px',
+              borderRadius: '8px',
+              border: `1.5px solid ${statusOpen ? 'var(--primary)' : 'var(--border)'}`,
+              fontSize: '0.82rem',
+              fontWeight: statusFilter ? 600 : 500,
+              background: 'var(--bg)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              cursor: 'pointer',
+              appearance: 'none' as const,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 10px center',
+              transition: 'border-color 0.15s ease',
+              whiteSpace: 'nowrap' as const,
+            }}
+          >
+            {FILTER_OPTIONS.find(o => o.value === statusFilter)?.label || 'All Statuses'}
+          </button>
+          {statusOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              left: 0,
+              minWidth: '160px',
+              background: '#fff',
+              border: '1.5px solid var(--border)',
+              borderRadius: '10px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+              zIndex: 100,
+              overflow: 'hidden',
+              padding: '4px 0',
+            }}>
+              {FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setStatusFilter(opt.value); setStatusOpen(false); }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '7px 12px',
+                    border: 'none',
+                    background: statusFilter === opt.value ? 'var(--primary-light)' : 'transparent',
+                    color: statusFilter === opt.value ? 'var(--primary)' : 'var(--text-primary)',
+                    fontWeight: statusFilter === opt.value ? 600 : 400,
+                    fontSize: '0.82rem',
+                    textAlign: 'left' as const,
+                    cursor: 'pointer',
+                    transition: 'background 0.1s ease',
+                  }}
+                  onMouseEnter={(e) => { if (statusFilter !== opt.value) e.currentTarget.style.background = 'var(--bg)'; }}
+                  onMouseLeave={(e) => { if (statusFilter !== opt.value) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           {filtered.length} application{filtered.length !== 1 ? 's' : ''}
         </span>

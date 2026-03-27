@@ -57,6 +57,11 @@ export default function StudentDashboard() {
   const animatedApplications = useCountUp(applicationCount);
   const animatedOffers = useCountUp(offerCount);
   const [studentMajor, setStudentMajor] = useState<string | null>(null);
+  const [graduationYear, setGraduationYear] = useState<number | null>(null);
+  const [universityName, setUniversityName] = useState<string | null>(null);
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
   const [profileName, setProfileName] = useState('');
 
@@ -68,6 +73,8 @@ export default function StudentDashboard() {
       const profile = await getProfile(user.id);
       if (profile) {
         setProfileName(profile.full_name);
+        setProfileEmail(profile.email);
+        setProfileAvatar(profile.avatar_url);
       }
 
       const [{ count }] = await Promise.all([
@@ -89,6 +96,36 @@ export default function StudentDashboard() {
       if (student?.major) {
         setStudentMajor(student.major);
       }
+      if (student?.graduation_year) {
+        setGraduationYear(student.graduation_year);
+      }
+
+      const studentData = student;
+      if (studentData?.university_id) {
+        const { data: uniData } = await supabase
+          .from('universities')
+          .select('name')
+          .eq('id', studentData.university_id)
+          .single();
+        if (uniData) setUniversityName(uniData.name);
+        const { data: events } = await supabase
+          .from('university_events')
+          .select('id, title, event_type, event_date, start_time, end_time, location, is_virtual')
+          .eq('university_id', studentData.university_id)
+          .gte('event_date', new Date().toISOString().split('T')[0])
+          .order('event_date', { ascending: true })
+          .limit(10);
+        if (events && events.length > 0) {
+          const eventIds = events.map(e => e.id);
+          const { data: regCounts } = await supabase
+            .from('event_registrations')
+            .select('event_id')
+            .in('event_id', eventIds);
+          const countMap: Record<string, number> = {};
+          regCounts?.forEach(r => { countMap[r.event_id] = (countMap[r.event_id] || 0) + 1; });
+          setRecentEvents(events.map(e => ({ ...e, registration_count: countMap[e.id] || 0 })));
+        }
+      }
     }
     fetchUserData();
   }, []);
@@ -98,7 +135,7 @@ export default function StudentDashboard() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
+    <div style={{ padding: '28px 32px', maxWidth: '1280px' }}>
       {/* Welcome header + inline metrics */}
       <div style={{ marginBottom: '28px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
@@ -169,7 +206,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* 2-Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px 220px', gap: '24px', alignItems: 'stretch' }}>
 
         {/* ── Left: Applications + School Events ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -341,7 +378,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* ── Right: Calendar + Events ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minHeight: '100%' }}>
           {/* Calendar */}
           <Calendar
             events={recentEvents.map((event): CalendarEvent => ({
@@ -409,6 +446,71 @@ export default function StudentDashboard() {
               </div>
             </div>
           )}
+
+        </div>
+
+        {/* ── Far Right: Profile overview ── */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '10px',
+          border: '1px solid var(--border)',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignSelf: 'start',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '0.88rem', fontWeight: 700, margin: 0 }}>Profile</h3>
+            <Link href="/dashboard/student/settings" style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
+              Edit
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '18px' }}>
+            {profileAvatar ? (
+              <img src={profileAvatar} alt={profileName} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', marginBottom: '10px' }} />
+            ) : (
+              <div style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '1.1rem',
+                letterSpacing: '-0.02em',
+                marginBottom: '10px',
+              }}>
+                {profileName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, lineHeight: 1.2 }}>{profileName || '\u2014'}</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+              {profileEmail}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {universityName && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.6 }}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{universityName}</span>
+              </div>
+            )}
+            {studentMajor && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.6 }}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <span>{studentMajor}</span>
+              </div>
+            )}
+            {graduationYear && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.6 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Class of {graduationYear}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

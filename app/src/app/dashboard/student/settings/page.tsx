@@ -398,14 +398,16 @@ export default function StudentSettings() {
   }
 
   // ---- Shared inline styles ----
-  const cardStyle: React.CSSProperties = { padding: '32px', marginBottom: '24px' };
-  const sectionHeading: React.CSSProperties = { fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' };
-  const subHeading: React.CSSProperties = { fontSize: '1rem', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' };
+  const sectionStyle: React.CSSProperties = { padding: '28px 32px' };
+  const sectionDivider: React.CSSProperties = { borderTop: '1px solid var(--border)', margin: 0 };
+  const sectionHeading: React.CSSProperties = { fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text)', letterSpacing: '-0.01em' };
+  const subHeading: React.CSSProperties = { fontSize: '0.95rem', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text)' };
   const entryCard: React.CSSProperties = { padding: '14px 16px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: '10px' };
   const inlineFormStyle: React.CSSProperties = { padding: '20px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: '16px', background: 'var(--bg)' };
   const addBtnStyle: React.CSSProperties = { padding: '6px 14px', fontSize: '0.85rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: '#fff', cursor: 'pointer', color: 'var(--primary)', fontWeight: 500 };
   const smallBtnStyle: React.CSSProperties = { background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '5px 12px', cursor: 'pointer', fontSize: '0.8rem' };
   const deleteBtnStyle: React.CSSProperties = { ...smallBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' };
+  const containerStyle: React.CSSProperties = { border: '2px solid #9ca3af', borderRadius: '14px', overflow: 'hidden', background: '#fff' };
 
   function formatDate(dateStr?: string) {
     if (!dateStr) return '';
@@ -424,7 +426,7 @@ export default function StudentSettings() {
   const displayAvatar = avatarPreview || avatarUrl;
 
   return (
-    <div className="dash-main" style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
+    <div className="dash-main" style={{ padding: '32px', maxWidth: '800px', margin: '0 auto', textAlign: 'left' }}>
       <Link href="/dashboard/student" style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '24px' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back to Dashboard
@@ -440,701 +442,711 @@ export default function StudentSettings() {
         </div>
       )}
 
-      <form onSubmit={handleSaveAll}>
-        {/* Personal Information */}
-        <div className="profile-card" style={{ padding: '32px', marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>Personal Information</h3>
+      {/* ===== Single bordered container ===== */}
+      <div style={containerStyle}>
 
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label htmlFor="fullName">Full Name</label>
-            <input
-              type="text"
-              id="fullName"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
-          </div>
+        {/* --- Personal Information --- */}
+        <form onSubmit={handleSaveAll}>
+          <div style={sectionStyle}>
+            <h3 style={sectionHeading}>Personal Information</h3>
 
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label htmlFor="phone">Phone</label>
-            <input
-              type="text"
-              id="phone"
-              placeholder="(555) 123-4567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label htmlFor="fullName">Full Name</label>
+              <input
+                type="text"
+                id="fullName"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
 
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label>Profile Photo</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                border: '2px solid var(--border)',
-                overflow: 'hidden',
-                background: '#f3f4f6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                {displayAvatar ? (
-                  <img src={displayAvatar} alt="Avatar preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                  </svg>
-                )}
-              </div>
-              <div>
-                <input
-                  type="file"
-                  ref={avatarInputRef}
-                  accept="image/*"
-                  onChange={handleAvatarFileChange}
-                  style={{ display: 'none' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '0.85rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-sm)',
-                    background: '#fff',
-                    cursor: 'pointer',
-                    color: 'var(--text)',
-                  }}
-                >
-                  {displayAvatar ? 'Change Photo' : 'Upload Photo'}
-                </button>
-                {displayAvatar && (
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label htmlFor="phone">Phone</label>
+              <input
+                type="text"
+                id="phone"
+                placeholder="(555) 123-4567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '0' }}>
+              <label>Profile Photo</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  border: '2px solid var(--border)',
+                  overflow: 'hidden',
+                  background: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  {displayAvatar ? (
+                    <img src={displayAvatar} alt="Avatar preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    ref={avatarInputRef}
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                    style={{ display: 'none' }}
+                  />
                   <button
                     type="button"
-                    onClick={() => {
-                      setAvatarFile(null);
-                      setAvatarPreview(null);
-                      setAvatarUrl('');
-                      if (avatarInputRef.current) avatarInputRef.current.value = '';
-                    }}
+                    onClick={() => avatarInputRef.current?.click()}
                     style={{
                       padding: '8px 16px',
                       fontSize: '0.85rem',
-                      border: '1px solid #fca5a5',
+                      border: '1px solid var(--border)',
                       borderRadius: 'var(--radius-sm)',
                       background: '#fff',
                       cursor: 'pointer',
-                      color: '#dc2626',
-                      marginLeft: '8px',
+                      color: 'var(--text)',
                     }}
                   >
-                    Remove
+                    {displayAvatar ? 'Change Photo' : 'Upload Photo'}
                   </button>
-                )}
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '6px' }}>
-                  JPG, PNG or GIF. Max 5MB.
-                </p>
+                  {displayAvatar && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarFile(null);
+                        setAvatarPreview(null);
+                        setAvatarUrl('');
+                        if (avatarInputRef.current) avatarInputRef.current.value = '';
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '0.85rem',
+                        border: '1px solid #fca5a5',
+                        borderRadius: 'var(--radius-sm)',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        color: '#dc2626',
+                        marginLeft: '8px',
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '6px' }}>
+                    JPG, PNG or GIF. Max 5MB.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Academic Information */}
-        <div className="profile-card" style={{ padding: '32px', marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>Academic Information</h3>
+          {/* --- Academic Information --- */}
+          <div style={sectionDivider} />
+          <div style={sectionStyle}>
+            <h3 style={sectionHeading}>Academic Information</h3>
 
-          <div className="form-group" style={{ marginBottom: '20px', position: 'relative' }} ref={majorDropdownRef}>
-            <label htmlFor="major">Major</label>
-            <input
-              type="text"
-              id="major"
-              placeholder="Search for your major..."
-              value={majorSearch}
-              onChange={(e) => {
-                setMajorSearch(e.target.value);
-                setShowMajorDropdown(true);
-              }}
-              onFocus={() => setShowMajorDropdown(true)}
-              autoComplete="off"
-            />
-            {showMajorDropdown && filteredMajors.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                maxHeight: '200px',
-                overflowY: 'auto',
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                zIndex: 10,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              }}>
-                {filteredMajors.map((m) => (
-                  <div
-                    key={m}
-                    onClick={() => {
-                      setMajor(m);
-                      setMajorSearch(m);
-                      setShowMajorDropdown(false);
-                    }}
+            <div className="form-group" style={{ marginBottom: '20px', position: 'relative' }} ref={majorDropdownRef}>
+              <label htmlFor="major">Major</label>
+              <input
+                type="text"
+                id="major"
+                placeholder="Search for your major..."
+                value={majorSearch}
+                onChange={(e) => {
+                  setMajorSearch(e.target.value);
+                  setShowMajorDropdown(true);
+                }}
+                onFocus={() => setShowMajorDropdown(true)}
+                autoComplete="off"
+              />
+              {showMajorDropdown && filteredMajors.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  zIndex: 10,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}>
+                  {filteredMajors.map((m) => (
+                    <div
+                      key={m}
+                      onClick={() => {
+                        setMajor(m);
+                        setMajorSearch(m);
+                        setShowMajorDropdown(false);
+                      }}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        background: m === major ? 'var(--primary)' : 'transparent',
+                        color: m === major ? '#fff' : 'inherit',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (m !== major) {
+                          e.currentTarget.style.background = 'var(--border)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = m === major ? 'var(--primary)' : 'transparent';
+                      }}
+                    >
+                      {m}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label htmlFor="graduationYear">Graduation Year</label>
+              <input
+                type="number"
+                id="graduationYear"
+                placeholder="2027"
+                min={2020}
+                max={2035}
+                value={graduationYear}
+                onChange={(e) => setGraduationYear(e.target.value ? parseInt(e.target.value) : '')}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '0' }}>
+              <label htmlFor="bio">Bio</label>
+              <textarea
+                id="bio"
+                placeholder="Tell employers about yourself..."
+                rows={4}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </div>
+          </div>
+
+          {/* --- Save button row --- */}
+          <div style={sectionDivider} />
+          <div style={{ ...sectionStyle, paddingTop: '20px', paddingBottom: '20px' }}>
+            <button type="submit" className="btn-primary" disabled={saving} style={{ padding: '12px 36px', fontSize: '0.95rem' }}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+
+        {/* --- My Resumes --- */}
+        <div style={sectionDivider} />
+        <div style={sectionStyle}>
+          <h3 style={sectionHeading}>My Resumes</h3>
+
+          {resumeError && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{resumeError}</div>}
+          {resumeSuccess && (
+            <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
+              {resumeSuccess}
+            </div>
+          )}
+
+          {resumes.length === 0 && (
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>No resumes uploaded yet.</p>
+          )}
+
+          {resumes.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              {resumes.map((r) => (
+                <div key={r.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  marginBottom: '8px',
+                }}>
+                  <div>
+                    <a href={r.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
+                      {r.name}
+                    </a>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '4px 0 0' }}>
+                      Uploaded {new Date(r.uploaded_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteResume(r.id)}
                     style={{
-                      padding: '10px 14px',
+                      background: 'none',
+                      border: '1px solid #fca5a5',
+                      borderRadius: 'var(--radius-sm)',
+                      color: '#dc2626',
+                      padding: '6px 14px',
                       cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      background: m === major ? 'var(--primary)' : 'transparent',
-                      color: m === major ? '#fff' : 'inherit',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (m !== major) {
-                        e.currentTarget.style.background = 'var(--border)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = m === major ? 'var(--primary)' : 'transparent';
+                      fontSize: '0.85rem',
                     }}
                   >
-                    {m}
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={handleUploadResume}>
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label htmlFor="resumeName">Display Name</label>
+              <input
+                type="text"
+                id="resumeName"
+                placeholder="e.g. Fall 2026 Resume"
+                required
+                value={resumeName}
+                onChange={(e) => setResumeName(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label htmlFor="resumeFile">File</label>
+              <input
+                type="file"
+                id="resumeFile"
+                accept=".pdf,.doc,.docx"
+                ref={fileInputRef}
+                onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                style={{ fontSize: '0.9rem' }}
+              />
+            </div>
+
+            <button type="submit" className="btn-primary" disabled={uploadingResume || !resumeFile || !resumeName.trim()} style={{ padding: '12px 32px', fontSize: '0.95rem' }}>
+              {uploadingResume ? 'Uploading...' : 'Upload Resume'}
+            </button>
+          </form>
+        </div>
+
+        {/* --- Skills --- */}
+        <div style={sectionDivider} />
+        <div style={sectionStyle}>
+          <h3 style={sectionHeading}>Skills</h3>
+
+          {skills.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+              {skills.map((s) => (
+                <span key={s.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem',
+                  background: 'var(--accent-light)', color: 'var(--primary)', fontWeight: 500,
+                  border: '1px solid var(--border)',
+                }}>
+                  {s.name}
+                  <button onClick={() => handleRemoveSkill(s.id)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                    color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1, display: 'flex',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div style={{ position: 'relative', marginBottom: '16px' }} ref={skillDropdownRef}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px', display: 'block', color: 'var(--text-secondary)' }}>Add from preset skills</label>
+            <input
+              type="text"
+              placeholder="Search skills..."
+              value={skillSearch}
+              onChange={(e) => { setSkillSearch(e.target.value); setShowSkillDropdown(true); }}
+              onFocus={() => setShowSkillDropdown(true)}
+              autoComplete="off"
+            />
+            {showSkillDropdown && filteredSkills.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                maxHeight: '200px', overflowY: 'auto', background: 'var(--bg)',
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}>
+                {filteredSkills.slice(0, 30).map((s) => (
+                  <div key={s} onClick={() => handleAddSkill(s, false)} style={{
+                    padding: '10px 14px', cursor: 'pointer', fontSize: '0.9rem',
+                  }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {s}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label htmlFor="graduationYear">Graduation Year</label>
-            <input
-              type="number"
-              id="graduationYear"
-              placeholder="2027"
-              min={2020}
-              max={2035}
-              value={graduationYear}
-              onChange={(e) => setGraduationYear(e.target.value ? parseInt(e.target.value) : '')}
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: '0' }}>
-            <label htmlFor="bio">Bio</label>
-            <textarea
-              id="bio"
-              placeholder="Tell employers about yourself..."
-              rows={4}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
-        </div>
-
-        {/* Single Save Button */}
-        <button type="submit" className="btn-primary" disabled={saving} style={{ padding: '14px 40px', fontSize: '1rem', marginBottom: '24px' }}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </form>
-
-      {/* Resumes (separate section, not part of the main save form) */}
-      <div className="profile-card" style={{ padding: '32px' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px' }}>My Resumes</h3>
-
-        {resumeError && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{resumeError}</div>}
-        {resumeSuccess && (
-          <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
-            {resumeSuccess}
-          </div>
-        )}
-
-        {resumes.length === 0 && (
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>No resumes uploaded yet.</p>
-        )}
-
-        {resumes.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
-            {resumes.map((r) => (
-              <div key={r.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                marginBottom: '8px',
-              }}>
-                <div>
-                  <a href={r.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
-                    {r.name}
-                  </a>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '4px 0 0' }}>
-                    Uploaded {new Date(r.uploaded_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDeleteResume(r.id)}
-                  style={{
-                    background: 'none',
-                    border: '1px solid #fca5a5',
-                    borderRadius: 'var(--radius-sm)',
-                    color: '#dc2626',
-                    padding: '6px 14px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <form onSubmit={handleUploadResume}>
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label htmlFor="resumeName">Display Name</label>
-            <input
-              type="text"
-              id="resumeName"
-              placeholder="e.g. Fall 2026 Resume"
-              required
-              value={resumeName}
-              onChange={(e) => setResumeName(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label htmlFor="resumeFile">File</label>
-            <input
-              type="file"
-              id="resumeFile"
-              accept=".pdf,.doc,.docx"
-              ref={fileInputRef}
-              onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-              style={{ fontSize: '0.9rem' }}
-            />
-          </div>
-
-          <button type="submit" className="btn-primary" disabled={uploadingResume || !resumeFile || !resumeName.trim()} style={{ padding: '12px 32px', fontSize: '1rem' }}>
-            {uploadingResume ? 'Uploading...' : 'Upload Resume'}
-          </button>
-        </form>
-      </div>
-
-      {/* Skills */}
-      <div className="profile-card" style={cardStyle}>
-        <h3 style={sectionHeading}>Skills</h3>
-
-        {/* Current skills as pills */}
-        {skills.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-            {skills.map((s) => (
-              <span key={s.id} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem',
-                background: 'var(--accent-light)', color: 'var(--primary)', fontWeight: 500,
-                border: '1px solid var(--border)',
-              }}>
-                {s.name}
-                <button onClick={() => handleRemoveSkill(s.id)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1, display: 'flex',
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Searchable skill dropdown */}
-        <div style={{ position: 'relative', marginBottom: '16px' }} ref={skillDropdownRef}>
-          <label style={{ fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px', display: 'block', color: 'var(--text-secondary)' }}>Add from preset skills</label>
-          <input
-            type="text"
-            placeholder="Search skills..."
-            value={skillSearch}
-            onChange={(e) => { setSkillSearch(e.target.value); setShowSkillDropdown(true); }}
-            onFocus={() => setShowSkillDropdown(true)}
-            autoComplete="off"
-          />
-          {showSkillDropdown && filteredSkills.length > 0 && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0,
-              maxHeight: '200px', overflowY: 'auto', background: 'var(--bg)',
-              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-              zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            }}>
-              {filteredSkills.slice(0, 30).map((s) => (
-                <div key={s} onClick={() => handleAddSkill(s, false)} style={{
-                  padding: '10px 14px', cursor: 'pointer', fontSize: '0.9rem',
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px', display: 'block', color: 'var(--text-secondary)' }}>Add custom skill</label>
+              <input
+                type="text"
+                placeholder="Type a custom skill..."
+                value={customSkillInput}
+                onChange={(e) => setCustomSkillInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && customSkillInput.trim()) {
+                    e.preventDefault();
+                    handleAddSkill(customSkillInput.trim(), true);
+                  }
                 }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {s}
-                </div>
-              ))}
+              />
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => customSkillInput.trim() && handleAddSkill(customSkillInput.trim(), true)}
+              disabled={!customSkillInput.trim()}
+              className="btn-primary"
+              style={{ padding: '10px 20px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}
+            >
+              Add
+            </button>
+          </div>
         </div>
 
-        {/* Custom skill */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-          <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px', display: 'block', color: 'var(--text-secondary)' }}>Add custom skill</label>
-            <input
-              type="text"
-              placeholder="Type a custom skill..."
-              value={customSkillInput}
-              onChange={(e) => setCustomSkillInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && customSkillInput.trim()) {
-                  e.preventDefault();
-                  handleAddSkill(customSkillInput.trim(), true);
-                }
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => customSkillInput.trim() && handleAddSkill(customSkillInput.trim(), true)}
-            disabled={!customSkillInput.trim()}
-            className="btn-primary"
-            style={{ padding: '10px 20px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}
-          >
-            Add
-          </button>
-        </div>
-      </div>
+        {/* --- Experience --- */}
+        <div style={sectionDivider} />
+        <div style={sectionStyle}>
+          <h3 style={sectionHeading}>Experience</h3>
 
-      {/* Experience */}
-      <div className="profile-card" style={cardStyle}>
-        <h3 style={sectionHeading}>Experience</h3>
-
-        {/* Internships */}
-        <div style={{ marginBottom: '28px' }}>
-          <div style={subHeading}>
-            <span>Internships</span>
-            {!showExpForm.internship && (
-              <button type="button" onClick={() => openExpForm('internship')} style={addBtnStyle}>+ Add</button>
-            )}
-          </div>
-
-          {showExpForm.internship && (
-            <div style={inlineFormStyle}>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Title *</label>
-                <input type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} placeholder="e.g. Software Engineering Intern" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Company</label>
-                <input type="text" value={expForm.organization || ''} onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })} placeholder="Company name" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Location</label>
-                <input type="text" value={expForm.location || ''} onChange={(e) => setExpForm({ ...expForm, location: e.target.value })} placeholder="City, State" />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
-                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                  <label>Start Date</label>
-                  <input type="month" value={expForm.start_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value ? e.target.value + '-01' : '' })} />
-                </div>
-                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                  <label>End Date</label>
-                  <input type="month" value={expForm.end_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value ? e.target.value + '-01' : '' })} disabled={expForm.is_current} />
-                </div>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', marginBottom: '14px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={expForm.is_current || false} onChange={(e) => setExpForm({ ...expForm, is_current: e.target.checked, end_date: e.target.checked ? undefined : expForm.end_date })} />
-                I currently work here
-              </label>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Description</label>
-                <textarea rows={3} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} placeholder="What did you work on?" style={{ width: '100%', resize: 'vertical' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="btn-primary" onClick={() => handleSaveExperience('internship')} disabled={!expForm.title?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
-                  {editingExpId ? 'Update' : 'Save'}
-                </button>
-                <button type="button" onClick={() => closeExpForm('internship')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
-              </div>
+          {/* Internships */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={subHeading}>
+              <span>Internships</span>
+              {!showExpForm.internship && (
+                <button type="button" onClick={() => openExpForm('internship')} style={addBtnStyle}>+ Add</button>
+              )}
             </div>
-          )}
 
-          {internships.map((exp) => (
-            <div key={exp.id} style={entryCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
-                  {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{exp.organization}</div>}
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    {formatDate(exp.start_date)} — {exp.is_current ? 'Present' : formatDate(exp.end_date)}
-                    {exp.location && ` · ${exp.location}`}
+            {showExpForm.internship && (
+              <div style={inlineFormStyle}>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Title *</label>
+                  <input type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} placeholder="e.g. Software Engineering Intern" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Company</label>
+                  <input type="text" value={expForm.organization || ''} onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })} placeholder="Company name" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Location</label>
+                  <input type="text" value={expForm.location || ''} onChange={(e) => setExpForm({ ...expForm, location: e.target.value })} placeholder="City, State" />
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label>Start Date</label>
+                    <input type="month" value={expForm.start_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value ? e.target.value + '-01' : '' })} />
+                  </div>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label>End Date</label>
+                    <input type="month" value={expForm.end_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value ? e.target.value + '-01' : '' })} disabled={expForm.is_current} />
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button type="button" onClick={() => openExpForm('internship', exp)} style={smallBtnStyle}>Edit</button>
-                  <button type="button" onClick={() => handleDeleteExperience('internship', exp.id)} style={deleteBtnStyle}>Delete</button>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', marginBottom: '14px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={expForm.is_current || false} onChange={(e) => setExpForm({ ...expForm, is_current: e.target.checked, end_date: e.target.checked ? undefined : expForm.end_date })} />
+                  I currently work here
+                </label>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Description</label>
+                  <textarea rows={3} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} placeholder="What did you work on?" style={{ width: '100%', resize: 'vertical' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn-primary" onClick={() => handleSaveExperience('internship')} disabled={!expForm.title?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
+                    {editingExpId ? 'Update' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => closeExpForm('internship')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
                 </div>
               </div>
-              {exp.description && <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
-            </div>
-          ))}
-          {internships.length === 0 && !showExpForm.internship && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No internships added yet.</p>
-          )}
-        </div>
-
-        {/* Projects */}
-        <div style={{ marginBottom: '28px' }}>
-          <div style={subHeading}>
-            <span>Projects</span>
-            {!showExpForm.project && (
-              <button type="button" onClick={() => openExpForm('project')} style={addBtnStyle}>+ Add</button>
             )}
-          </div>
 
-          {showExpForm.project && (
-            <div style={inlineFormStyle}>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Title *</label>
-                <input type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} placeholder="Project name" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Description</label>
-                <textarea rows={3} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} placeholder="What does this project do?" style={{ width: '100%', resize: 'vertical' }} />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Technologies</label>
-                <input type="text" value={expForm.technologies || ''} onChange={(e) => setExpForm({ ...expForm, technologies: e.target.value })} placeholder="e.g. React, Node.js, PostgreSQL" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Link (optional)</label>
-                <input type="url" value={expForm.link || ''} onChange={(e) => setExpForm({ ...expForm, link: e.target.value })} placeholder="https://github.com/..." />
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="btn-primary" onClick={() => handleSaveExperience('project')} disabled={!expForm.title?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
-                  {editingExpId ? 'Update' : 'Save'}
-                </button>
-                <button type="button" onClick={() => closeExpForm('project')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
-              </div>
-            </div>
-          )}
-
-          {projects.map((exp) => (
-            <div key={exp.id} style={entryCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
-                  {exp.technologies && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{exp.technologies}</div>}
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button type="button" onClick={() => openExpForm('project', exp)} style={smallBtnStyle}>Edit</button>
-                  <button type="button" onClick={() => handleDeleteExperience('project', exp.id)} style={deleteBtnStyle}>Delete</button>
-                </div>
-              </div>
-              {exp.description && <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
-              {exp.link && <a href={exp.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontSize: '0.85rem', display: 'inline-block', marginTop: '6px' }}>{exp.link}</a>}
-            </div>
-          ))}
-          {projects.length === 0 && !showExpForm.project && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No projects added yet.</p>
-          )}
-        </div>
-
-        {/* Campus Involvement */}
-        <div>
-          <div style={subHeading}>
-            <span>Campus Involvement</span>
-            {!showExpForm.campus_involvement && (
-              <button type="button" onClick={() => openExpForm('campus_involvement')} style={addBtnStyle}>+ Add</button>
-            )}
-          </div>
-
-          {showExpForm.campus_involvement && (
-            <div style={inlineFormStyle}>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Organization *</label>
-                <input type="text" value={expForm.organization || ''} onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })} placeholder="Organization name" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Role / Position *</label>
-                <input type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} placeholder="e.g. President, Member" />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
-                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                  <label>Start Date</label>
-                  <input type="month" value={expForm.start_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value ? e.target.value + '-01' : '' })} />
-                </div>
-                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                  <label>End Date</label>
-                  <input type="month" value={expForm.end_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value ? e.target.value + '-01' : '' })} disabled={expForm.is_current} />
-                </div>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', marginBottom: '14px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={expForm.is_current || false} onChange={(e) => setExpForm({ ...expForm, is_current: e.target.checked, end_date: e.target.checked ? undefined : expForm.end_date })} />
-                I&apos;m currently involved
-              </label>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Description</label>
-                <textarea rows={3} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} placeholder="Describe your involvement..." style={{ width: '100%', resize: 'vertical' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="btn-primary" onClick={() => handleSaveExperience('campus_involvement')} disabled={!expForm.title?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
-                  {editingExpId ? 'Update' : 'Save'}
-                </button>
-                <button type="button" onClick={() => closeExpForm('campus_involvement')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
-              </div>
-            </div>
-          )}
-
-          {campusInvolvements.map((exp) => (
-            <div key={exp.id} style={entryCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
-                  {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{exp.organization}</div>}
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    {formatDate(exp.start_date)} — {exp.is_current ? 'Present' : formatDate(exp.end_date)}
+            {internships.map((exp) => (
+              <div key={exp.id} style={entryCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
+                    {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{exp.organization}</div>}
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      {formatDate(exp.start_date)} — {exp.is_current ? 'Present' : formatDate(exp.end_date)}
+                      {exp.location && ` · ${exp.location}`}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button type="button" onClick={() => openExpForm('internship', exp)} style={smallBtnStyle}>Edit</button>
+                    <button type="button" onClick={() => handleDeleteExperience('internship', exp.id)} style={deleteBtnStyle}>Delete</button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button type="button" onClick={() => openExpForm('campus_involvement', exp)} style={smallBtnStyle}>Edit</button>
-                  <button type="button" onClick={() => handleDeleteExperience('campus_involvement', exp.id)} style={deleteBtnStyle}>Delete</button>
-                </div>
+                {exp.description && <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
               </div>
-              {exp.description && <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
-            </div>
-          ))}
-          {campusInvolvements.length === 0 && !showExpForm.campus_involvement && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No campus involvement added yet.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Organizations */}
-      <div className="profile-card" style={cardStyle}>
-        <h3 style={sectionHeading}>Organizations</h3>
-
-        {/* Greek Life */}
-        <div style={{ marginBottom: '28px' }}>
-          <div style={subHeading}>
-            <span>Greek Life</span>
-            {!showOrgForm.greek_life && (
-              <button type="button" onClick={() => openOrgForm('greek_life')} style={addBtnStyle}>+ Add</button>
+            ))}
+            {internships.length === 0 && !showExpForm.internship && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No internships added yet.</p>
             )}
           </div>
 
-          {showOrgForm.greek_life && (
-            <div style={inlineFormStyle}>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Organization Name *</label>
-                <input type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="e.g. Alpha Phi Alpha" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Chapter (optional)</label>
-                <input type="text" value={orgForm.chapter || ''} onChange={(e) => setOrgForm({ ...orgForm, chapter: e.target.value })} placeholder="e.g. Alpha Chapter" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Role (optional)</label>
-                <input type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} placeholder="e.g. President, Treasurer" />
-              </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Joined</label>
-                <input type="month" value={orgForm.join_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, join_date: e.target.value ? e.target.value + '-01' : '' })} />
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="btn-primary" onClick={() => handleSaveOrganization('greek_life')} disabled={!orgForm.name?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
-                  {editingOrgId ? 'Update' : 'Save'}
-                </button>
-                <button type="button" onClick={() => closeOrgForm('greek_life')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
-              </div>
+          {/* Projects */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={subHeading}>
+              <span>Projects</span>
+              {!showExpForm.project && (
+                <button type="button" onClick={() => openExpForm('project')} style={addBtnStyle}>+ Add</button>
+              )}
             </div>
-          )}
 
-          {greekLife.map((org) => (
-            <div key={org.id} style={entryCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{org.name}{org.chapter ? ` — ${org.chapter}` : ''}</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    {org.role && `${org.role} · `}{formatDate(org.join_date) && `Joined ${formatDate(org.join_date)}`}
+            {showExpForm.project && (
+              <div style={inlineFormStyle}>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Title *</label>
+                  <input type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} placeholder="Project name" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Description</label>
+                  <textarea rows={3} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} placeholder="What does this project do?" style={{ width: '100%', resize: 'vertical' }} />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Technologies</label>
+                  <input type="text" value={expForm.technologies || ''} onChange={(e) => setExpForm({ ...expForm, technologies: e.target.value })} placeholder="e.g. React, Node.js, PostgreSQL" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Link (optional)</label>
+                  <input type="url" value={expForm.link || ''} onChange={(e) => setExpForm({ ...expForm, link: e.target.value })} placeholder="https://github.com/..." />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn-primary" onClick={() => handleSaveExperience('project')} disabled={!expForm.title?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
+                    {editingExpId ? 'Update' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => closeExpForm('project')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {projects.map((exp) => (
+              <div key={exp.id} style={entryCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
+                    {exp.technologies && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{exp.technologies}</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button type="button" onClick={() => openExpForm('project', exp)} style={smallBtnStyle}>Edit</button>
+                    <button type="button" onClick={() => handleDeleteExperience('project', exp.id)} style={deleteBtnStyle}>Delete</button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button type="button" onClick={() => openOrgForm('greek_life', org)} style={smallBtnStyle}>Edit</button>
-                  <button type="button" onClick={() => handleDeleteOrganization('greek_life', org.id)} style={deleteBtnStyle}>Delete</button>
-                </div>
+                {exp.description && <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
+                {exp.link && <a href={exp.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontSize: '0.85rem', display: 'inline-block', marginTop: '6px' }}>{exp.link}</a>}
               </div>
-            </div>
-          ))}
-          {greekLife.length === 0 && !showOrgForm.greek_life && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No Greek life added.</p>
-          )}
-        </div>
-
-        {/* Clubs / Organizations */}
-        <div>
-          <div style={subHeading}>
-            <span>Clubs / Organizations</span>
-            {!showOrgForm.club && (
-              <button type="button" onClick={() => openOrgForm('club')} style={addBtnStyle}>+ Add</button>
+            ))}
+            {projects.length === 0 && !showExpForm.project && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No projects added yet.</p>
             )}
           </div>
 
-          {showOrgForm.club && (
-            <div style={inlineFormStyle}>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Name *</label>
-                <input type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="e.g. Investment Club" />
+          {/* Campus Involvement */}
+          <div>
+            <div style={subHeading}>
+              <span>Campus Involvement</span>
+              {!showExpForm.campus_involvement && (
+                <button type="button" onClick={() => openExpForm('campus_involvement')} style={addBtnStyle}>+ Add</button>
+              )}
+            </div>
+
+            {showExpForm.campus_involvement && (
+              <div style={inlineFormStyle}>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Organization *</label>
+                  <input type="text" value={expForm.organization || ''} onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })} placeholder="Organization name" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Role / Position *</label>
+                  <input type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} placeholder="e.g. President, Member" />
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label>Start Date</label>
+                    <input type="month" value={expForm.start_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value ? e.target.value + '-01' : '' })} />
+                  </div>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label>End Date</label>
+                    <input type="month" value={expForm.end_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value ? e.target.value + '-01' : '' })} disabled={expForm.is_current} />
+                  </div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', marginBottom: '14px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={expForm.is_current || false} onChange={(e) => setExpForm({ ...expForm, is_current: e.target.checked, end_date: e.target.checked ? undefined : expForm.end_date })} />
+                  I&apos;m currently involved
+                </label>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Description</label>
+                  <textarea rows={3} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} placeholder="Describe your involvement..." style={{ width: '100%', resize: 'vertical' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn-primary" onClick={() => handleSaveExperience('campus_involvement')} disabled={!expForm.title?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
+                    {editingExpId ? 'Update' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => closeExpForm('campus_involvement')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
+                </div>
               </div>
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label>Role / Position (optional)</label>
-                <input type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} placeholder="e.g. Vice President" />
+            )}
+
+            {campusInvolvements.map((exp) => (
+              <div key={exp.id} style={entryCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
+                    {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{exp.organization}</div>}
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      {formatDate(exp.start_date)} — {exp.is_current ? 'Present' : formatDate(exp.end_date)}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button type="button" onClick={() => openExpForm('campus_involvement', exp)} style={smallBtnStyle}>Edit</button>
+                    <button type="button" onClick={() => handleDeleteExperience('campus_involvement', exp.id)} style={deleteBtnStyle}>Delete</button>
+                  </div>
+                </div>
+                {exp.description && <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{exp.description}</p>}
               </div>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
-                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+            ))}
+            {campusInvolvements.length === 0 && !showExpForm.campus_involvement && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No campus involvement added yet.</p>
+            )}
+          </div>
+        </div>
+
+        {/* --- Organizations --- */}
+        <div style={sectionDivider} />
+        <div style={sectionStyle}>
+          <h3 style={sectionHeading}>Organizations</h3>
+
+          {/* Greek Life */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={subHeading}>
+              <span>Greek Life</span>
+              {!showOrgForm.greek_life && (
+                <button type="button" onClick={() => openOrgForm('greek_life')} style={addBtnStyle}>+ Add</button>
+              )}
+            </div>
+
+            {showOrgForm.greek_life && (
+              <div style={inlineFormStyle}>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Organization Name *</label>
+                  <input type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="e.g. Alpha Phi Alpha" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Chapter (optional)</label>
+                  <input type="text" value={orgForm.chapter || ''} onChange={(e) => setOrgForm({ ...orgForm, chapter: e.target.value })} placeholder="e.g. Alpha Chapter" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Role (optional)</label>
+                  <input type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} placeholder="e.g. President, Treasurer" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
                   <label>Joined</label>
                   <input type="month" value={orgForm.join_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, join_date: e.target.value ? e.target.value + '-01' : '' })} />
                 </div>
-                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                  <label>End Date (optional)</label>
-                  <input type="month" value={orgForm.end_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, end_date: e.target.value ? e.target.value + '-01' : '' })} />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn-primary" onClick={() => handleSaveOrganization('greek_life')} disabled={!orgForm.name?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
+                    {editingOrgId ? 'Update' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => closeOrgForm('greek_life')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="btn-primary" onClick={() => handleSaveOrganization('club')} disabled={!orgForm.name?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
-                  {editingOrgId ? 'Update' : 'Save'}
-                </button>
-                <button type="button" onClick={() => closeOrgForm('club')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
-              </div>
-            </div>
-          )}
+            )}
 
-          {clubs.map((org) => (
-            <div key={org.id} style={entryCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{org.name}</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    {org.role && `${org.role} · `}{formatDate(org.join_date)}{org.end_date ? ` — ${formatDate(org.end_date)}` : formatDate(org.join_date) ? ' — Present' : ''}
+            {greekLife.map((org) => (
+              <div key={org.id} style={entryCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{org.name}{org.chapter ? ` — ${org.chapter}` : ''}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      {org.role && `${org.role} · `}{formatDate(org.join_date) && `Joined ${formatDate(org.join_date)}`}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button type="button" onClick={() => openOrgForm('greek_life', org)} style={smallBtnStyle}>Edit</button>
+                    <button type="button" onClick={() => handleDeleteOrganization('greek_life', org.id)} style={deleteBtnStyle}>Delete</button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button type="button" onClick={() => openOrgForm('club', org)} style={smallBtnStyle}>Edit</button>
-                  <button type="button" onClick={() => handleDeleteOrganization('club', org.id)} style={deleteBtnStyle}>Delete</button>
+              </div>
+            ))}
+            {greekLife.length === 0 && !showOrgForm.greek_life && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No Greek life added.</p>
+            )}
+          </div>
+
+          {/* Clubs / Organizations */}
+          <div>
+            <div style={subHeading}>
+              <span>Clubs / Organizations</span>
+              {!showOrgForm.club && (
+                <button type="button" onClick={() => openOrgForm('club')} style={addBtnStyle}>+ Add</button>
+              )}
+            </div>
+
+            {showOrgForm.club && (
+              <div style={inlineFormStyle}>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Name *</label>
+                  <input type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="e.g. Investment Club" />
+                </div>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label>Role / Position (optional)</label>
+                  <input type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} placeholder="e.g. Vice President" />
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label>Joined</label>
+                    <input type="month" value={orgForm.join_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, join_date: e.target.value ? e.target.value + '-01' : '' })} />
+                  </div>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label>End Date (optional)</label>
+                    <input type="month" value={orgForm.end_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, end_date: e.target.value ? e.target.value + '-01' : '' })} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn-primary" onClick={() => handleSaveOrganization('club')} disabled={!orgForm.name?.trim()} style={{ padding: '10px 24px', fontSize: '0.9rem' }}>
+                    {editingOrgId ? 'Update' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => closeOrgForm('club')} style={{ ...smallBtnStyle, padding: '10px 24px' }}>Cancel</button>
                 </div>
               </div>
-            </div>
-          ))}
-          {clubs.length === 0 && !showOrgForm.club && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No clubs or organizations added.</p>
-          )}
+            )}
+
+            {clubs.map((org) => (
+              <div key={org.id} style={entryCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{org.name}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      {org.role && `${org.role} · `}{formatDate(org.join_date)}{org.end_date ? ` — ${formatDate(org.end_date)}` : formatDate(org.join_date) ? ' — Present' : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button type="button" onClick={() => openOrgForm('club', org)} style={smallBtnStyle}>Edit</button>
+                    <button type="button" onClick={() => handleDeleteOrganization('club', org.id)} style={deleteBtnStyle}>Delete</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {clubs.length === 0 && !showOrgForm.club && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No clubs or organizations added.</p>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   );

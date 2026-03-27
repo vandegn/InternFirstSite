@@ -45,8 +45,32 @@ export default function BrowseInternships() {
   const [locationFilter, setLocationFilter] = useState('');
   const [paidFilter, setPaidFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [workModeFilter, setWorkModeFilter] = useState<'all' | 'remote' | 'in-person' | 'hybrid'>('all');
+  const [industryOpen, setIndustryOpen] = useState(false);
+  const [industrySearch, setIndustrySearch] = useState('');
+  const industryRef = useRef<HTMLDivElement>(null);
+  const [salaryOpen, setSalaryOpen] = useState(false);
+  const salaryRef = useRef<HTMLDivElement>(null);
+  const [modeOpen, setModeOpen] = useState(false);
+  const modeRef = useRef<HTMLDivElement>(null);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (industryRef.current && !industryRef.current.contains(e.target as Node)) setIndustryOpen(false);
+      if (salaryRef.current && !salaryRef.current.contains(e.target as Node)) setSalaryOpen(false);
+      if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const filteredIndustries = useMemo(() => {
+    if (!industrySearch.trim()) return INDUSTRIES;
+    const q = industrySearch.toLowerCase();
+    return INDUSTRIES.filter((ind) => ind.toLowerCase().includes(q));
+  }, [industrySearch]);
 
   useEffect(() => {
     async function fetchListings() {
@@ -127,27 +151,335 @@ export default function BrowseInternships() {
     return `${Math.floor(days / 30)}mo ago`;
   }
 
+  const selectStyle: React.CSSProperties = {
+    padding: '8px 32px 8px 12px',
+    borderRadius: '8px',
+    border: '1.5px solid var(--border)',
+    fontSize: '0.82rem',
+    fontWeight: 500,
+    background: 'var(--bg)',
+    color: 'var(--text-primary)',
+    outline: 'none',
+    cursor: 'pointer',
+    appearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 10px center',
+    transition: 'border-color 0.15s ease',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Browse Internships</h2>
-        <Link
-          href="/dashboard/student"
-          style={{
-            fontSize: '0.82rem',
-            padding: '7px 14px',
-            textDecoration: 'none',
-            borderRadius: '8px',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-            fontWeight: 500,
-            transition: 'var(--transition)',
-          }}
-        >
-          Back to Dashboard
-        </Link>
+      {/* Compact filter toolbar */}
+      <div style={{
+        padding: '12px 24px',
+        flexShrink: 0,
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+      }}>
+        {/* Search input */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--text-secondary)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search role, company, or skill..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 12px 8px 36px',
+              borderRadius: '8px',
+              border: '1.5px solid var(--border)',
+              fontSize: '0.85rem',
+              background: 'var(--bg)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              transition: 'border-color 0.15s ease',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        {/* Location input */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--text-secondary)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+          >
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Location..."
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            style={{
+              padding: '8px 12px 8px 32px',
+              borderRadius: '8px',
+              border: '1.5px solid var(--border)',
+              fontSize: '0.82rem',
+              background: 'var(--bg)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              width: '140px',
+              transition: 'border-color 0.15s ease',
+            }}
+          />
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
+
+        {/* Salary dropdown */}
+        <div ref={salaryRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => { setSalaryOpen(!salaryOpen); setModeOpen(false); setIndustryOpen(false); }}
+            style={{
+              ...selectStyle,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: paidFilter !== 'all' ? 600 : 500,
+              borderColor: salaryOpen ? 'var(--primary)' : 'var(--border)',
+            }}
+          >
+            {paidFilter === 'all' ? 'Any Salary' : paidFilter === 'paid' ? 'Paid' : 'Unpaid'}
+          </button>
+          {salaryOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              right: 0,
+              minWidth: '140px',
+              background: '#fff',
+              border: '1.5px solid var(--border)',
+              borderRadius: '10px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+              zIndex: 100,
+              overflow: 'hidden',
+              padding: '4px 0',
+            }}>
+              {([['all', 'Any Salary'], ['paid', 'Paid'], ['unpaid', 'Unpaid']] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => { setPaidFilter(val); setSalaryOpen(false); }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '7px 12px',
+                    border: 'none',
+                    background: paidFilter === val ? 'var(--primary-light)' : 'transparent',
+                    color: paidFilter === val ? 'var(--primary)' : 'var(--text-primary)',
+                    fontWeight: paidFilter === val ? 600 : 400,
+                    fontSize: '0.82rem',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'background 0.1s ease',
+                  }}
+                  onMouseEnter={(e) => { if (paidFilter !== val) e.currentTarget.style.background = 'var(--bg)'; }}
+                  onMouseLeave={(e) => { if (paidFilter !== val) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Work mode dropdown */}
+        <div ref={modeRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => { setModeOpen(!modeOpen); setSalaryOpen(false); setIndustryOpen(false); }}
+            style={{
+              ...selectStyle,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: workModeFilter !== 'all' ? 600 : 500,
+              borderColor: modeOpen ? 'var(--primary)' : 'var(--border)',
+            }}
+          >
+            {workModeFilter === 'all' ? 'Any Mode' : workModeFilter === 'remote' ? 'Remote' : 'In-Person'}
+          </button>
+          {modeOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              right: 0,
+              minWidth: '140px',
+              background: '#fff',
+              border: '1.5px solid var(--border)',
+              borderRadius: '10px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+              zIndex: 100,
+              overflow: 'hidden',
+              padding: '4px 0',
+            }}>
+              {([['all', 'Any Mode'], ['remote', 'Remote'], ['in-person', 'In-Person']] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => { setWorkModeFilter(val as typeof workModeFilter); setModeOpen(false); }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '7px 12px',
+                    border: 'none',
+                    background: workModeFilter === val ? 'var(--primary-light)' : 'transparent',
+                    color: workModeFilter === val ? 'var(--primary)' : 'var(--text-primary)',
+                    fontWeight: workModeFilter === val ? 600 : 400,
+                    fontSize: '0.82rem',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'background 0.1s ease',
+                  }}
+                  onMouseEnter={(e) => { if (workModeFilter !== val) e.currentTarget.style.background = 'var(--bg)'; }}
+                  onMouseLeave={(e) => { if (workModeFilter !== val) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Industry searchable dropdown */}
+        <div ref={industryRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => { setIndustryOpen(!industryOpen); setIndustrySearch(''); setSalaryOpen(false); setModeOpen(false); }}
+            style={{
+              ...selectStyle,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: selectedIndustry ? 600 : 500,
+              borderColor: industryOpen ? 'var(--primary)' : 'var(--border)',
+            }}
+          >
+            {selectedIndustry || 'All Industries'}
+          </button>
+
+          {industryOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              right: 0,
+              width: '220px',
+              background: '#fff',
+              border: '1.5px solid var(--border)',
+              borderRadius: '10px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+              zIndex: 100,
+              overflow: 'hidden',
+            }}>
+              {/* Search input */}
+              <div style={{ padding: '8px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ position: 'relative' }}>
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }}
+                  >
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search industries..."
+                    value={industrySearch}
+                    onChange={(e) => setIndustrySearch(e.target.value)}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '7px 8px 7px 28px',
+                      border: '1.5px solid var(--border)',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      outline: 'none',
+                      background: 'var(--bg)',
+                      color: 'var(--text-primary)',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Options list */}
+              <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '4px 0' }}>
+                <button
+                  onClick={() => { handleIndustryFilter(''); setIndustryOpen(false); }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '7px 12px',
+                    border: 'none',
+                    background: selectedIndustry === '' ? 'var(--primary-light)' : 'transparent',
+                    color: selectedIndustry === '' ? 'var(--primary)' : 'var(--text-primary)',
+                    fontWeight: selectedIndustry === '' ? 600 : 400,
+                    fontSize: '0.82rem',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'background 0.1s ease',
+                  }}
+                  onMouseEnter={(e) => { if (selectedIndustry !== '') e.currentTarget.style.background = 'var(--bg)'; }}
+                  onMouseLeave={(e) => { if (selectedIndustry !== '') e.currentTarget.style.background = 'transparent'; }}
+                >
+                  All Industries
+                </button>
+                {filteredIndustries.map((ind) => (
+                  <button
+                    key={ind}
+                    onClick={() => { handleIndustryFilter(ind); setIndustryOpen(false); }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '7px 12px',
+                      border: 'none',
+                      background: selectedIndustry === ind ? 'var(--primary-light)' : 'transparent',
+                      color: selectedIndustry === ind ? 'var(--primary)' : 'var(--text-primary)',
+                      fontWeight: selectedIndustry === ind ? 600 : 400,
+                      fontSize: '0.82rem',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'background 0.1s ease',
+                    }}
+                    onMouseEnter={(e) => { if (selectedIndustry !== ind) e.currentTarget.style.background = 'var(--bg)'; }}
+                    onMouseLeave={(e) => { if (selectedIndustry !== ind) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {ind}
+                  </button>
+                ))}
+                {filteredIndustries.length === 0 && (
+                  <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                    No matching industries
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Split view */}
@@ -174,139 +506,9 @@ export default function BrowseInternships() {
               borderRight: '1px solid var(--border)',
               display: 'flex',
               flexDirection: 'column',
-              overflow: 'hidden',
             }}
           >
-            {/* Search & filters */}
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-              {/* Search bar */}
-              <div style={{ position: 'relative', marginBottom: '10px' }}>
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--text-secondary)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Search roles, companies..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px 8px 32px',
-                    borderRadius: '8px',
-                    border: '1.5px solid var(--border)',
-                    fontSize: '0.82rem',
-                    background: 'var(--bg)',
-                    color: 'var(--text-primary)',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              {/* Filter dropdowns row */}
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {/* Industry dropdown */}
-                <select
-                  value={selectedIndustry}
-                  onChange={(e) => handleIndustryFilter(e.target.value)}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: '6px',
-                    border: '1.5px solid var(--border)',
-                    fontSize: '0.78rem',
-                    background: 'var(--bg)',
-                    color: selectedIndustry ? 'var(--primary)' : 'var(--text-secondary)',
-                    fontWeight: selectedIndustry ? 600 : 400,
-                    outline: 'none',
-                    cursor: 'pointer',
-                    flex: 1,
-                    minWidth: 0,
-                  }}
-                >
-                  <option value="">All Industries</option>
-                  {INDUSTRIES.map((ind) => (
-                    <option key={ind} value={ind}>{ind}</option>
-                  ))}
-                </select>
-
-                {/* Location input */}
-                <input
-                  type="text"
-                  placeholder="Location..."
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: '6px',
-                    border: '1.5px solid var(--border)',
-                    fontSize: '0.78rem',
-                    background: 'var(--bg)',
-                    color: 'var(--text-primary)',
-                    outline: 'none',
-                    width: '90px',
-                    flexShrink: 0,
-                  }}
-                />
-
-                {/* Pay dropdown */}
-                <select
-                  value={paidFilter}
-                  onChange={(e) => setPaidFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: '6px',
-                    border: '1.5px solid var(--border)',
-                    fontSize: '0.78rem',
-                    background: 'var(--bg)',
-                    color: paidFilter !== 'all' ? 'var(--primary)' : 'var(--text-secondary)',
-                    fontWeight: paidFilter !== 'all' ? 600 : 400,
-                    outline: 'none',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                >
-                  <option value="all">Any Pay</option>
-                  <option value="paid">Paid</option>
-                  <option value="unpaid">Unpaid</option>
-                </select>
-
-                {/* Work mode dropdown */}
-                <select
-                  value={workModeFilter}
-                  onChange={(e) => setWorkModeFilter(e.target.value as 'all' | 'remote' | 'in-person')}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: '6px',
-                    border: '1.5px solid var(--border)',
-                    fontSize: '0.78rem',
-                    background: 'var(--bg)',
-                    color: workModeFilter !== 'all' ? 'var(--primary)' : 'var(--text-secondary)',
-                    fontWeight: workModeFilter !== 'all' ? 600 : 400,
-                    outline: 'none',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                >
-                  <option value="all">Any Mode</option>
-                  <option value="remote">Remote</option>
-                  <option value="in-person">In-Person</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Scrollable listing cards */}
-            <div style={{ overflowY: 'auto', flex: 1 }}>
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             {filteredListings.map((listing) => (
               <div
                 key={listing.id}
@@ -383,9 +585,11 @@ export default function BrowseInternships() {
               </div>
             ))}
 
-            {/* Pagination inside left panel */}
+            </div>
+
+            {/* Pagination pinned at bottom */}
             {totalPages > 1 && (
-              <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
                 <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => { setCurrentPage(p); setSelectedId(null); }} />
               </div>
             )}

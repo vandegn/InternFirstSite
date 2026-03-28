@@ -385,3 +385,86 @@ create policy "Employers can view organizations of applicants"
     )
   );
 
+-- ============================================
+-- 14. UNIVERSITY-EMPLOYER PARTNERSHIPS
+-- ============================================
+create table university_employer_partnerships (
+  id uuid primary key default gen_random_uuid(),
+  university_id uuid references universities(id) on delete cascade not null,
+  employer_id uuid references employers(id) on delete cascade not null,
+  status text not null default 'active' check (status in ('active', 'inactive')),
+  created_at timestamptz default now() not null,
+  unique(university_id, employer_id)
+);
+
+create index idx_uep_university on university_employer_partnerships(university_id);
+create index idx_uep_employer on university_employer_partnerships(employer_id);
+create index idx_uep_status on university_employer_partnerships(status);
+
+alter table university_employer_partnerships enable row level security;
+
+create policy "Authenticated users can view active partnerships"
+  on university_employer_partnerships for select to authenticated
+  using (true);
+
+create policy "University admins can insert partnerships for their university"
+  on university_employer_partnerships for insert to authenticated
+  with check (
+    university_id in (
+      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
+    )
+  );
+
+create policy "University admins can update partnerships for their university"
+  on university_employer_partnerships for update to authenticated
+  using (
+    university_id in (
+      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
+    )
+  );
+
+create policy "University admins can delete partnerships for their university"
+  on university_employer_partnerships for delete to authenticated
+  using (
+    university_id in (
+      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
+    )
+  );
+
+-- =============================================
+-- CAREER SURVEY RESPONSES
+-- =============================================
+
+CREATE TABLE career_survey_responses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id uuid NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
+  industries text[] NOT NULL DEFAULT '{}',
+  work_environment text NOT NULL,
+  preferred_duration text NOT NULL,
+  skills text[] NOT NULL DEFAULT '{}',
+  career_goals text DEFAULT '',
+  completed_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_career_survey_student ON career_survey_responses(student_id);
+
+ALTER TABLE career_survey_responses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Students can view own survey"
+  ON career_survey_responses FOR SELECT
+  USING (student_id IN (
+    SELECT id FROM students WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "Students can insert own survey"
+  ON career_survey_responses FOR INSERT
+  WITH CHECK (student_id IN (
+    SELECT id FROM students WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "Students can update own survey"
+  ON career_survey_responses FOR UPDATE
+  USING (student_id IN (
+    SELECT id FROM students WHERE user_id = auth.uid()
+  ));

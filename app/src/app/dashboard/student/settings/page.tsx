@@ -8,7 +8,11 @@ import {
   getStudentSkills, addStudentSkill, removeStudentSkill,
   getStudentExperiences, addStudentExperience, updateStudentExperience, deleteStudentExperience,
   getStudentOrganizations, addStudentOrganization, updateStudentOrganization, deleteStudentOrganization,
+  getCareerSurvey, upsertCareerSurvey,
 } from '@/lib/supabase';
+import type { CareerSurveyData } from '@/lib/supabase';
+import CareerSurveyModal from '@/components/CareerSurveyModal';
+import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 import { MAJORS, SKILLS } from '@/lib/constants';
 
 interface Resume {
@@ -103,6 +107,10 @@ export default function StudentSettings() {
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
   const [orgForm, setOrgForm] = useState<Partial<Organization>>({});
 
+  // Career Preferences
+  const [careerSurvey, setCareerSurvey] = useState<(CareerSurveyData & { completed_at: string; updated_at: string }) | null>(null);
+  const [surveyModalOpen, setSurveyModalOpen] = useState(false);
+
   const majorDropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,11 +138,13 @@ export default function StudentSettings() {
         const studentResumes = await getStudentResumes(student.id);
         setResumes(studentResumes);
 
-        const [studentSkills, allExperiences, allOrganizations] = await Promise.all([
+        const [studentSkills, allExperiences, allOrganizations, surveyData] = await Promise.all([
           getStudentSkills(student.id),
           getStudentExperiences(student.id),
           getStudentOrganizations(student.id),
+          getCareerSurvey(student.id),
         ]);
+        setCareerSurvey(surveyData);
         setSkills(studentSkills);
         setInternships(allExperiences.filter((e: Experience) => e.type === 'internship'));
         setProjects(allExperiences.filter((e: Experience) => e.type === 'project'));
@@ -1146,6 +1156,117 @@ export default function StudentSettings() {
             )}
           </div>
         </div>
+
+        <div style={sectionDivider} />
+        <div style={sectionStyle}>
+          <h3 style={sectionHeading}>Career Preferences</h3>
+          {careerSurvey ? (
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Industries</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
+                    {careerSurvey.industries.map(ind => (
+                      <span key={ind} style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, background: 'var(--accent-light, #eef5da)', color: 'var(--accent-dark, #8ab32e)', border: '1px solid rgba(159, 198, 60, 0.25)' }}>{ind}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Work Environment</div>
+                  <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, background: 'var(--primary-light)', color: 'var(--primary)' }}>
+                    {careerSurvey.work_environment === 'in_person' ? 'In-person' : careerSurvey.work_environment === 'remote' ? 'Remote' : careerSurvey.work_environment === 'hybrid' ? 'Hybrid' : 'No preference'}
+                  </span>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Preferred Duration</div>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text)' }}>
+                    {careerSurvey.preferred_duration === '1_month' ? '1 month' : careerSurvey.preferred_duration === '3_months' ? '3 months' : careerSurvey.preferred_duration === '6_months' ? '6 months' : '12 months'}
+                  </span>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Skills to Develop</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
+                    {careerSurvey.skills.map(skill => (
+                      <span key={skill} style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, background: '#e0f2fe', color: '#0369a1', border: '1px solid rgba(3, 105, 161, 0.15)' }}>{skill}</span>
+                    ))}
+                  </div>
+                </div>
+                {careerSurvey.career_goals && (
+                  <div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Career Goals</div>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text)', lineHeight: 1.6, margin: 0 }}>{careerSurvey.career_goals}</p>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSurveyModalOpen(true)}
+                style={{
+                  marginTop: '20px',
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  border: '1px solid var(--border)',
+                  background: '#fff',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                Update preferences
+              </button>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }}>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: '0 0 14px' }}>No career preferences set yet</p>
+              <button
+                type="button"
+                onClick={() => setSurveyModalOpen(true)}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  background: 'var(--accent, #9FC63C)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                Take career goals survey
+              </button>
+            </div>
+          )}
+        </div>
+
+        <CareerSurveyModal
+          open={surveyModalOpen}
+          onClose={() => setSurveyModalOpen(false)}
+          initialData={careerSurvey ? {
+            industries: careerSurvey.industries,
+            work_environment: careerSurvey.work_environment,
+            preferred_duration: careerSurvey.preferred_duration,
+            skills: careerSurvey.skills,
+            career_goals: careerSurvey.career_goals,
+          } : null}
+          onSubmit={async (data: CareerSurveyFormData) => {
+            if (!studentId) return;
+            try {
+              await upsertCareerSurvey(studentId, data);
+              const updated = await getCareerSurvey(studentId);
+              setCareerSurvey(updated);
+              setSurveyModalOpen(false);
+            } catch (err) {
+              console.error('Failed to save survey:', err);
+            }
+          }}
+        />
 
       </div>
     </div>

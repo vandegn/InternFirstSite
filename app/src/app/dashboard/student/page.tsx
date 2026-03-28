@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { supabase, getProfile, getStudentByUserId, getStudentStats, getStudentApplications } from '@/lib/supabase';
+import { supabase, getProfile, getStudentByUserId, getStudentStats, getStudentApplications, getCareerSurvey, upsertCareerSurvey } from '@/lib/supabase';
 import Calendar, { CalendarEvent } from '@/components/Calendar';
+import CareerSurveyModal from '@/components/CareerSurveyModal';
+import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
@@ -90,7 +92,10 @@ export default function StudentDashboard() {
   const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [rsvpEventIds, setRsvpEventIds] = useState<Set<string>>(new Set());
-  const [surveyDismissed, setSurveyDismissed] = useState(false);
+  const [surveyCompleted, setSurveyCompleted] = useState(false);
+  const [surveyLoaded, setSurveyLoaded] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [surveyOpen, setSurveyOpen] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -111,6 +116,11 @@ export default function StudentDashboard() {
       const student = await getStudentByUserId(user.id);
       if (student) {
         setStudentId(student.id);
+        const existingSurvey = await getCareerSurvey(student.id);
+        if (existingSurvey) {
+          setSurveyCompleted(true);
+        }
+        setSurveyLoaded(true);
         const [stats, apps] = await Promise.all([
           getStudentStats(student.id),
           getStudentApplications(student.id),
@@ -191,7 +201,7 @@ export default function StudentDashboard() {
     <div style={{ padding: '28px 32px', maxWidth: '1280px' }}>
 
       {/* ── Survey Banner ── */}
-      {!surveyDismissed && (
+      {surveyLoaded && !surveyCompleted && !bannerDismissed && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -215,8 +225,8 @@ export default function StudentDashboard() {
               Help us match you with better internship opportunities tailored to your interests.
             </div>
           </div>
-          <Link
-            href="/dashboard/student/surveys"
+          <button
+            onClick={() => setSurveyOpen(true)}
             style={{
               padding: '7px 16px',
               background: 'var(--accent, #9FC63C)',
@@ -224,16 +234,17 @@ export default function StudentDashboard() {
               borderRadius: '8px',
               fontSize: '0.8rem',
               fontWeight: 600,
-              textDecoration: 'none',
+              border: 'none',
+              cursor: 'pointer',
               whiteSpace: 'nowrap',
               transition: 'opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               flexShrink: 0,
             }}
           >
             Take survey
-          </Link>
+          </button>
           <button
-            onClick={() => setSurveyDismissed(true)}
+            onClick={() => setBannerDismissed(true)}
             style={{
               background: 'none',
               border: 'none',
@@ -605,6 +616,21 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
+
+      <CareerSurveyModal
+        open={surveyOpen}
+        onClose={() => setSurveyOpen(false)}
+        onSubmit={async (data: CareerSurveyFormData) => {
+          if (!studentId) return;
+          try {
+            await upsertCareerSurvey(studentId, data);
+            setSurveyCompleted(true);
+            setSurveyOpen(false);
+          } catch (err) {
+            console.error('Failed to save survey:', err);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -50,7 +50,7 @@ npm run lint     # ESLint
 
 **Auth flow:** Supabase Auth (email/password + Google OAuth) → email verification required (Supabase built-in, skipped for OAuth) → `/auth/callback` server route creates profile + role data from `user_metadata` → role-based redirect to dashboard. Unverified users are redirected to `/verify-email`. `.edu` email required for students. Key auth helpers are in `src/lib/supabase.ts` (`getProfile`, `createProfileAndRoleData`, `isEduEmail`).
 
-**Database:** Supabase PostgreSQL with RLS enabled on all tables. Core tables: `profiles`, `students`, `employers`, `internship_listings`, `applications`, `messages`, `student_skills`, `student_experiences`, `student_organizations`, `student_resumes`, `listing_views`. Schema is in `supabase/schema.sql`.
+**Database:** Supabase PostgreSQL with RLS enabled on all tables. Core tables: `profiles`, `students`, `employers`, `internship_listings`, `applications`, `messages`, `student_skills`, `student_experiences`, `student_organizations`, `student_resumes`, `listing_views`, `career_survey_responses`. Schema is in `supabase/schema.sql`.
 
 **Styling:** Global CSS variables in `globals.css` (primary color `#7B61FF`), Tailwind CSS utilities, and custom component classes (`.btn-*`, `.card-*`, `.stat-card`, `.dash-*`, `.listing-card`, `.avatar-dropdown`). Font: DM Sans.
 
@@ -83,6 +83,14 @@ Students browse active listings at `/dashboard/student/internships` (filterable 
 
 All applications are in-platform: student clicks "Apply Now" → creates row in `applications` table → shows status (Applied, Under Review, Interviewing, Offered, Not Selected). Students can optionally attach a resume. There are no external application links.
 
+## Career Goals Survey
+
+The student dashboard shows a banner prompting students to complete a 5-step career goals survey (industries, work environment, duration, skills, career goals). Answers are stored in `career_survey_responses` (one row per student, upserted on retake). The banner hides when `completed_at` exists. Students can retake the survey from the "Career Preferences" section on the settings page, which pre-fills the modal with existing answers.
+
+The `industries` column (`text[]`) is designed to eventually replace `MAJOR_TO_INDUSTRIES` in `getRecommendedListings` for more accurate internship matching. See `docs/superpowers/specs/2026-03-28-career-survey-storage-design.md` for full design.
+
+**Important:** This is the platform-owned career goals survey. It is separate from the university survey builder (a future feature where universities create custom surveys with targeting, scheduling, and analytics). The two systems are intentionally decoupled.
+
 ## Key Conventions
 
 - Pages use `"use client"` directive — currently client-side heavy with Supabase JS calls
@@ -101,6 +109,7 @@ All applications are in-platform: student clicks "Apply Now" → creates row in 
 - **Resumes:** `uploadResume`, `getStudentResumes`, `deleteResume`
 - **Listings:** `createListing`, `updateListing`, `getActiveListings`, `getListingById`, `getRecommendedListings`, `getListingViewCounts`, `trackListingView`
 - **Applications:** `applyToListing`, `applyToListingWithResume`, `getApplicationStatus`
+- **Career Survey:** `getCareerSurvey`, `upsertCareerSurvey`
 - **Messaging:** `getConversations`, `getMessagesWith`, `sendMessage`, `markMessagesAsRead`, `getUnreadCount`
 - **Constants** (`src/lib/constants.ts`): `INDUSTRIES`, `MAJORS`, `MAJOR_TO_INDUSTRIES`, `SKILLS`
 
@@ -117,3 +126,4 @@ All applications are in-platform: student clicks "Apply Now" → creates row in 
 See `docs/ROADMAP.md` for the spec alignment roadmap and deferred items. See `docs/UNIVERSITY_PORTAL_ARCHIVE.md` for documentation of the removed university portal (halted per leadership decision 2026-03-27). Key items:
 - Supabase Storage bucket for image uploads needs setup (`images` bucket, public)
 - Employer model is 1:1 (one account = one company); a `companies` table is planned
+- Career survey `industries` column is ready to power recommendations but `getRecommendedListings` still uses `MAJOR_TO_INDUSTRIES` — wiring is a future task

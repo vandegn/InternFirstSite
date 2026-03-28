@@ -706,6 +706,135 @@ export async function deleteStudentOrganization(orgId: string) {
   if (error) throw error;
 }
 
+// ---- Career Survey ----
+
+export type CareerSurveyData = {
+  industries: string[];
+  work_environment: string;
+  preferred_duration: string;
+  skills: string[];
+  career_goals: string;
+};
+
+export async function getCareerSurvey(studentId: string): Promise<(CareerSurveyData & { completed_at: string; updated_at: string }) | null> {
+  const { data, error } = await supabase
+    .from('career_survey_responses')
+    .select('industries, work_environment, preferred_duration, skills, career_goals, completed_at, updated_at')
+    .eq('student_id', studentId)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function upsertCareerSurvey(studentId: string, data: CareerSurveyData) {
+  const { error } = await supabase
+    .from('career_survey_responses')
+    .upsert(
+      {
+        student_id: studentId,
+        industries: data.industries,
+        work_environment: data.work_environment,
+        preferred_duration: data.preferred_duration,
+        skills: data.skills,
+        career_goals: data.career_goals,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'student_id' }
+    );
+  if (error) throw error;
+}
+
+// ---- Events ----
+
+export async function getEventById(eventId: string) {
+  const { data, error } = await supabase
+    .from('university_events')
+    .select('*, university:universities(name, logo_url)')
+    .eq('id', eventId)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function getEventRegistrationCount(eventId: string) {
+  const { count, error } = await supabase
+    .from('event_registrations')
+    .select('*', { count: 'exact', head: true })
+    .eq('event_id', eventId);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function registerForEvent(eventId: string, studentId: string) {
+  const { data, error } = await supabase
+    .from('event_registrations')
+    .insert({ event_id: eventId, student_id: studentId })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function unregisterFromEvent(eventId: string, studentId: string) {
+  const { error } = await supabase
+    .from('event_registrations')
+    .delete()
+    .eq('event_id', eventId)
+    .eq('student_id', studentId);
+  if (error) throw error;
+}
+
+export async function isRegisteredForEvent(eventId: string, studentId: string) {
+  const { data, error } = await supabase
+    .from('event_registrations')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('student_id', studentId)
+    .maybeSingle();
+  if (error) return false;
+  return !!data;
+}
+
+// ---- University Partner Listings ----
+
+export async function getUniversityPartnerListings(
+  universityId: string,
+  page = 1,
+  pageSize = 20,
+  industry?: string
+) {
+  const { data: partnerships } = await supabase
+    .from('university_employer_partnerships')
+    .select('employer_id')
+    .eq('university_id', universityId)
+    .eq('status', 'active');
+
+  if (!partnerships || partnerships.length === 0) {
+    return { data: [], totalCount: 0 };
+  }
+
+  const employerIds = partnerships.map(p => p.employer_id);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('internship_listings')
+    .select('*, employers(company_name, logo_url)', { count: 'exact' })
+    .eq('status', 'active')
+    .in('employer_id', employerIds);
+
+  if (industry) {
+    query = query.eq('industry', industry);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) return { data: [], totalCount: 0 };
+  return { data: data ?? [], totalCount: count ?? 0 };
+}
+
 export async function updateListing(listingId: string, fields: {
   title?: string;
   description?: string;

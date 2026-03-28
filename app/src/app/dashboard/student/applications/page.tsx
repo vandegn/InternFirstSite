@@ -25,28 +25,37 @@ type Application = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  applied: 'Applied',
+  applied: 'Application Submitted',
+  under_review: 'Under Review',
   reviewed: 'Under Review',
-  interviewing: 'Interviewing',
-  offered: 'Offered',
-  rejected: 'Not Selected',
+  interviewing: 'Interview Requested',
+  interview_scheduled: 'Interview Scheduled',
+  offered: 'Offer Extended',
+  rejected: 'Rejected/Closed',
+  closed: 'Rejected/Closed',
+  not_selected: 'Rejected/Closed',
 };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  applied: { bg: '#e0e7ff', color: '#3730a3' },
+  applied: { bg: '#eff6ff', color: '#2563eb' },
+  under_review: { bg: '#fef3c7', color: '#92400e' },
   reviewed: { bg: '#fef3c7', color: '#92400e' },
-  interviewing: { bg: '#dbeafe', color: '#1e40af' },
-  offered: { bg: '#d1fae5', color: '#065f46' },
-  rejected: { bg: '#fee2e2', color: '#991b1b' },
+  interviewing: { bg: '#f5f3ff', color: '#7c3aed' },
+  interview_scheduled: { bg: '#ecfdf5', color: '#059669' },
+  offered: { bg: '#ecfdf5', color: '#059669' },
+  rejected: { bg: '#fef2f2', color: '#dc2626' },
+  closed: { bg: '#f3f4f6', color: '#6b7280' },
+  not_selected: { bg: '#fef2f2', color: '#dc2626' },
 };
 
 const FILTER_OPTIONS = [
   { value: '', label: 'All Statuses' },
-  { value: 'applied', label: 'Applied' },
-  { value: 'reviewed', label: 'Under Review' },
-  { value: 'interviewing', label: 'Interviewing' },
-  { value: 'offered', label: 'Offered' },
-  { value: 'rejected', label: 'Not Selected' },
+  { value: 'applied', label: 'Application Submitted' },
+  { value: 'under_review', label: 'Under Review' },
+  { value: 'interviewing', label: 'Interview Requested' },
+  { value: 'interview_scheduled', label: 'Interview Scheduled' },
+  { value: 'offered', label: 'Offer Extended' },
+  { value: 'rejected', label: 'Rejected/Closed' },
 ];
 
 function formatDate(dateStr: string) {

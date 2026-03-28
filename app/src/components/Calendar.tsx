@@ -27,7 +27,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   career_fair: '#9FC63C',
   info_session: '#f59e0b',
   deadline: '#ef4444',
-  appointment: '#8b5cf6',
+  appointment: '#1A2D49',
   event: '#1A2D49',
 };
 
@@ -278,7 +278,7 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
                 fontSize: 14,
                 fontWeight: isToday ? 700 : cell.inMonth ? 500 : 400,
                 color: isToday
-                  ? '#fff'
+                  ? 'var(--primary)'
                   : isSelected
                     ? 'var(--primary)'
                     : cell.inMonth

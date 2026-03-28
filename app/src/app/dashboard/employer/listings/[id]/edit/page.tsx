@@ -17,6 +17,7 @@ export default function EditListingPage() {
   const [isRemote, setIsRemote] = useState(false);
   const [compensation, setCompensation] = useState('');
   const [requirements, setRequirements] = useState('');
+  const [keyResponsibilities, setKeyResponsibilities] = useState('');
   const [industry, setIndustry] = useState('');
   const [status, setStatus] = useState('active');
   const [applicationDeadline, setApplicationDeadline] = useState('');
@@ -47,6 +48,7 @@ export default function EditListingPage() {
         setIsRemote(listing.is_remote || false);
         setCompensation(listing.compensation || '');
         setRequirements(listing.requirements || '');
+        setKeyResponsibilities(listing.key_responsibilities || '');
         setIndustry(listing.industry || '');
         setStatus(listing.status || 'active');
         setApplicationDeadline(listing.application_deadline || '');
@@ -73,6 +75,7 @@ export default function EditListingPage() {
         is_remote: isRemote,
         compensation: compensation || undefined,
         requirements: requirements || undefined,
+        key_responsibilities: keyResponsibilities || undefined,
         industry,
         application_deadline: applicationDeadline || null,
       });
@@ -235,6 +238,18 @@ export default function EditListingPage() {
               rows={4}
               value={requirements}
               onChange={(e) => setRequirements(e.target.value)}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="keyResponsibilities">Key Responsibilities</label>
+            <textarea
+              id="keyResponsibilities"
+              placeholder="List the main duties and responsibilities of the role..."
+              rows={4}
+              value={keyResponsibilities}
+              onChange={(e) => setKeyResponsibilities(e.target.value)}
               style={{ width: '100%', resize: 'vertical' }}
             />
           </div>

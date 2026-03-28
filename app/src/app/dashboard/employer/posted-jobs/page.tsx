@@ -1,5 +1,6 @@
 'use client';
 
+import ReactMarkdown from 'react-markdown';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, getEmployerByUserId, getEmployerListingsWithStats, getEmployerApplications, updateListing, updateApplicationStatus } from '@/lib/supabase';
@@ -14,6 +15,7 @@ type ListingWithStats = {
   industry: string;
   description: string;
   requirements: string | null;
+  key_responsibilities: string | null;
   application_deadline: string | null;
   created_at: string;
   applicant_count: number;
@@ -339,18 +341,20 @@ export default function PostedJobsPage() {
               </div>
             </div>
 
-            {/* Description */}
+            {/* Listing content */}
             <div className="profile-card" style={{ padding: '24px', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Description</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                {selectedListing.description}
-              </p>
               {selectedListing.requirements && (
                 <>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginTop: '20px', marginBottom: '12px' }}>Requirements</h3>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                    {selectedListing.requirements}
-                  </p>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Qualifications</h3>
+                  <div className="markdown-content"><ReactMarkdown>{selectedListing.requirements}</ReactMarkdown></div>
+                </>
+              )}
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginTop: selectedListing.requirements ? '20px' : '0', marginBottom: '12px' }}>Job Overview</h3>
+              <div className="markdown-content"><ReactMarkdown>{selectedListing.description}</ReactMarkdown></div>
+              {selectedListing.key_responsibilities && (
+                <>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginTop: '20px', marginBottom: '12px' }}>Key Responsibilities</h3>
+                  <div className="markdown-content"><ReactMarkdown>{selectedListing.key_responsibilities || ''}</ReactMarkdown></div>
                 </>
               )}
             </div>

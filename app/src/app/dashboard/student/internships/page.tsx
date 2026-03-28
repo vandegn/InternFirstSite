@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { supabase, getActiveListings } from '@/lib/supabase';
 import { INDUSTRIES } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
+import ReactMarkdown from 'react-markdown';
 
 type Listing = {
   id: string;
@@ -16,6 +17,7 @@ type Listing = {
   requirements: string | null;
   industry: string;
   created_at: string;
+  key_responsibilities: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
@@ -31,6 +33,12 @@ export default function BrowseInternships() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIndustry, setSelectedIndustry] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detailPanelRef = useRef<HTMLDivElement>(null);
+
+  const selectListing = (id: string) => {
+    setSelectedId(id);
+    detailPanelRef.current?.scrollTo({ top: 0 });
+  };
 
   // Search & filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,144 +127,27 @@ export default function BrowseInternships() {
     return `${Math.floor(days / 30)}mo ago`;
   }
 
-  const pillStyle = (active: boolean): React.CSSProperties => ({
-    padding: '5px 14px',
-    borderRadius: '20px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: 500,
-    background: active ? 'var(--primary)' : 'var(--primary-light)',
-    color: active ? '#fff' : 'var(--primary)',
-    transition: 'var(--transition)',
-    whiteSpace: 'nowrap',
-  });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 'calc(100vh - 64px)' }}>
-      {/* Top bar: search + filters */}
-      <div style={{ padding: '20px 24px 0', flexShrink: 0 }}>
-        {/* Header row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, margin: 0 }}>Browse Internships</h2>
-          <Link
-            href="/dashboard/student"
-            style={{
-              fontSize: '0.82rem',
-              padding: '7px 14px',
-              textDecoration: 'none',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              color: 'var(--text-secondary)',
-              fontWeight: 500,
-              transition: 'var(--transition)',
-            }}
-          >
-            Back to Dashboard
-          </Link>
-        </div>
-
-        {/* Search bar */}
-        <div style={{ position: 'relative', marginBottom: '12px' }}>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--text-secondary)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search by role, company, or skill..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '11px 16px 11px 42px',
-              borderRadius: '10px',
-              border: '1.5px solid var(--border)',
-              fontSize: '0.9rem',
-              background: 'var(--bg)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              transition: 'var(--transition)',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        {/* Filter row */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
-          {/* Location input */}
-          <input
-            type="text"
-            placeholder="Filter by location..."
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-            style={{
-              padding: '7px 12px',
-              borderRadius: '8px',
-              border: '1.5px solid var(--border)',
-              fontSize: '0.82rem',
-              background: 'var(--bg)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              width: '160px',
-              transition: 'var(--transition)',
-            }}
-          />
-
-          {/* Divider */}
-          <div style={{ width: '1px', height: '24px', background: 'var(--border)' }} />
-
-          {/* Paid / Unpaid */}
-          {(['all', 'paid', 'unpaid'] as const).map((val) => (
-            <button
-              key={val}
-              onClick={() => setPaidFilter(val)}
-              style={pillStyle(paidFilter === val)}
-            >
-              {val === 'all' ? 'Any Pay' : val === 'paid' ? 'Paid' : 'Unpaid'}
-            </button>
-          ))}
-
-          {/* Divider */}
-          <div style={{ width: '1px', height: '24px', background: 'var(--border)' }} />
-
-          {/* Work mode */}
-          {(['all', 'remote', 'in-person'] as const).map((val) => (
-            <button
-              key={val}
-              onClick={() => setWorkModeFilter(val)}
-              style={pillStyle(workModeFilter === val)}
-            >
-              {val === 'all' ? 'Any Mode' : val === 'remote' ? 'Remote' : 'In-Person'}
-            </button>
-          ))}
-        </div>
-
-        {/* Industry pills */}
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
-          <button onClick={() => handleIndustryFilter('')} style={pillStyle(selectedIndustry === '')}>
-            All Industries
-          </button>
-          {INDUSTRIES.map((ind) => (
-            <button
-              key={ind}
-              onClick={() => handleIndustryFilter(ind)}
-              style={pillStyle(selectedIndustry === ind)}
-            >
-              {ind}
-            </button>
-          ))}
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Browse Internships</h2>
+        <Link
+          href="/dashboard/student"
+          style={{
+            fontSize: '0.82rem',
+            padding: '7px 14px',
+            textDecoration: 'none',
+            borderRadius: '8px',
+            border: '1px solid var(--border)',
+            color: 'var(--text-secondary)',
+            fontWeight: 500,
+            transition: 'var(--transition)',
+          }}
+        >
+          Back to Dashboard
+        </Link>
       </div>
 
       {/* Split view */}
@@ -274,20 +165,152 @@ export default function BrowseInternships() {
         </div>
       ) : (
         <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          {/* Left panel - listing cards */}
+          {/* Left panel - filters + listing cards */}
           <div
             style={{
-              width: '40%',
-              minWidth: '320px',
+              width: '35%',
+              minWidth: '300px',
+              maxWidth: '380px',
               borderRight: '1px solid var(--border)',
-              overflowY: 'auto',
-              padding: '0',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
             }}
           >
+            {/* Search & filters */}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+              {/* Search bar */}
+              <div style={{ position: 'relative', marginBottom: '10px' }}>
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--text-secondary)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search roles, companies..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 32px',
+                    borderRadius: '8px',
+                    border: '1.5px solid var(--border)',
+                    fontSize: '0.82rem',
+                    background: 'var(--bg)',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Filter dropdowns row */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {/* Industry dropdown */}
+                <select
+                  value={selectedIndustry}
+                  onChange={(e) => handleIndustryFilter(e.target.value)}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: '1.5px solid var(--border)',
+                    fontSize: '0.78rem',
+                    background: 'var(--bg)',
+                    color: selectedIndustry ? 'var(--primary)' : 'var(--text-secondary)',
+                    fontWeight: selectedIndustry ? 600 : 400,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <option value="">All Industries</option>
+                  {INDUSTRIES.map((ind) => (
+                    <option key={ind} value={ind}>{ind}</option>
+                  ))}
+                </select>
+
+                {/* Location input */}
+                <input
+                  type="text"
+                  placeholder="Location..."
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: '1.5px solid var(--border)',
+                    fontSize: '0.78rem',
+                    background: 'var(--bg)',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    width: '90px',
+                    flexShrink: 0,
+                  }}
+                />
+
+                {/* Pay dropdown */}
+                <select
+                  value={paidFilter}
+                  onChange={(e) => setPaidFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: '1.5px solid var(--border)',
+                    fontSize: '0.78rem',
+                    background: 'var(--bg)',
+                    color: paidFilter !== 'all' ? 'var(--primary)' : 'var(--text-secondary)',
+                    fontWeight: paidFilter !== 'all' ? 600 : 400,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  <option value="all">Any Pay</option>
+                  <option value="paid">Paid</option>
+                  <option value="unpaid">Unpaid</option>
+                </select>
+
+                {/* Work mode dropdown */}
+                <select
+                  value={workModeFilter}
+                  onChange={(e) => setWorkModeFilter(e.target.value as 'all' | 'remote' | 'in-person')}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: '1.5px solid var(--border)',
+                    fontSize: '0.78rem',
+                    background: 'var(--bg)',
+                    color: workModeFilter !== 'all' ? 'var(--primary)' : 'var(--text-secondary)',
+                    fontWeight: workModeFilter !== 'all' ? 600 : 400,
+                    outline: 'none',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  <option value="all">Any Mode</option>
+                  <option value="remote">Remote</option>
+                  <option value="in-person">In-Person</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Scrollable listing cards */}
+            <div style={{ overflowY: 'auto', flex: 1 }}>
             {filteredListings.map((listing) => (
               <div
                 key={listing.id}
-                onClick={() => setSelectedId(listing.id)}
+                onClick={() => selectListing(listing.id)}
                 style={{
                   padding: '16px 20px',
                   cursor: 'pointer',
@@ -366,10 +389,12 @@ export default function BrowseInternships() {
                 <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => { setCurrentPage(p); setSelectedId(null); }} />
               </div>
             )}
+            </div>
           </div>
 
           {/* Right panel - selected listing detail */}
           <div
+            ref={detailPanelRef}
             style={{
               flex: 1,
               overflowY: 'auto',
@@ -497,37 +522,37 @@ export default function BrowseInternships() {
                 {/* Divider */}
                 <div style={{ height: '1px', background: 'var(--border)', margin: '0 0 24px' }} />
 
-                {/* Description */}
-                <div style={{ marginBottom: '24px' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}>
-                    About This Role
-                  </h3>
-                  <p style={{
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.7,
-                    whiteSpace: 'pre-wrap',
-                    fontSize: '0.9rem',
-                    margin: 0,
-                  }}>
-                    {selectedListing.description}
-                  </p>
-                </div>
-
-                {/* Requirements */}
+                {/* Qualifications */}
                 {selectedListing.requirements && (
                   <div style={{ marginBottom: '24px' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}>
-                      Requirements
+                      Qualifications
                     </h3>
-                    <p style={{
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.7,
-                      whiteSpace: 'pre-wrap',
-                      fontSize: '0.9rem',
-                      margin: 0,
-                    }}>
-                      {selectedListing.requirements}
-                    </p>
+                    <div className="markdown-content">
+                      <ReactMarkdown>{selectedListing.requirements}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+
+                {/* Job Overview */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}>
+                    Job Overview
+                  </h3>
+                  <div className="markdown-content">
+                    <ReactMarkdown>{selectedListing.description}</ReactMarkdown>
+                  </div>
+                </div>
+
+                {/* Key Responsibilities */}
+                {selectedListing.key_responsibilities && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}>
+                      Key Responsibilities
+                    </h3>
+                    <div className="markdown-content">
+                      <ReactMarkdown>{selectedListing.key_responsibilities || ''}</ReactMarkdown>
+                    </div>
                   </div>
                 )}
 

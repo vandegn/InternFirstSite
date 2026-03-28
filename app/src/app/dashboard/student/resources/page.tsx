@@ -136,7 +136,7 @@ export default function StudentResources() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         {FREE_RESOURCES.map((resource) => (
           <div key={resource.title} className="profile-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(123, 97, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {resource.icon}
             </div>
             <h4 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>{resource.title}</h4>
@@ -180,7 +180,7 @@ export default function StudentResources() {
       </div>
 
       {/* ── Premium Services ── */}
-      <div style={{ marginTop: '40px', padding: '32px', borderRadius: 'var(--radius)', background: 'linear-gradient(135deg, rgba(123, 97, 255, 0.04) 0%, rgba(123, 97, 255, 0.10) 100%)', border: '1px solid rgba(123, 97, 255, 0.15)' }}>
+      <div style={{ marginTop: '40px', padding: '32px', borderRadius: 'var(--radius)', background: 'linear-gradient(135deg, rgba(26, 45, 73, 0.04) 0%, rgba(26, 45, 73, 0.10) 100%)', border: '1px solid rgba(26, 45, 73, 0.15)' }}>
         <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ background: 'var(--primary)', color: '#fff', fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: '999px' }}>Premium</span>
           Services

@@ -129,6 +129,7 @@ export async function createListing(listing: {
   is_remote?: boolean;
   compensation?: string;
   requirements?: string;
+  key_responsibilities?: string;
   industry: string;
   application_deadline?: string;
 }) {
@@ -712,6 +713,7 @@ export async function updateListing(listingId: string, fields: {
   is_remote?: boolean;
   compensation?: string;
   requirements?: string;
+  key_responsibilities?: string;
   industry?: string;
   status?: string;
   application_deadline?: string | null;

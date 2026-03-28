@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes } from '@/lib/supabase';
+import ReactMarkdown from 'react-markdown';
 
 type Listing = {
   id: string;
@@ -14,6 +15,7 @@ type Listing = {
   is_remote: boolean;
   compensation: string | null;
   requirements: string | null;
+  key_responsibilities: string | null;
   industry: string;
   created_at: string;
   employers: {
@@ -176,17 +178,25 @@ export default function InternshipDetail() {
 
         <div className="sidebar-divider" style={{ margin: '24px 0' }}></div>
 
-        {/* Description */}
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Description</h3>
-          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{listing.description}</p>
-        </div>
-
-        {/* Requirements */}
+        {/* Qualifications */}
         {listing.requirements && (
           <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Requirements</h3>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{listing.requirements}</p>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Qualifications</h3>
+            <div className="markdown-content"><ReactMarkdown>{listing.requirements}</ReactMarkdown></div>
+          </div>
+        )}
+
+        {/* Job Overview */}
+        <div style={{ marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Job Overview</h3>
+          <div className="markdown-content"><ReactMarkdown>{listing.description}</ReactMarkdown></div>
+        </div>
+
+        {/* Key Responsibilities */}
+        {listing.key_responsibilities && (
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Key Responsibilities</h3>
+            <div className="markdown-content"><ReactMarkdown>{listing.key_responsibilities || ''}</ReactMarkdown></div>
           </div>
         )}
 

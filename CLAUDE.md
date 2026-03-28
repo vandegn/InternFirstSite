@@ -108,7 +108,7 @@ All applications are in-platform: student clicks "Apply Now" → creates row in 
 
 | Role | Email | Password |
 |------|-------|----------|
-| Student | vandegn@miamioh.edu | 111111 |
+| Student | chud@htn.edu | 111111 |
 | Employer | chud@htn.org | 123456 |
 | University | helen@unc.edu | 111111 |
 

@@ -14,19 +14,17 @@ Gap analysis comparing the current codebase against the product spec (Website Ov
 
 ## Phase 0: Design System Overhaul
 
-The spec defines a completely different visual identity from what's currently built.
-
 | Item | Current | Spec | Status |
 |------|---------|------|--------|
-| Primary color | `#7B61FF` (purple) | `#1A2D49` (navy) | MISSING |
-| Accent color | — | `#9FC63C` (green) | MISSING |
-| Light text color | — | `#DFE0E1` (light grey) | MISSING |
-| Background | white / `#fafafe` | `#F8F9FC` (soft off-white) | MISSING |
-| Font | DM Sans | Inter | MISSING |
-| WCAG 2.1 compliance | Not audited | Required | MISSING |
-| Logo branding | InternFirst logo exists | Navy/green logo with blue border | MISSING |
+| Primary color | `#1A2D49` (navy) | `#1A2D49` (navy) | DONE |
+| Accent color | `#9FC63C` (green) | `#9FC63C` (green) | DONE |
+| Light text color | `#6d7584` | `#DFE0E1` (light grey) | DONE (darkened for WCAG AA) |
+| Background | `#F8F9FC` (soft off-white) | `#F8F9FC` (soft off-white) | DONE |
+| Font | Inter | Inter | DONE |
+| WCAG 2.1 compliance | Audited, key pairs pass AA | Required | DONE |
+| Logo branding | Navy border logo | Navy/green logo with blue border | PARTIAL |
 
-**Work:** Update CSS custom properties in `globals.css`, swap Google Font import, audit color contrast ratios for WCAG AA.
+**Notes:** `--text-light` was darkened from spec's `#DFE0E1` to `#6d7584` to meet WCAG AA contrast. Auth buttons use dark text on green (not white) for accessibility. Old purple (`#7B61FF`) references fully removed.
 
 ---
 

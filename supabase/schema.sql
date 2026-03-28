@@ -58,6 +58,7 @@ create table internship_listings (
   is_remote boolean default false,
   compensation text,
   requirements text,
+  key_responsibilities text,
   industry text not null default 'Other' check (industry in ('Technology', 'Finance', 'Healthcare', 'Marketing', 'Legal', 'Engineering', 'Education', 'Media', 'Nonprofit', 'Government', 'Retail', 'Other')),
   status text default 'active' check (status in ('active', 'paused', 'closed')),
   application_deadline date,

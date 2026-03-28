@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-type Role = 'student' | 'employer' | 'university_admin';
+type Role = 'student' | 'employer';
 
 const roles: { value: Role; label: string; icon: React.ReactNode }[] = [
   {
@@ -23,18 +23,6 @@ const roles: { value: Role; label: string; icon: React.ReactNode }[] = [
         <rect x="2" y="7" width="20" height="14" rx="2" />
         <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
         <path d="M12 12h.01" />
-      </svg>
-    ),
-  },
-  {
-    value: 'university_admin',
-    label: 'University',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 20h20" />
-        <path d="M5 20V10l7-5 7 5v10" />
-        <path d="M9 20v-4h6v4" />
-        <path d="M10 10h4v3h-4z" />
       </svg>
     ),
   },

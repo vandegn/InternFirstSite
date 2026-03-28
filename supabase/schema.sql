@@ -7,7 +7,7 @@
 create table profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null unique,
-  role text not null check (role in ('student', 'employer', 'university_admin', 'intern_first_admin')),
+  role text not null check (role in ('student', 'employer', 'intern_first_admin')),
   full_name text not null,
   email text not null,
   phone text,
@@ -17,27 +17,11 @@ create table profiles (
 );
 
 -- ============================================
--- 2. UNIVERSITIES
--- ============================================
-create table universities (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  domain text not null unique,         -- e.g. 'unc.edu'
-  partner boolean default false,
-  enrollment_size integer,
-  contract_start date,
-  logo_url text,
-  created_at timestamptz default now() not null,
-  updated_at timestamptz default now() not null
-);
-
--- ============================================
--- 3. STUDENTS (role-specific data)
+-- 2. STUDENTS (role-specific data)
 -- ============================================
 create table students (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references profiles(user_id) on delete cascade not null unique,
-  university_id uuid references universities(id),
   major text,
   graduation_year integer,
   resume_url text,
@@ -47,7 +31,7 @@ create table students (
 );
 
 -- ============================================
--- 4. EMPLOYERS (role-specific data)
+-- 3. EMPLOYERS (role-specific data)
 -- ============================================
 create table employers (
   id uuid primary key default gen_random_uuid(),
@@ -63,19 +47,7 @@ create table employers (
 );
 
 -- ============================================
--- 5. UNIVERSITY ADMINS (role-specific data)
--- ============================================
-create table university_admins (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references profiles(user_id) on delete cascade not null unique,
-  university_id uuid references universities(id) not null,
-  job_title text,
-  created_at timestamptz default now() not null,
-  updated_at timestamptz default now() not null
-);
-
--- ============================================
--- 6. INTERNSHIP LISTINGS
+-- 4. INTERNSHIP LISTINGS
 -- ============================================
 create table internship_listings (
   id uuid primary key default gen_random_uuid(),
@@ -94,7 +66,7 @@ create table internship_listings (
 );
 
 -- ============================================
--- 6b. LISTING VIEWS (analytics tracking)
+-- 4b. LISTING VIEWS (analytics tracking)
 -- ============================================
 create table listing_views (
   id uuid primary key default gen_random_uuid(),
@@ -124,7 +96,7 @@ create policy "Authenticated users can insert views"
   with check (true);
 
 -- ============================================
--- 7. APPLICATIONS
+-- 5. APPLICATIONS
 -- ============================================
 create table applications (
   id uuid primary key default gen_random_uuid(),
@@ -137,7 +109,7 @@ create table applications (
 );
 
 -- ============================================
--- 8. MESSAGES
+-- 6. MESSAGES
 -- ============================================
 create table messages (
   id uuid primary key default gen_random_uuid(),
@@ -150,43 +122,10 @@ create table messages (
 );
 
 -- ============================================
--- 9. UNIVERSITY EVENTS
--- ============================================
-create table university_events (
-  id uuid primary key default gen_random_uuid(),
-  university_id uuid references universities(id) on delete cascade not null,
-  created_by uuid references university_admins(id) on delete cascade not null,
-  title text not null,
-  description text,
-  event_type text not null check (event_type in ('career_fair', 'info_session', 'workshop', 'networking', 'other')),
-  event_date date not null,
-  start_time time not null,
-  end_time time,
-  location text,
-  is_virtual boolean default false,
-  virtual_link text,
-  max_attendees integer,
-  created_at timestamptz default now() not null,
-  updated_at timestamptz default now() not null
-);
-
--- ============================================
--- 10. EVENT REGISTRATIONS
--- ============================================
-create table event_registrations (
-  id uuid primary key default gen_random_uuid(),
-  event_id uuid references university_events(id) on delete cascade not null,
-  student_id uuid references students(id) on delete cascade not null,
-  registered_at timestamptz default now() not null,
-  unique(event_id, student_id)
-);
-
--- ============================================
 -- INDEXES
 -- ============================================
 create index idx_profiles_user_id on profiles(user_id);
 create index idx_profiles_role on profiles(role);
-create index idx_students_university on students(university_id);
 create index idx_employers_verified on employers(verified);
 create index idx_listings_employer on internship_listings(employer_id);
 create index idx_listings_status on internship_listings(status);
@@ -196,10 +135,6 @@ create index idx_applications_listing on applications(listing_id);
 create index idx_applications_status on applications(status);
 create index idx_messages_sender on messages(sender_id);
 create index idx_messages_receiver on messages(receiver_id);
-create index idx_events_university on university_events(university_id);
-create index idx_events_date on university_events(event_date);
-create index idx_event_registrations_event on event_registrations(event_id);
-create index idx_event_registrations_student on event_registrations(student_id);
 
 -- ============================================
 -- AUTO-UPDATE updated_at TRIGGER
@@ -215,11 +150,8 @@ $$ language plpgsql;
 create trigger set_profiles_updated_at before update on profiles for each row execute function update_updated_at();
 create trigger set_students_updated_at before update on students for each row execute function update_updated_at();
 create trigger set_employers_updated_at before update on employers for each row execute function update_updated_at();
-create trigger set_university_admins_updated_at before update on university_admins for each row execute function update_updated_at();
-create trigger set_universities_updated_at before update on universities for each row execute function update_updated_at();
 create trigger set_listings_updated_at before update on internship_listings for each row execute function update_updated_at();
 create trigger set_applications_updated_at before update on applications for each row execute function update_updated_at();
-create trigger set_events_updated_at before update on university_events for each row execute function update_updated_at();
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
@@ -227,13 +159,9 @@ create trigger set_events_updated_at before update on university_events for each
 alter table profiles enable row level security;
 alter table students enable row level security;
 alter table employers enable row level security;
-alter table university_admins enable row level security;
-alter table universities enable row level security;
 alter table internship_listings enable row level security;
 alter table applications enable row level security;
 alter table messages enable row level security;
-alter table university_events enable row level security;
-alter table event_registrations enable row level security;
 
 -- PROFILES: users can read all profiles, but only update their own
 create policy "Profiles are viewable by authenticated users"
@@ -258,14 +186,6 @@ create policy "Employers are viewable by authenticated users"
 
 create policy "Employers can manage own record"
   on employers for all to authenticated using (auth.uid() = user_id);
-
--- UNIVERSITY ADMINS: can manage their own record
-create policy "University admins can manage own record"
-  on university_admins for all to authenticated using (auth.uid() = user_id);
-
--- UNIVERSITIES: readable by all authenticated users
-create policy "Universities are viewable by authenticated users"
-  on universities for select to authenticated using (true);
 
 -- INTERNSHIP LISTINGS: anyone can view active listings, employers manage their own
 create policy "Active listings are viewable by authenticated users"
@@ -319,59 +239,8 @@ create policy "Users can send messages"
   on messages for insert to authenticated
   with check (auth.uid() = sender_id);
 
--- UNIVERSITY EVENTS: uni admins manage events at their university, students at that uni can view
-create policy "University admins can manage events at their university"
-  on university_events for all to authenticated
-  using (
-    university_id in (
-      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
-    )
-  );
-
-create policy "Students can view events at their university"
-  on university_events for select to authenticated
-  using (
-    university_id in (
-      select s.university_id from students s where s.user_id = auth.uid()
-    )
-  );
-
--- EVENT REGISTRATIONS: students can register/view their own, uni admins can view all for their events
-create policy "Students can register for events at their university"
-  on event_registrations for insert to authenticated
-  with check (
-    student_id in (select id from students where user_id = auth.uid())
-    and event_id in (
-      select e.id from university_events e
-      join students s on s.university_id = e.university_id
-      where s.user_id = auth.uid()
-    )
-  );
-
-create policy "Students can view own registrations"
-  on event_registrations for select to authenticated
-  using (
-    student_id in (select id from students where user_id = auth.uid())
-  );
-
-create policy "Students can cancel own registrations"
-  on event_registrations for delete to authenticated
-  using (
-    student_id in (select id from students where user_id = auth.uid())
-  );
-
-create policy "University admins can view registrations for their events"
-  on event_registrations for select to authenticated
-  using (
-    event_id in (
-      select e.id from university_events e
-      join university_admins ua on ua.university_id = e.university_id
-      where ua.user_id = auth.uid()
-    )
-  );
-
 -- ============================================
--- 11. STUDENT SKILLS
+-- 7. STUDENT SKILLS
 -- ============================================
 create table student_skills (
   id uuid primary key default gen_random_uuid(),
@@ -411,7 +280,7 @@ create policy "Employers can view skills of applicants"
   );
 
 -- ============================================
--- 12. STUDENT EXPERIENCES
+-- 8. STUDENT EXPERIENCES
 -- ============================================
 create table student_experiences (
   id uuid primary key default gen_random_uuid(),
@@ -466,7 +335,7 @@ create policy "Employers can view experiences of applicants"
   );
 
 -- ============================================
--- 13. STUDENT ORGANIZATIONS
+-- 9. STUDENT ORGANIZATIONS
 -- ============================================
 create table student_organizations (
   id uuid primary key default gen_random_uuid(),
@@ -515,48 +384,3 @@ create policy "Employers can view organizations of applicants"
     )
   );
 
--- ============================================
--- 14. UNIVERSITY-EMPLOYER PARTNERSHIPS
--- ============================================
-create table university_employer_partnerships (
-  id uuid primary key default gen_random_uuid(),
-  university_id uuid references universities(id) on delete cascade not null,
-  employer_id uuid references employers(id) on delete cascade not null,
-  status text not null default 'active' check (status in ('active', 'inactive')),
-  created_at timestamptz default now() not null,
-  unique(university_id, employer_id)
-);
-
-create index idx_uep_university on university_employer_partnerships(university_id);
-create index idx_uep_employer on university_employer_partnerships(employer_id);
-create index idx_uep_status on university_employer_partnerships(status);
-
-alter table university_employer_partnerships enable row level security;
-
-create policy "Authenticated users can view active partnerships"
-  on university_employer_partnerships for select to authenticated
-  using (true);
-
-create policy "University admins can insert partnerships for their university"
-  on university_employer_partnerships for insert to authenticated
-  with check (
-    university_id in (
-      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
-    )
-  );
-
-create policy "University admins can update partnerships for their university"
-  on university_employer_partnerships for update to authenticated
-  using (
-    university_id in (
-      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
-    )
-  );
-
-create policy "University admins can delete partnerships for their university"
-  on university_employer_partnerships for delete to authenticated
-  using (
-    university_id in (
-      select ua.university_id from university_admins ua where ua.user_id = auth.uid()
-    )
-  );

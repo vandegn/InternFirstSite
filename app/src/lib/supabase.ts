@@ -11,7 +11,6 @@ export const supabase = supabaseUrl && supabaseAnonKey
 export const DASHBOARD_ROUTES: Record<string, string> = {
   student: '/dashboard/student',
   employer: '/dashboard/employer',
-  university_admin: '/dashboard/university',
 };
 
 export async function getProfile(userId: string) {
@@ -31,9 +30,6 @@ export type RoleData = {
   website?: string;
   companyDescription?: string;
   logoUrl?: string;
-  universityName?: string;
-  jobTitle?: string;
-  universityId?: string;
 };
 
 export async function createProfileAndRoleData(
@@ -50,8 +46,8 @@ export async function createProfileAndRoleData(
 ) {
   const { role, fullName, email, phone, avatarUrl, roleData } = opts;
 
-  if ((role === 'student' || role === 'university_admin') && !isEduEmail(email)) {
-    throw new Error('Student and university accounts require a .edu email address.');
+  if (role === 'student' && !isEduEmail(email)) {
+    throw new Error('Student accounts require a .edu email address.');
   }
 
   const { error: profileError } = await client.from('profiles').insert({
@@ -82,42 +78,11 @@ export async function createProfileAndRoleData(
       logo_url: roleData.logoUrl || null,
     });
     if (error) throw error;
-  } else if (role === 'university_admin') {
-    const { error } = await client.from('university_admins').insert({
-      user_id: userId,
-      university_id: roleData.universityId || null,
-      job_title: roleData.jobTitle || null,
-    });
-    if (error) throw error;
   }
-}
-
-export async function getAllUniversities() {
-  const { data, error } = await supabase
-    .from('universities')
-    .select('id, name')
-    .order('name', { ascending: true });
-  if (error) return [];
-  return data;
 }
 
 export function isEduEmail(email: string): boolean {
   return email.trim().toLowerCase().endsWith('.edu');
-}
-
-export async function getPartnerUniversity(email: string) {
-  const domain = email.split('@')[1]?.toLowerCase();
-  if (!domain) return null;
-
-  const { data, error } = await supabase
-    .from('universities')
-    .select('id, name, logo_url')
-    .eq('domain', domain)
-    .eq('partner', true)
-    .single();
-
-  if (error || !data) return null;
-  return data;
 }
 
 export async function getEmployerByUserId(userId: string) {
@@ -590,100 +555,6 @@ export async function applyToListingWithResume(studentId: string, listingId: str
   return data;
 }
 
-// ---- University Dashboard Stats ----
-
-export async function getUniversityStats(universityId: string) {
-  // Count students enrolled at this university
-  const { count: studentCount } = await supabase
-    .from('students')
-    .select('*', { count: 'exact', head: true })
-    .eq('university_id', universityId);
-
-  // Get all student IDs at this university
-  const { data: students } = await supabase
-    .from('students')
-    .select('id')
-    .eq('university_id', universityId);
-  const studentIds = students?.map(s => s.id) ?? [];
-
-  if (studentIds.length === 0) {
-    return { studentsEnrolled: studentCount ?? 0, totalApplications: 0, offers: 0, interviewing: 0 };
-  }
-
-  // Get all applications from these students
-  const { data: apps } = await supabase
-    .from('applications')
-    .select('status')
-    .in('student_id', studentIds);
-
-  const totalApplications = apps?.length ?? 0;
-  const offers = apps?.filter(a => a.status === 'offered').length ?? 0;
-  const interviewing = apps?.filter(a => a.status === 'interviewing').length ?? 0;
-
-  return { studentsEnrolled: studentCount ?? 0, totalApplications, offers, interviewing };
-}
-
-export async function getTopEmployersForUniversity(universityId: string, limit = 3) {
-  // Get student IDs for this university
-  const { data: students } = await supabase
-    .from('students')
-    .select('id')
-    .eq('university_id', universityId);
-  const studentIds = students?.map(s => s.id) ?? [];
-  if (studentIds.length === 0) return [];
-
-  // Get applications with listing/employer info
-  const { data: apps } = await supabase
-    .from('applications')
-    .select('listing:internship_listings!inner(employers:employers!inner(company_name))')
-    .in('student_id', studentIds);
-  if (!apps || apps.length === 0) return [];
-
-  // Count applications per employer
-  const counts: Record<string, number> = {};
-  for (const app of apps) {
-    const listing = Array.isArray(app.listing) ? app.listing[0] : app.listing;
-    const employer = listing ? (Array.isArray((listing as any).employers) ? (listing as any).employers[0] : (listing as any).employers) : null;
-    const name = employer?.company_name;
-    if (name) counts[name] = (counts[name] || 0) + 1;
-  }
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([name, count]) => ({ name, count }));
-}
-
-export async function getPlacementCities(universityId: string) {
-  // Get student IDs
-  const { data: students } = await supabase
-    .from('students')
-    .select('id')
-    .eq('university_id', universityId);
-  const studentIds = students?.map(s => s.id) ?? [];
-  if (studentIds.length === 0) return [];
-
-  // Get offered applications with listing location
-  const { data: apps } = await supabase
-    .from('applications')
-    .select('listing:internship_listings!inner(location)')
-    .eq('status', 'offered')
-    .in('student_id', studentIds);
-  if (!apps || apps.length === 0) return [];
-
-  const counts: Record<string, number> = {};
-  for (const app of apps) {
-    const listing = Array.isArray(app.listing) ? app.listing[0] : app.listing;
-    const loc = (listing as any)?.location;
-    if (loc) counts[loc] = (counts[loc] || 0) + 1;
-  }
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([city, count]) => ({ city, count }));
-}
-
 // ---- Listing Management (Edit/Close) ----
 
 // ---- Student Skills ----
@@ -832,97 +703,6 @@ export async function deleteStudentOrganization(orgId: string) {
     .delete()
     .eq('id', orgId);
   if (error) throw error;
-}
-
-// ---- Events ----
-
-export async function getEventById(eventId: string) {
-  const { data, error } = await supabase
-    .from('university_events')
-    .select('*, university:universities(name, logo_url)')
-    .eq('id', eventId)
-    .single();
-  if (error || !data) return null;
-  return data;
-}
-
-export async function getEventRegistrationCount(eventId: string) {
-  const { count, error } = await supabase
-    .from('event_registrations')
-    .select('*', { count: 'exact', head: true })
-    .eq('event_id', eventId);
-  if (error) return 0;
-  return count ?? 0;
-}
-
-export async function registerForEvent(eventId: string, studentId: string) {
-  const { data, error } = await supabase
-    .from('event_registrations')
-    .insert({ event_id: eventId, student_id: studentId })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-export async function unregisterFromEvent(eventId: string, studentId: string) {
-  const { error } = await supabase
-    .from('event_registrations')
-    .delete()
-    .eq('event_id', eventId)
-    .eq('student_id', studentId);
-  if (error) throw error;
-}
-
-export async function isRegisteredForEvent(eventId: string, studentId: string) {
-  const { data, error } = await supabase
-    .from('event_registrations')
-    .select('id')
-    .eq('event_id', eventId)
-    .eq('student_id', studentId)
-    .maybeSingle();
-  if (error) return false;
-  return !!data;
-}
-
-// ---- University Partner Listings ----
-
-export async function getUniversityPartnerListings(
-  universityId: string,
-  page = 1,
-  pageSize = 20,
-  industry?: string
-) {
-  const { data: partnerships } = await supabase
-    .from('university_employer_partnerships')
-    .select('employer_id')
-    .eq('university_id', universityId)
-    .eq('status', 'active');
-
-  if (!partnerships || partnerships.length === 0) {
-    return { data: [], totalCount: 0 };
-  }
-
-  const employerIds = partnerships.map(p => p.employer_id);
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
-  let query = supabase
-    .from('internship_listings')
-    .select('*, employers(company_name, logo_url)', { count: 'exact' })
-    .eq('status', 'active')
-    .in('employer_id', employerIds);
-
-  if (industry) {
-    query = query.eq('industry', industry);
-  }
-
-  const { data, error, count } = await query
-    .order('created_at', { ascending: false })
-    .range(from, to);
-
-  if (error) return { data: [], totalCount: 0 };
-  return { data: data ?? [], totalCount: count ?? 0 };
 }
 
 export async function updateListing(listingId: string, fields: {

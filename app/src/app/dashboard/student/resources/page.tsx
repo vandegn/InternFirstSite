@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase, getProfile, getStudentByUserId } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 const FREE_RESOURCES = [
   {
@@ -99,18 +99,11 @@ const PREMIUM_SERVICES = [
 
 export default function StudentResources() {
   const [loading, setLoading] = useState(true);
-  const [hasUniversity, setHasUniversity] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const student = await getStudentByUserId(user.id);
-      if (student && student.university_id) {
-        setHasUniversity(true);
-      }
-
       setLoading(false);
     }
     fetchData();
@@ -184,40 +177,6 @@ export default function StudentResources() {
           </div>
         ))}
 
-        {/* Career Center Appointments — only if university-affiliated */}
-        {hasUniversity && (
-          <div className="profile-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid rgba(123, 97, 255, 0.25)' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(123, 97, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-            </div>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>Career Center Appointments</h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.55, margin: 0, flex: 1 }}>
-              Schedule a meeting with your university&apos;s career center advisor for personalized guidance, resume reviews, and career planning support.
-            </p>
-            <button
-              disabled
-              style={{
-                padding: '10px 20px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text-secondary)',
-                cursor: 'default',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                alignSelf: 'flex-start',
-                opacity: 0.7,
-              }}
-            >
-              Coming Soon
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Premium Services ── */}

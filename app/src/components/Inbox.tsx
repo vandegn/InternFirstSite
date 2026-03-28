@@ -202,7 +202,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                   <div>
                     <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{selectedConv?.otherName}</span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '8px', textTransform: 'capitalize' }}>
-                      {selectedConv?.otherRole === 'university_admin' ? 'University Admin' : selectedConv?.otherRole}
+                      {selectedConv?.otherRole}
                     </span>
                   </div>
                 </div>

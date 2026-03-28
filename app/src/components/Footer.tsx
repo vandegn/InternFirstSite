@@ -28,7 +28,6 @@ export default function Footer() {
             <ul>
               <li><Link href="/dashboard/student">Students</Link></li>
               <li><Link href="/dashboard/employer">Employers</Link></li>
-              <li><Link href="/dashboard/university">Universities</Link></li>
             </ul>
           </div>
           <div className="footer-links">

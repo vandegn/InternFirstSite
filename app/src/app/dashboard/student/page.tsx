@@ -29,18 +29,6 @@ import Link from 'next/link';
 import { supabase, getProfile, getStudentByUserId, getStudentStats, getStudentApplications } from '@/lib/supabase';
 import Calendar, { CalendarEvent } from '@/components/Calendar';
 
-type Event = {
-  id: string;
-  title: string;
-  event_type: string;
-  event_date: string;
-  start_time: string;
-  end_time: string | null;
-  location: string | null;
-  is_virtual: boolean;
-  registration_count: number;
-};
-
 type StudentApplication = {
   id: string;
   status: string;
@@ -61,14 +49,6 @@ type StudentApplication = {
   };
 };
 
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  career_fair: 'Career Fair',
-  info_session: 'Info Session',
-  workshop: 'Workshop',
-  networking: 'Networking',
-  other: 'Event',
-};
-
 export default function StudentDashboard() {
   const [positionsCount, setPositionsCount] = useState(0);
   const [applicationCount, setApplicationCount] = useState(0);
@@ -77,7 +57,6 @@ export default function StudentDashboard() {
   const animatedApplications = useCountUp(applicationCount);
   const animatedOffers = useCountUp(offerCount);
   const [studentMajor, setStudentMajor] = useState<string | null>(null);
-  const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
   const [profileName, setProfileName] = useState('');
 
@@ -109,27 +88,6 @@ export default function StudentDashboard() {
       }
       if (student?.major) {
         setStudentMajor(student.major);
-      }
-
-      const studentData = student;
-      if (studentData?.university_id) {
-        const { data: events } = await supabase
-          .from('university_events')
-          .select('id, title, event_type, event_date, start_time, end_time, location, is_virtual')
-          .eq('university_id', studentData.university_id)
-          .gte('event_date', new Date().toISOString().split('T')[0])
-          .order('event_date', { ascending: true })
-          .limit(10);
-        if (events && events.length > 0) {
-          const eventIds = events.map(e => e.id);
-          const { data: regCounts } = await supabase
-            .from('event_registrations')
-            .select('event_id')
-            .in('event_id', eventIds);
-          const countMap: Record<string, number> = {};
-          regCounts?.forEach(r => { countMap[r.event_id] = (countMap[r.event_id] || 0) + 1; });
-          setRecentEvents(events.map(e => ({ ...e, registration_count: countMap[e.id] || 0 })));
-        }
       }
     }
     fetchUserData();
@@ -168,96 +126,10 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* 3-Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr 260px', gap: '24px', marginTop: '24px' }}>
+      {/* 2-Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '24px', marginTop: '24px' }}>
 
-        {/* ── Left Column: Events ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* School Events */}
-          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '16px' }}>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text, #1a1a1a)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px', marginRight: '6px' }}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>
-              School Events
-            </h3>
-            {recentEvents.length === 0 ? (
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px 0' }}>No upcoming events.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {recentEvents.map((event) => {
-                  const date = new Date(event.event_date + 'T00:00:00');
-                  const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-                  const day = date.getDate();
-                  return (
-                    <Link
-                      href={`/dashboard/student/events/${event.id}`}
-                      key={event.id}
-                      style={{ textDecoration: 'none', color: 'inherit' }}
-                    >
-                      <div style={{
-                        padding: '10px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border, #e5e7eb)',
-                        cursor: 'pointer',
-                        transition: 'box-shadow 0.15s, border-color 0.15s',
-                      }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(123,97,255,0.1)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)'; e.currentTarget.style.boxShadow = 'none'; }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <div style={{ width: 34, height: 34, borderRadius: 6, background: 'var(--primary-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <span style={{ fontSize: '0.5rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1 }}>{month}</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', lineHeight: 1.1 }}>{day}</span>
-                          </div>
-                          <span style={{
-                            fontSize: '0.65rem',
-                            fontWeight: 600,
-                            color: 'var(--primary)',
-                            background: 'var(--primary-light)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            whiteSpace: 'nowrap',
-                          }}>
-                            {EVENT_TYPE_LABELS[event.event_type] || 'Event'}
-                          </span>
-                        </div>
-                        <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '3px', lineHeight: 1.3 }}>{event.title}</h4>
-                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                          {event.is_virtual ? 'Virtual' : event.location || 'Location TBD'}
-                          {' \u00B7 '}
-                          {event.start_time?.slice(0, 5)}{event.end_time ? ` - ${event.end_time.slice(0, 5)}` : ''}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-            <Link href="/dashboard/student/events" style={{
-              display: 'block',
-              textAlign: 'center',
-              marginTop: '12px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: 'var(--primary)',
-              textDecoration: 'none',
-            }}>
-              View All Events &rarr;
-            </Link>
-          </div>
-
-          {/* Local Employer Events placeholder */}
-          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '16px' }}>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text, #1a1a1a)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px', marginRight: '6px' }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              Local Employer Events
-            </h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px 0', lineHeight: 1.5 }}>
-              Employer-hosted events in your area will appear here soon.
-            </p>
-          </div>
-        </div>
-
-        {/* ── Center Column: Applications + Calendar ── */}
+        {/* ── Main Column: Applications + Calendar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
           {/* My Applications Overview */}
           <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '20px' }}>
@@ -372,20 +244,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* Calendar */}
-          <Calendar
-            events={recentEvents.map((event): CalendarEvent => ({
-              id: event.id,
-              title: event.title,
-              date: event.event_date,
-              type: event.event_type === 'career_fair' ? 'career_fair'
-                : event.event_type === 'info_session' ? 'info_session'
-                : event.event_type === 'networking' ? 'event'
-                : event.event_type === 'workshop' ? 'event'
-                : 'event',
-              time: event.start_time?.slice(0, 5) || undefined,
-              location: event.is_virtual ? 'Virtual' : event.location || undefined,
-            }))}
-          />
+          <Calendar events={[]} />
         </div>
 
         {/* ── Right Column: Industry News ── */}

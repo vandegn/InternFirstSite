@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase, getProfile, getStudentByUserId, getPartnerUniversity, getStudentResumes, getStudentSkills, getStudentExperiences, getStudentOrganizations } from '@/lib/supabase';
+import { supabase, getProfile, getStudentByUserId, getStudentResumes, getStudentSkills, getStudentExperiences, getStudentOrganizations } from '@/lib/supabase';
 
 interface Resume {
   id: string;
@@ -24,7 +24,7 @@ export default function StudentProfile() {
   const [bio, setBio] = useState('');
   const [major, setMajor] = useState('');
   const [graduationYear, setGraduationYear] = useState<number | null>(null);
-  const [schoolName, setSchoolName] = useState('');
+  const [schoolName] = useState('');
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [internships, setInternships] = useState<Experience[]>([]);
@@ -64,13 +64,6 @@ export default function StudentProfile() {
         setCampusInvolvements(allExperiences.filter((e: Experience) => e.type === 'campus_involvement'));
         setGreekLife(allOrganizations.filter((o: Org) => o.type === 'greek_life'));
         setClubs(allOrganizations.filter((o: Org) => o.type === 'club'));
-      }
-
-      if (user.email) {
-        const partner = await getPartnerUniversity(user.email);
-        if (partner) {
-          setSchoolName(partner.name);
-        }
       }
 
       setLoading(false);

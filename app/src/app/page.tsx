@@ -30,22 +30,6 @@ const portals = [
       </svg>
     ),
   },
-  {
-    role: 'university_admin',
-    title: 'University',
-    subtitle: 'Track student placements',
-    description: 'Monitor outcomes, manage partnerships, and support your students\u2019 success.',
-    gradient: 'linear-gradient(135deg, #0d7c66 0%, #15a88a 100%)',
-    icon: (
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 21h18" />
-        <path d="M5 21V7l7-4 7 4v14" />
-        <path d="M9 21v-6h6v6" />
-        <path d="M9 10h1" />
-        <path d="M14 10h1" />
-      </svg>
-    ),
-  },
 ];
 
 export default function LandingPage() {

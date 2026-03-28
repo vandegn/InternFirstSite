@@ -6,9 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
 import { supabase, getProfile, DASHBOARD_ROUTES, isEduEmail } from '@/lib/supabase';
 
-type Role = 'student' | 'employer' | 'university_admin';
+type Role = 'student' | 'employer';
 
-const VALID_ROLES: Role[] = ['student', 'employer', 'university_admin'];
+const VALID_ROLES: Role[] = ['student', 'employer'];
 
 function LoginForm() {
   const router = useRouter();
@@ -36,8 +36,8 @@ function LoginForm() {
     e.preventDefault();
     setError('');
 
-    if ((role === 'student' || role === 'university_admin') && !isEduEmail(email)) {
-      setError('Student and university accounts require a .edu email address.');
+    if (role === 'student' && !isEduEmail(email)) {
+      setError('Student accounts require a .edu email address.');
       return;
     }
 

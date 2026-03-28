@@ -13,7 +13,6 @@ export default function CareerResources() {
             <ul>
               <li><Link href="/dashboard/student">Student</Link></li>
               <li><Link href="/dashboard/employer">Employers</Link></li>
-              <li><Link href="/dashboard/university">University</Link></li>
               <li><Link href="/about">About</Link></li>
               <li><Link href="/blog">Blog</Link></li>
               <li><Link href="/contact">Contact</Link></li>

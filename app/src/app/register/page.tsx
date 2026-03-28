@@ -4,10 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
-import { supabase, isEduEmail, getAllUniversities } from '@/lib/supabase';
+import { supabase, isEduEmail } from '@/lib/supabase';
 import { MAJORS } from '@/lib/constants';
 
-type Role = 'student' | 'employer' | 'university_admin';
+type Role = 'student' | 'employer';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,20 +27,9 @@ export default function RegisterPage() {
   const [companyName, setCompanyName] = useState('');
   const [website, setWebsite] = useState('');
   const [companyDescription, setCompanyDescription] = useState('');
-  // University fields
-  const [universityId, setUniversityId] = useState('');
-  const [universities, setUniversities] = useState<{ id: string; name: string }[]>([]);
-  const [jobTitle, setJobTitle] = useState('');
-
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (role === 'university_admin') {
-      getAllUniversities().then(setUniversities);
-    }
-  }, [role]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -70,13 +59,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (role === 'university_admin' && !universityId) {
-      setError('Please select your university.');
-      return;
-    }
-
-    if ((role === 'student' || role === 'university_admin') && !isEduEmail(email)) {
-      setError('Student and university accounts require a .edu email address.');
+    if (role === 'student' && !isEduEmail(email)) {
+      setError('Student accounts require a .edu email address.');
       return;
     }
 
@@ -93,9 +77,6 @@ export default function RegisterPage() {
         metadata.companyName = companyName;
         metadata.website = website;
         metadata.companyDescription = companyDescription;
-      } else if (role === 'university_admin') {
-        metadata.universityId = universityId;
-        metadata.jobTitle = jobTitle;
       }
 
       const { error: authError } = await supabase.auth.signUp({
@@ -251,29 +232,6 @@ export default function RegisterPage() {
               </>
             )}
 
-            {/* University fields */}
-            {role === 'university_admin' && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="universityId">University</label>
-                  <select id="universityId" value={universityId} onChange={e => setUniversityId(e.target.value)} required>
-                    <option value="" disabled>Select your university</option>
-                    {universities.map(u => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
-                  {universities.length === 0 && (
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                      No universities available. Contact support to add yours.
-                    </p>
-                  )}
-                </div>
-                <div className="form-group">
-                  <label htmlFor="jobTitle">Your Title</label>
-                  <input type="text" id="jobTitle" placeholder="e.g. Career Services Director" value={jobTitle} onChange={e => setJobTitle(e.target.value)} />
-                </div>
-              </>
-            )}
           </div>
 
           <div className="checkbox-group">

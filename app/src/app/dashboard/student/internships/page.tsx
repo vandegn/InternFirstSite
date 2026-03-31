@@ -593,7 +593,6 @@ export default function BrowseInternships() {
                 <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => { setCurrentPage(p); setSelectedId(null); }} />
               </div>
             )}
-            </div>
           </div>
 
           {/* Right panel - selected listing detail */}

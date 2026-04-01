@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes } from '@/lib/supabase';
+import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes, trackListingView } from '@/lib/supabase';
 import ReactMarkdown from 'react-markdown';
 
 type Listing = {
@@ -45,6 +45,9 @@ export default function InternshipDetail() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCurrentUserId(user.id);
+
+      // Fire-and-forget view tracking on page load
+      trackListingView(id, user.id).catch(() => {});
 
       const [listingData, student] = await Promise.all([
         getListingById(id),

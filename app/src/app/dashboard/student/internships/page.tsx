@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { supabase, getActiveListings } from '@/lib/supabase';
+import { supabase, getActiveListings, trackListingView } from '@/lib/supabase';
 import { INDUSTRIES } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
 import ReactMarkdown from 'react-markdown';
@@ -34,10 +34,18 @@ export default function BrowseInternships() {
   const [selectedIndustry, setSelectedIndustry] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailPanelRef = useRef<HTMLDivElement>(null);
+  const viewedListingsRef = useRef<Set<string>>(new Set());
+  const userIdRef = useRef<string | null>(null);
 
   const selectListing = (id: string) => {
     setSelectedId(id);
     detailPanelRef.current?.scrollTo({ top: 0 });
+    // Fire-and-forget view tracking, once per listing per session
+    const uid = userIdRef.current;
+    if (uid && !viewedListingsRef.current.has(id)) {
+      viewedListingsRef.current.add(id);
+      trackListingView(id, uid).catch(() => {});
+    }
   };
 
   // Search & filter state
@@ -77,6 +85,7 @@ export default function BrowseInternships() {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      userIdRef.current = user.id;
       const result = await getActiveListings(currentPage, PAGE_SIZE, selectedIndustry || undefined);
       setListings(result.data as Listing[]);
       setTotalCount(result.totalCount);
@@ -88,7 +97,14 @@ export default function BrowseInternships() {
   // Auto-select first listing when listings change
   useEffect(() => {
     if (listings.length > 0 && !selectedId) {
-      setSelectedId(listings[0].id);
+      const firstId = listings[0].id;
+      setSelectedId(firstId);
+      // Track view for auto-selected listing
+      const uid = userIdRef.current;
+      if (uid && !viewedListingsRef.current.has(firstId)) {
+        viewedListingsRef.current.add(firstId);
+        trackListingView(firstId, uid).catch(() => {});
+      }
     }
   }, [listings, selectedId]);
 

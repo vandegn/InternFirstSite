@@ -18,12 +18,28 @@ type Listing = {
   requirements: string | null;
   industry: string;
   created_at: string;
+  application_deadline: string | null;
   key_responsibilities: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
   };
 };
+
+function formatDeadline(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function deadlineState(dateStr: string | null): 'expired' | 'soon' | 'normal' | null {
+  if (!dateStr) return null;
+  const deadline = new Date(dateStr).getTime();
+  const now = Date.now();
+  const daysLeft = (deadline - now) / (1000 * 60 * 60 * 24);
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= 7) return 'soon';
+  return 'normal';
+}
 
 const PAGE_SIZE = 20;
 
@@ -604,6 +620,22 @@ export default function BrowseInternships() {
                           {listing.compensation}
                         </span>
                       )}
+                      {(() => {
+                        const state = deadlineState(listing.application_deadline);
+                        if (state !== 'soon' && state !== 'expired') return null;
+                        const styles = state === 'expired'
+                          ? { bg: '#fef2f2', color: '#b91c1c' }
+                          : { bg: '#fffbeb', color: '#b45309' };
+                        return (
+                          <span style={{
+                            fontSize: '0.7rem', fontWeight: 600,
+                            padding: '2px 8px', borderRadius: '999px',
+                            background: styles.bg, color: styles.color,
+                          }}>
+                            {state === 'expired' ? 'Closed' : `Closes ${formatDeadline(listing.application_deadline!)}`}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '2px' }}>
@@ -725,6 +757,26 @@ export default function BrowseInternships() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                     Posted {new Date(selectedListing.created_at).toLocaleDateString()}
                   </span>
+                  {selectedListing.application_deadline && (() => {
+                    const state = deadlineState(selectedListing.application_deadline);
+                    const styles =
+                      state === 'expired'
+                        ? { bg: '#fef2f2', color: '#b91c1c' }
+                        : state === 'soon'
+                        ? { bg: '#fffbeb', color: '#b45309' }
+                        : { bg: 'var(--bg-secondary, #f5f5f5)', color: 'var(--text-secondary)' };
+                    return (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '5px',
+                        fontSize: '0.82rem', color: styles.color, fontWeight: state === 'expired' || state === 'soon' ? 600 : 400,
+                        padding: '5px 12px', borderRadius: '6px',
+                        background: styles.bg,
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                        {state === 'expired' ? 'Closed' : 'Apply by'} {formatDeadline(selectedListing.application_deadline)}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Apply button */}

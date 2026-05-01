@@ -111,21 +111,36 @@ export default function DashboardShell({ children, role }: { children: React.Rea
   }, []);
 
   useEffect(() => {
-    async function fetchShellData() {
+    let cancelled = false;
+    async function fetchProfile() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      if (!user || cancelled) return;
       const profile = await getProfile(user.id);
-      if (profile) {
-        setProfileName(profile.full_name);
-        setProfileAvatar(profile.avatar_url);
-      }
+      if (cancelled || !profile) return;
+      setProfileName(profile.full_name);
+      setProfileAvatar(profile.avatar_url);
+    }
+    fetchProfile();
+    return () => { cancelled = true; };
+  }, [role]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function refreshUnread() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
       const unread = await getUnreadCount(user.id);
+      if (cancelled) return;
       setUnreadMessages(unread);
     }
-    fetchShellData();
-  }, [role]);
+    refreshUnread();
+    function handleMessagesRead() { refreshUnread(); }
+    window.addEventListener('messages-read', handleMessagesRead);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('messages-read', handleMessagesRead);
+    };
+  }, [pathname]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();

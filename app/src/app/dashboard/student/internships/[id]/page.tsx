@@ -19,12 +19,28 @@ type Listing = {
   key_responsibilities: string | null;
   industry: string;
   created_at: string;
+  application_deadline: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
     website: string | null;
   };
 };
+
+function formatDeadline(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function deadlineState(dateStr: string | null): 'expired' | 'soon' | 'normal' | null {
+  if (!dateStr) return null;
+  const deadline = new Date(dateStr).getTime();
+  const now = Date.now();
+  const daysLeft = (deadline - now) / (1000 * 60 * 60 * 24);
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= 7) return 'soon';
+  return 'normal';
+}
 
 export default function InternshipDetail() {
   const { id } = useParams<{ id: string }>();
@@ -178,6 +194,19 @@ export default function InternshipDetail() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Posted {new Date(listing.created_at).toLocaleDateString()}
           </div>
+          {listing.application_deadline && (() => {
+            const state = deadlineState(listing.application_deadline);
+            const color =
+              state === 'expired' ? '#b91c1c'
+              : state === 'soon' ? '#b45309'
+              : 'var(--text-secondary)';
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color, fontSize: '0.9rem', fontWeight: state === 'expired' || state === 'soon' ? 600 : 400 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                {state === 'expired' ? 'Closed' : 'Apply by'} {formatDeadline(listing.application_deadline)}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="sidebar-divider" style={{ margin: '24px 0' }}></div>

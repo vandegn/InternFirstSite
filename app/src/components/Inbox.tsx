@@ -54,11 +54,14 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
     async function fetchMessages() {
       const msgs = await getMessagesWith(userId!, selectedUserId!);
       setMessages(msgs as Message[]);
-      await markMessagesAsRead(userId!, selectedUserId!);
-      // Update unread count in conversations list
-      setConversations(prev => prev.map(c =>
-        c.otherUserId === selectedUserId ? { ...c, unreadCount: 0 } : c
-      ));
+      const markedCount = await markMessagesAsRead(userId!, selectedUserId!);
+      if (markedCount > 0) {
+        // Update unread count in conversations list
+        setConversations(prev => prev.map(c =>
+          c.otherUserId === selectedUserId ? { ...c, unreadCount: 0 } : c
+        ));
+        window.dispatchEvent(new Event('messages-read'));
+      }
     }
     fetchMessages();
     // Poll for new messages every 5 seconds

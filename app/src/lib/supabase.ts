@@ -253,12 +253,13 @@ export async function sendMessage(senderId: string, receiverId: string, body: st
 }
 
 export async function markMessagesAsRead(userId: string, otherUserId: string) {
-  await supabase
+  const { count } = await supabase
     .from('messages')
-    .update({ read: true })
+    .update({ read: true }, { count: 'exact' })
     .eq('receiver_id', userId)
     .eq('sender_id', otherUserId)
     .eq('read', false);
+  return count ?? 0;
 }
 
 export async function getUnreadCount(userId: string) {

@@ -56,6 +56,7 @@ create table internship_listings (
   description text not null,
   location text,
   is_remote boolean default false,
+  is_hybrid boolean default false,
   compensation text,
   requirements text,
   key_responsibilities text,
@@ -468,3 +469,63 @@ CREATE POLICY "Students can update own survey"
   USING (student_id IN (
     SELECT id FROM students WHERE user_id = auth.uid()
   ));
+
+-- ============================================
+-- 15. INTERVIEW SCHEDULES
+-- ============================================
+create table interview_schedules (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid references applications(id) on delete cascade not null,
+  employer_id uuid references employers(id) on delete cascade not null,
+  student_id uuid references students(id) on delete cascade not null,
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  scheduled_at timestamptz not null,
+  duration_minutes int not null default 30 check (duration_minutes > 0),
+  status text not null default 'pending' check (status in
+    ('pending', 'accepted', 'declined', 'reschedule_requested', 'cancelled', 'completed')),
+  employer_notes text,
+  cancelled_by text check (cancelled_by in ('employer', 'student')),
+  cancelled_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Only one active interview per application at a time
+create unique index interview_schedules_one_active_per_application
+  on interview_schedules (application_id)
+  where status not in ('declined', 'cancelled', 'completed');
+
+create index idx_interview_schedules_employer on interview_schedules (employer_id, scheduled_at);
+create index idx_interview_schedules_student on interview_schedules (student_id, scheduled_at);
+create index idx_interview_schedules_status on interview_schedules (status);
+
+create trigger set_interview_schedules_updated_at
+  before update on interview_schedules
+  for each row execute function update_updated_at();
+
+alter table interview_schedules enable row level security;
+
+-- Employer can view interviews for their listings
+create policy "Employers can view own interviews"
+  on interview_schedules for select to authenticated
+  using (employer_id in (select id from employers where user_id = auth.uid()));
+
+-- Student can view interviews assigned to them
+create policy "Students can view own interviews"
+  on interview_schedules for select to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+-- Employer can create interviews for their own listings
+create policy "Employers can create interviews for own listings"
+  on interview_schedules for insert to authenticated
+  with check (employer_id in (select id from employers where user_id = auth.uid()));
+
+-- Employer can update their own interviews (reschedule, cancel, room metadata)
+create policy "Employers can update own interviews"
+  on interview_schedules for update to authenticated
+  using (employer_id in (select id from employers where user_id = auth.uid()));
+
+-- Student can update interviews assigned to them (respond, cancel)
+create policy "Students can update own interviews"
+  on interview_schedules for update to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));

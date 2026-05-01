@@ -42,7 +42,7 @@ export default function NewListingPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [isRemote, setIsRemote] = useState(false);
+  const [workMode, setWorkMode] = useState<'in-person' | 'hybrid' | 'remote'>('in-person');
   const [compensation, setCompensation] = useState('');
   const [requirements, setRequirements] = useState('');
   const [keyResponsibilities, setKeyResponsibilities] = useState('');
@@ -83,7 +83,8 @@ export default function NewListingPage() {
         title,
         description,
         location: location || undefined,
-        is_remote: isRemote,
+        is_remote: workMode === 'remote',
+        is_hybrid: workMode === 'hybrid',
         compensation: compensation || undefined,
         requirements: requirements || undefined,
         key_responsibilities: keyResponsibilities || undefined,
@@ -183,15 +184,32 @@ export default function NewListingPage() {
                   onChange={(e) => setApplicationDeadline(e.target.value)}
                 />
               </div>
-              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 28 }}>
-                <input
-                  type="checkbox"
-                  id="isRemote"
-                  checked={isRemote}
-                  onChange={(e) => setIsRemote(e.target.checked)}
-                  style={{ width: 'auto' }}
-                />
-                <label htmlFor="isRemote" style={{ margin: 0 }}>Remote position</label>
+              <div className="form-group">
+                <label>Work Arrangement</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['in-person', 'hybrid', 'remote'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setWorkMode(mode)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        border: workMode === mode ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                        background: workMode === mode ? 'var(--primary-light)' : 'var(--bg)',
+                        color: workMode === mode ? 'var(--primary)' : 'var(--text-primary)',
+                        fontWeight: workMode === mode ? 600 : 500,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        textTransform: 'capitalize',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {mode === 'in-person' ? 'In-Person' : mode}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -270,10 +288,10 @@ export default function NewListingPage() {
                   {location}
                 </div>
               )}
-              {isRemote && (
+              {workMode !== 'in-person' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                  Remote
+                  {workMode === 'remote' ? 'Remote' : 'Hybrid'}
                 </div>
               )}
               {compensation && (

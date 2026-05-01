@@ -1,11 +1,26 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { supabase, getProfile, getStudentByUserId, getStudentStats, getStudentApplications, getCareerSurvey, upsertCareerSurvey } from '@/lib/supabase';
+import {
+  supabase,
+  getProfile,
+  getStudentByUserId,
+  getStudentStats,
+  getStudentApplications,
+  getCareerSurvey,
+  upsertCareerSurvey,
+  getStudentInterviews,
+  respondToInterview,
+  sendRescheduleRequestMessage,
+  getRecommendedListings,
+} from '@/lib/supabase';
 import Calendar from '@/components/Calendar';
+import type { CalendarEvent } from '@/components/Calendar';
 import CareerSurveyModal from '@/components/CareerSurveyModal';
 import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
+import InterviewBanner from '@/components/InterviewBanner';
+import InterviewResponseModal from '@/components/InterviewResponseModal';
 
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
@@ -43,6 +58,7 @@ type StudentApplication = {
     is_remote: boolean;
     compensation: string | null;
     industry: string | null;
+    application_deadline: string | null;
     employers: {
       company_name: string;
       logo_url: string | null;
@@ -50,7 +66,38 @@ type StudentApplication = {
   };
 };
 
+const ACTIVE_APP_STATUSES = new Set(['applied', 'under_review', 'reviewing', 'reviewed', 'interviewing', 'interview_scheduled', 'offered']);
+
+type RecommendedListing = {
+  id: string;
+  title: string;
+  location: string | null;
+  is_remote: boolean;
+  is_hybrid: boolean;
+  compensation: string | null;
+  industry: string;
+  employers: { company_name: string; logo_url: string | null };
+};
+
+type StudentInterview = {
+  id: string;
+  application_id: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
+  employer_notes: string | null;
+  listing: { id: string; title: string };
+  employer: { id: string; company_name: string; logo_url: string | null; user_id?: string } | null;
+};
+
 const ATS_STAGES = ['applied', 'under_review', 'interviewing', 'interview_scheduled', 'offered'] as const;
+const ATS_LABELS: Record<string, string> = {
+  applied: 'Applied',
+  under_review: 'Review',
+  interviewing: 'Interview',
+  interview_scheduled: 'Scheduled',
+  offered: 'Offered',
+};
 const REJECTED_STATUSES = new Set(['rejected', 'closed', 'not_selected']);
 
 function getStageIndex(status: string): number {
@@ -68,12 +115,54 @@ export default function StudentDashboard() {
   const animatedOffers = useCountUp(offerCount);
   const [studentMajor, setStudentMajor] = useState<string | null>(null);
   const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
+  const [studentInterviews, setStudentInterviews] = useState<StudentInterview[]>([]);
+  const [recommended, setRecommended] = useState<RecommendedListing[]>([]);
   const [profileName, setProfileName] = useState('');
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [studentUserId, setStudentUserId] = useState<string | null>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [surveyLoaded, setSurveyLoaded] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [surveyOpen, setSurveyOpen] = useState(false);
+  const [interviewModalId, setInterviewModalId] = useState<string | null>(null);
+
+  const pendingInterviews = useMemo(
+    () => studentInterviews.filter(i => i.status === 'pending'),
+    [studentInterviews],
+  );
+  const interviewModalRow = useMemo(
+    () => studentInterviews.find(i => i.id === interviewModalId) ?? null,
+    [studentInterviews, interviewModalId],
+  );
+
+  const calendarEvents = useMemo<CalendarEvent[]>(() => {
+    const deadlines = studentApplications
+      .filter((app) => app.listing?.application_deadline && ACTIVE_APP_STATUSES.has(app.status))
+      .map((app) => ({
+        id: `deadline-${app.id}`,
+        title: `${app.listing.title} — ${app.listing.employers.company_name}`,
+        date: app.listing.application_deadline!.slice(0, 10),
+        type: 'deadline',
+      }));
+    const interviews = studentInterviews
+      .filter(i => i.status === 'accepted')
+      .map(i => {
+        const d = new Date(i.scheduled_at);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mn = String(d.getMinutes()).padStart(2, '0');
+        return {
+          id: `interview-${i.id}`,
+          title: `Interview — ${i.employer?.company_name ?? 'Employer'}`,
+          date: `${yyyy}-${mm}-${dd}`,
+          time: `${hh}:${mn}`,
+          type: 'interview',
+        };
+      });
+    return [...deadlines, ...interviews];
+  }, [studentApplications, studentInterviews]);
 
   useEffect(() => {
     async function fetchUserData() {
@@ -93,18 +182,26 @@ export default function StudentDashboard() {
       const student = await getStudentByUserId(user.id);
       if (student) {
         setStudentId(student.id);
+        setStudentUserId(user.id);
         const existingSurvey = await getCareerSurvey(student.id);
         if (existingSurvey) {
           setSurveyCompleted(true);
         }
         setSurveyLoaded(true);
-        const [stats, apps] = await Promise.all([
+        const surveyIndustries = existingSurvey?.industries ?? [];
+        const [stats, apps, interviews, recs] = await Promise.all([
           getStudentStats(student.id),
           getStudentApplications(student.id),
+          getStudentInterviews(student.id),
+          surveyIndustries.length > 0
+            ? getRecommendedListings(surveyIndustries, 4)
+            : Promise.resolve([]),
         ]);
         setApplicationCount(stats.total);
         setOfferCount(stats.offers);
         setStudentApplications(apps as unknown as StudentApplication[]);
+        setStudentInterviews(interviews as unknown as StudentInterview[]);
+        setRecommended(recs as unknown as RecommendedListing[]);
       }
       if (student?.major) {
         setStudentMajor(student.major);
@@ -113,8 +210,39 @@ export default function StudentDashboard() {
     fetchUserData();
   }, []);
 
+  async function handleInterviewResponse(action: 'accept' | 'decline' | 'reschedule', message?: string) {
+    if (!interviewModalRow) return;
+    const updated = await respondToInterview(interviewModalRow.id, action);
+    setStudentInterviews(prev => prev.map(i =>
+      i.id === interviewModalRow.id ? { ...i, ...(updated as unknown as Partial<StudentInterview>) } : i
+    ));
+    if (action === 'reschedule' && message && studentUserId && interviewModalRow.employer?.user_id) {
+      try {
+        await sendRescheduleRequestMessage({
+          senderUserId: studentUserId,
+          receiverUserId: interviewModalRow.employer.user_id,
+          applicationId: interviewModalRow.application_id,
+          body: message,
+        });
+      } catch {
+        // Best-effort message; main state already updated.
+      }
+    }
+    setInterviewModalId(null);
+  }
+
   return (
     <>
+      {/* ── Interview Banner ── */}
+      {pendingInterviews.length > 0 && (
+        <InterviewBanner
+          count={pendingInterviews.length}
+          companyName={pendingInterviews[0].employer?.company_name ?? 'An employer'}
+          scheduledAt={pendingInterviews[0].scheduled_at}
+          onRespond={() => setInterviewModalId(pendingInterviews[0].id)}
+        />
+      )}
+
       {/* ── Survey Banner ── */}
       {surveyLoaded && !surveyCompleted && !bannerDismissed && (
         <div style={{
@@ -211,6 +339,132 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Recommended for You — driven by career survey industries */}
+      {recommended.length > 0 && (
+        <div style={{
+          marginTop: '24px',
+          background: '#fff',
+          borderRadius: 'var(--radius, 12px)',
+          border: '1px solid var(--border, #e5e7eb)',
+          padding: '20px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Recommended for You</h3>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                Based on the industries from your career goals survey
+              </p>
+            </div>
+            <Link href="/dashboard/student/internships" style={{
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: 'var(--primary)',
+              textDecoration: 'none',
+            }}>
+              Browse All &rarr;
+            </Link>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: '12px',
+          }}>
+            {recommended.map((listing) => {
+              const employer = listing.employers;
+              return (
+                <Link
+                  key={listing.id}
+                  href={`/dashboard/student/internships/${listing.id}`}
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div
+                    style={{
+                      padding: '14px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border, #e5e7eb)',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.15s, box-shadow 0.15s',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {employer?.logo_url ? (
+                        <img
+                          src={employer.logo_url}
+                          alt={employer.company_name}
+                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: 32, height: 32, borderRadius: 6,
+                          background: 'var(--primary-light)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 700, color: 'var(--primary)', fontSize: '0.8rem',
+                          flexShrink: 0,
+                        }}>
+                          {employer?.company_name?.charAt(0) || '?'}
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {listing.title}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {employer?.company_name}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: 'auto' }}>
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        color: 'var(--primary)',
+                        background: 'var(--primary-light)',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                      }}>
+                        {listing.industry}
+                      </span>
+                      <span style={{
+                        fontSize: '0.68rem',
+                        color: 'var(--text-secondary)',
+                        background: 'var(--bg, #f3f4f6)',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                      }}>
+                        {listing.is_remote ? 'Remote' : listing.is_hybrid ? 'Hybrid' : listing.location || 'Location TBD'}
+                      </span>
+                      {listing.compensation && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          color: 'var(--text-secondary)',
+                          background: 'var(--bg, #f3f4f6)',
+                          padding: '2px 8px',
+                          borderRadius: '999px',
+                        }}>
+                          {listing.compensation}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 2-Column Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '24px', marginTop: '24px' }}>
@@ -319,7 +573,7 @@ export default function StudentDashboard() {
                           </span>
                         </div>
                         {/* ATS Progress Stepper */}
-                        <div style={{ display: 'flex', alignItems: 'center', marginTop: '8px', marginLeft: '48px', gap: '0' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: '8px', marginLeft: '48px', gap: '0' }}>
                           {ATS_STAGES.map((stage, si) => {
                             const isCompleted = !isRejected && si <= stageIdx;
                             const isCurrent = !isRejected && si === stageIdx;
@@ -327,21 +581,33 @@ export default function StudentDashboard() {
                             const emptyColor = isRejected ? '#fecaca' : '#e5e7eb';
                             return (
                               <div key={stage} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                <div style={{
-                                  width: isCurrent ? 8 : 6,
-                                  height: isCurrent ? 8 : 6,
-                                  borderRadius: '50%',
-                                  background: isCompleted ? filledColor : emptyColor,
-                                  flexShrink: 0,
-                                  transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                                  boxShadow: isCurrent ? `0 0 0 3px ${isRejected ? 'rgba(248,113,113,0.2)' : 'rgba(159,198,60,0.2)'}` : 'none',
-                                }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
+                                  <div style={{
+                                    width: isCurrent ? 8 : 6,
+                                    height: isCurrent ? 8 : 6,
+                                    borderRadius: '50%',
+                                    background: isCompleted ? filledColor : emptyColor,
+                                    flexShrink: 0,
+                                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                                    boxShadow: isCurrent ? `0 0 0 3px ${isRejected ? 'rgba(248,113,113,0.2)' : 'rgba(159,198,60,0.2)'}` : 'none',
+                                  }} />
+                                  <span style={{
+                                    fontSize: '0.6rem',
+                                    color: isCurrent ? (isRejected ? '#f87171' : 'var(--accent-dark, #8ab32e)') : isCompleted ? 'var(--text-secondary)' : '#c0c4cc',
+                                    fontWeight: isCurrent ? 600 : 400,
+                                    marginTop: '3px',
+                                    whiteSpace: 'nowrap',
+                                  }}>
+                                    {ATS_LABELS[stage]}
+                                  </span>
+                                </div>
                                 {si < ATS_STAGES.length - 1 && (
                                   <div style={{
                                     flex: 1,
                                     height: 2,
                                     background: (!isRejected && si < stageIdx) ? filledColor : emptyColor,
                                     transition: 'background 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                                    marginTop: '-10px',
                                   }} />
                                 )}
                               </div>
@@ -357,7 +623,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* Calendar */}
-          <Calendar events={[]} />
+          <Calendar events={calendarEvents} />
         </div>
 
         {/* ── Right Column: Industry News ── */}
@@ -413,6 +679,19 @@ export default function StudentDashboard() {
           }
         }}
       />
+
+      {interviewModalRow && (
+        <InterviewResponseModal
+          open={interviewModalId !== null}
+          onClose={() => setInterviewModalId(null)}
+          onSubmit={handleInterviewResponse}
+          companyName={interviewModalRow.employer?.company_name ?? 'Employer'}
+          listingTitle={interviewModalRow.listing.title}
+          scheduledAt={interviewModalRow.scheduled_at}
+          durationMinutes={interviewModalRow.duration_minutes}
+          notes={interviewModalRow.employer_notes}
+        />
+      )}
     </>
   );
 }

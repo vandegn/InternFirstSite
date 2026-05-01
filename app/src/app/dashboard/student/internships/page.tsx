@@ -13,6 +13,7 @@ type Listing = {
   description: string;
   location: string | null;
   is_remote: boolean;
+  is_hybrid: boolean;
   compensation: string | null;
   requirements: string | null;
   industry: string;
@@ -142,8 +143,10 @@ export default function BrowseInternships() {
 
     if (workModeFilter === 'remote') {
       result = result.filter((l) => l.is_remote);
+    } else if (workModeFilter === 'hybrid') {
+      result = result.filter((l) => l.is_hybrid);
     } else if (workModeFilter === 'in-person') {
-      result = result.filter((l) => !l.is_remote && l.location);
+      result = result.filter((l) => !l.is_remote && !l.is_hybrid && l.location);
     }
 
     return result;
@@ -187,345 +190,354 @@ export default function BrowseInternships() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      {/* Compact filter toolbar */}
-      <div style={{
-        padding: '12px 24px',
-        flexShrink: 0,
-        borderBottom: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-      }}>
-        {/* Search input */}
-        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--text-secondary)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search role, company, or skill..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px 8px 36px',
-              borderRadius: '8px',
-              border: '1.5px solid var(--border)',
-              fontSize: '0.85rem',
-              background: 'var(--bg)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              transition: 'border-color 0.15s ease',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
+    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+      {/* Left panel - filters + listing cards */}
+      <div
+        style={{
+          width: '35%',
+          minWidth: '300px',
+          maxWidth: '380px',
+          borderRight: '1px solid var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Filter section */}
+        <div style={{
+          padding: '12px 16px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          flexShrink: 0,
+        }}>
+          {/* Search input */}
+          <div style={{ position: 'relative' }}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--text-secondary)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search role, company, or skill..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px 8px 36px',
+                borderRadius: '8px',
+                border: '1.5px solid var(--border)',
+                fontSize: '0.85rem',
+                background: 'var(--bg)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                transition: 'border-color 0.15s ease',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
 
-        {/* Location input */}
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--text-secondary)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-          >
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Location..."
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-            style={{
-              padding: '8px 12px 8px 32px',
-              borderRadius: '8px',
-              border: '1.5px solid var(--border)',
-              fontSize: '0.82rem',
-              background: 'var(--bg)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              width: '140px',
-              transition: 'border-color 0.15s ease',
-            }}
-          />
-        </div>
+          {/* Location input */}
+          <div style={{ position: 'relative' }}>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--text-secondary)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+            >
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Location..."
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px 8px 32px',
+                borderRadius: '8px',
+                border: '1.5px solid var(--border)',
+                fontSize: '0.82rem',
+                background: 'var(--bg)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                transition: 'border-color 0.15s ease',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
 
-        {/* Divider */}
-        <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
-
-        {/* Salary dropdown */}
-        <div ref={salaryRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => { setSalaryOpen(!salaryOpen); setModeOpen(false); setIndustryOpen(false); }}
-            style={{
-              ...selectStyle,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: paidFilter !== 'all' ? 600 : 500,
-              borderColor: salaryOpen ? 'var(--primary)' : 'var(--border)',
-            }}
-          >
-            {paidFilter === 'all' ? 'Any Salary' : paidFilter === 'paid' ? 'Paid' : 'Unpaid'}
-          </button>
-          {salaryOpen && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              right: 0,
-              minWidth: '140px',
-              background: '#fff',
-              border: '1.5px solid var(--border)',
-              borderRadius: '10px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-              zIndex: 100,
-              overflow: 'hidden',
-              padding: '4px 0',
-            }}>
-              {([['all', 'Any Salary'], ['paid', 'Paid'], ['unpaid', 'Unpaid']] as const).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => { setPaidFilter(val); setSalaryOpen(false); }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '7px 12px',
-                    border: 'none',
-                    background: paidFilter === val ? 'var(--primary-light)' : 'transparent',
-                    color: paidFilter === val ? 'var(--primary)' : 'var(--text-primary)',
-                    fontWeight: paidFilter === val ? 600 : 400,
-                    fontSize: '0.82rem',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'background 0.1s ease',
-                  }}
-                  onMouseEnter={(e) => { if (paidFilter !== val) e.currentTarget.style.background = 'var(--bg)'; }}
-                  onMouseLeave={(e) => { if (paidFilter !== val) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Work mode dropdown */}
-        <div ref={modeRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => { setModeOpen(!modeOpen); setSalaryOpen(false); setIndustryOpen(false); }}
-            style={{
-              ...selectStyle,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: workModeFilter !== 'all' ? 600 : 500,
-              borderColor: modeOpen ? 'var(--primary)' : 'var(--border)',
-            }}
-          >
-            {workModeFilter === 'all' ? 'Any Mode' : workModeFilter === 'remote' ? 'Remote' : 'In-Person'}
-          </button>
-          {modeOpen && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              right: 0,
-              minWidth: '140px',
-              background: '#fff',
-              border: '1.5px solid var(--border)',
-              borderRadius: '10px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-              zIndex: 100,
-              overflow: 'hidden',
-              padding: '4px 0',
-            }}>
-              {([['all', 'Any Mode'], ['remote', 'Remote'], ['in-person', 'In-Person']] as const).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => { setWorkModeFilter(val as typeof workModeFilter); setModeOpen(false); }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '7px 12px',
-                    border: 'none',
-                    background: workModeFilter === val ? 'var(--primary-light)' : 'transparent',
-                    color: workModeFilter === val ? 'var(--primary)' : 'var(--text-primary)',
-                    fontWeight: workModeFilter === val ? 600 : 400,
-                    fontSize: '0.82rem',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'background 0.1s ease',
-                  }}
-                  onMouseEnter={(e) => { if (workModeFilter !== val) e.currentTarget.style.background = 'var(--bg)'; }}
-                  onMouseLeave={(e) => { if (workModeFilter !== val) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Industry searchable dropdown */}
-        <div ref={industryRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => { setIndustryOpen(!industryOpen); setIndustrySearch(''); setSalaryOpen(false); setModeOpen(false); }}
-            style={{
-              ...selectStyle,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: selectedIndustry ? 600 : 500,
-              borderColor: industryOpen ? 'var(--primary)' : 'var(--border)',
-            }}
-          >
-            {selectedIndustry || 'All Industries'}
-          </button>
-
-          {industryOpen && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              right: 0,
-              width: '220px',
-              background: '#fff',
-              border: '1.5px solid var(--border)',
-              borderRadius: '10px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-              zIndex: 100,
-              overflow: 'hidden',
-            }}>
-              {/* Search input */}
-              <div style={{ padding: '8px', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ position: 'relative' }}>
-                  <svg
-                    width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }}
-                  >
-                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search industries..."
-                    value={industrySearch}
-                    onChange={(e) => setIndustrySearch(e.target.value)}
-                    autoFocus
-                    style={{
-                      width: '100%',
-                      padding: '7px 8px 7px 28px',
-                      border: '1.5px solid var(--border)',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      outline: 'none',
-                      background: 'var(--bg)',
-                      color: 'var(--text-primary)',
-                      boxSizing: 'border-box',
-                    }}
-                  />
+          {/* Filter dropdowns row */}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {/* Salary dropdown */}
+            <div ref={salaryRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+              <button
+                onClick={() => { setSalaryOpen(!salaryOpen); setModeOpen(false); setIndustryOpen(false); }}
+                style={{
+                  ...selectStyle,
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  fontWeight: paidFilter !== 'all' ? 600 : 500,
+                  borderColor: salaryOpen ? 'var(--primary)' : 'var(--border)',
+                }}
+              >
+                {paidFilter === 'all' ? 'Salary' : paidFilter === 'paid' ? 'Paid' : 'Unpaid'}
+              </button>
+              {salaryOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  left: 0,
+                  minWidth: '140px',
+                  background: '#fff',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: '10px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  zIndex: 100,
+                  overflow: 'hidden',
+                  padding: '4px 0',
+                }}>
+                  {([['all', 'Any Salary'], ['paid', 'Paid'], ['unpaid', 'Unpaid']] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      onClick={() => { setPaidFilter(val); setSalaryOpen(false); }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '7px 12px',
+                        border: 'none',
+                        background: paidFilter === val ? 'var(--primary-light)' : 'transparent',
+                        color: paidFilter === val ? 'var(--primary)' : 'var(--text-primary)',
+                        fontWeight: paidFilter === val ? 600 : 400,
+                        fontSize: '0.82rem',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'background 0.1s ease',
+                      }}
+                      onMouseEnter={(e) => { if (paidFilter !== val) e.currentTarget.style.background = 'var(--bg)'; }}
+                      onMouseLeave={(e) => { if (paidFilter !== val) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              </div>
-
-              {/* Options list */}
-              <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '4px 0' }}>
-                <button
-                  onClick={() => { handleIndustryFilter(''); setIndustryOpen(false); }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '7px 12px',
-                    border: 'none',
-                    background: selectedIndustry === '' ? 'var(--primary-light)' : 'transparent',
-                    color: selectedIndustry === '' ? 'var(--primary)' : 'var(--text-primary)',
-                    fontWeight: selectedIndustry === '' ? 600 : 400,
-                    fontSize: '0.82rem',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'background 0.1s ease',
-                  }}
-                  onMouseEnter={(e) => { if (selectedIndustry !== '') e.currentTarget.style.background = 'var(--bg)'; }}
-                  onMouseLeave={(e) => { if (selectedIndustry !== '') e.currentTarget.style.background = 'transparent'; }}
-                >
-                  All Industries
-                </button>
-                {filteredIndustries.map((ind) => (
-                  <button
-                    key={ind}
-                    onClick={() => { handleIndustryFilter(ind); setIndustryOpen(false); }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '7px 12px',
-                      border: 'none',
-                      background: selectedIndustry === ind ? 'var(--primary-light)' : 'transparent',
-                      color: selectedIndustry === ind ? 'var(--primary)' : 'var(--text-primary)',
-                      fontWeight: selectedIndustry === ind ? 600 : 400,
-                      fontSize: '0.82rem',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      transition: 'background 0.1s ease',
-                    }}
-                    onMouseEnter={(e) => { if (selectedIndustry !== ind) e.currentTarget.style.background = 'var(--bg)'; }}
-                    onMouseLeave={(e) => { if (selectedIndustry !== ind) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    {ind}
-                  </button>
-                ))}
-                {filteredIndustries.length === 0 && (
-                  <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                    No matching industries
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Split view */}
-      {loading ? (
-        <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <p>Loading internships...</p>
+            {/* Work mode dropdown */}
+            <div ref={modeRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+              <button
+                onClick={() => { setModeOpen(!modeOpen); setSalaryOpen(false); setIndustryOpen(false); }}
+                style={{
+                  ...selectStyle,
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  fontWeight: workModeFilter !== 'all' ? 600 : 500,
+                  borderColor: modeOpen ? 'var(--primary)' : 'var(--border)',
+                }}
+              >
+                {workModeFilter === 'all' ? 'Mode' : workModeFilter === 'remote' ? 'Remote' : workModeFilter === 'hybrid' ? 'Hybrid' : 'In-Person'}
+              </button>
+              {modeOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  left: 0,
+                  minWidth: '140px',
+                  background: '#fff',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: '10px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  zIndex: 100,
+                  overflow: 'hidden',
+                  padding: '4px 0',
+                }}>
+                  {([['all', 'Any Mode'], ['remote', 'Remote'], ['hybrid', 'Hybrid'], ['in-person', 'In-Person']] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      onClick={() => { setWorkModeFilter(val as typeof workModeFilter); setModeOpen(false); }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '7px 12px',
+                        border: 'none',
+                        background: workModeFilter === val ? 'var(--primary-light)' : 'transparent',
+                        color: workModeFilter === val ? 'var(--primary)' : 'var(--text-primary)',
+                        fontWeight: workModeFilter === val ? 600 : 400,
+                        fontSize: '0.82rem',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'background 0.1s ease',
+                      }}
+                      onMouseEnter={(e) => { if (workModeFilter !== val) e.currentTarget.style.background = 'var(--bg)'; }}
+                      onMouseLeave={(e) => { if (workModeFilter !== val) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Industry searchable dropdown */}
+            <div ref={industryRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+              <button
+                onClick={() => { setIndustryOpen(!industryOpen); setIndustrySearch(''); setSalaryOpen(false); setModeOpen(false); }}
+                style={{
+                  ...selectStyle,
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  fontWeight: selectedIndustry ? 600 : 500,
+                  borderColor: industryOpen ? 'var(--primary)' : 'var(--border)',
+                  overflow: 'hidden',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedIndustry || 'Industry'}
+                </span>
+              </button>
+
+              {industryOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  width: '220px',
+                  background: '#fff',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: '10px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  zIndex: 100,
+                  overflow: 'hidden',
+                }}>
+                  {/* Search input */}
+                  <div style={{ padding: '8px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ position: 'relative' }}>
+                      <svg
+                        width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)' }}
+                      >
+                        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder="Search industries..."
+                        value={industrySearch}
+                        onChange={(e) => setIndustrySearch(e.target.value)}
+                        autoFocus
+                        style={{
+                          width: '100%',
+                          padding: '7px 8px 7px 28px',
+                          border: '1.5px solid var(--border)',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          outline: 'none',
+                          background: 'var(--bg)',
+                          color: 'var(--text-primary)',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Options list */}
+                  <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '4px 0' }}>
+                    <button
+                      onClick={() => { handleIndustryFilter(''); setIndustryOpen(false); }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '7px 12px',
+                        border: 'none',
+                        background: selectedIndustry === '' ? 'var(--primary-light)' : 'transparent',
+                        color: selectedIndustry === '' ? 'var(--primary)' : 'var(--text-primary)',
+                        fontWeight: selectedIndustry === '' ? 600 : 400,
+                        fontSize: '0.82rem',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'background 0.1s ease',
+                      }}
+                      onMouseEnter={(e) => { if (selectedIndustry !== '') e.currentTarget.style.background = 'var(--bg)'; }}
+                      onMouseLeave={(e) => { if (selectedIndustry !== '') e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      All Industries
+                    </button>
+                    {filteredIndustries.map((ind) => (
+                      <button
+                        key={ind}
+                        onClick={() => { handleIndustryFilter(ind); setIndustryOpen(false); }}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: '7px 12px',
+                          border: 'none',
+                          background: selectedIndustry === ind ? 'var(--primary-light)' : 'transparent',
+                          color: selectedIndustry === ind ? 'var(--primary)' : 'var(--text-primary)',
+                          fontWeight: selectedIndustry === ind ? 600 : 400,
+                          fontSize: '0.82rem',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'background 0.1s ease',
+                        }}
+                        onMouseEnter={(e) => { if (selectedIndustry !== ind) e.currentTarget.style.background = 'var(--bg)'; }}
+                        onMouseLeave={(e) => { if (selectedIndustry !== ind) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        {ind}
+                      </button>
+                    ))}
+                    {filteredIndustries.length === 0 && (
+                      <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                        No matching industries
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      ) : filteredListings.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--text-secondary)' }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '16px', opacity: 0.5 }}>
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z" />
-          </svg>
-          <p style={{ fontSize: '1.1rem', fontWeight: 500 }}>No internships found</p>
-          <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>Try adjusting your search or filters.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          {/* Left panel - filters + listing cards */}
-          <div
-            style={{
-              width: '35%',
-              minWidth: '300px',
-              maxWidth: '380px',
-              borderRight: '1px solid var(--border)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-            {filteredListings.map((listing) => (
+
+        {/* Listing cards or loading/empty */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {loading ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <p>Loading internships...</p>
+            </div>
+          ) : filteredListings.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '12px', opacity: 0.5 }}>
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z" />
+              </svg>
+              <p style={{ fontSize: '1rem', fontWeight: 500 }}>No internships found</p>
+              <p style={{ fontSize: '0.85rem', marginTop: '6px' }}>Try adjusting your search or filters.</p>
+            </div>
+          ) : (
+            filteredListings.map((listing) => (
               <div
                 key={listing.id}
                 onClick={() => selectListing(listing.id)}
@@ -585,7 +597,7 @@ export default function BrowseInternships() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                        {listing.is_remote ? 'Remote' : listing.location || 'Not specified'}
+                        {listing.is_remote ? 'Remote' : listing.is_hybrid ? `Hybrid${listing.location ? ` · ${listing.location}` : ''}` : listing.location || 'Not specified'}
                       </span>
                       {listing.compensation && (
                         <span style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 500 }}>
@@ -599,7 +611,7 @@ export default function BrowseInternships() {
                   </span>
                 </div>
               </div>
-            ))}
+            )))}
 
             </div>
 
@@ -673,7 +685,7 @@ export default function BrowseInternships() {
                       {selectedListing.location}
                     </span>
                   )}
-                  {selectedListing.is_remote && (
+                  {(selectedListing.is_remote || selectedListing.is_hybrid) && (
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: '5px',
                       fontSize: '0.82rem', color: 'var(--text-secondary)',
@@ -681,7 +693,7 @@ export default function BrowseInternships() {
                       background: 'var(--bg-secondary, #f5f5f5)',
                     }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-                      Remote
+                      {selectedListing.is_remote ? 'Remote' : 'Hybrid'}
                     </span>
                   )}
                   {selectedListing.compensation && (
@@ -868,8 +880,6 @@ export default function BrowseInternships() {
               </div>
             )}
           </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -14,7 +14,7 @@ export default function EditListingPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [isRemote, setIsRemote] = useState(false);
+  const [workMode, setWorkMode] = useState<'in-person' | 'hybrid' | 'remote'>('in-person');
   const [compensation, setCompensation] = useState('');
   const [requirements, setRequirements] = useState('');
   const [keyResponsibilities, setKeyResponsibilities] = useState('');
@@ -45,7 +45,7 @@ export default function EditListingPage() {
         setTitle(listing.title || '');
         setDescription(listing.description || '');
         setLocation(listing.location || '');
-        setIsRemote(listing.is_remote || false);
+        setWorkMode(listing.is_remote ? 'remote' : listing.is_hybrid ? 'hybrid' : 'in-person');
         setCompensation(listing.compensation || '');
         setRequirements(listing.requirements || '');
         setKeyResponsibilities(listing.key_responsibilities || '');
@@ -72,7 +72,8 @@ export default function EditListingPage() {
         title,
         description,
         location: location || undefined,
-        is_remote: isRemote,
+        is_remote: workMode === 'remote',
+        is_hybrid: workMode === 'hybrid',
         compensation: compensation || undefined,
         requirements: requirements || undefined,
         key_responsibilities: keyResponsibilities || undefined,
@@ -205,15 +206,32 @@ export default function EditListingPage() {
                 onChange={(e) => setApplicationDeadline(e.target.value)}
               />
             </div>
-            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 28 }}>
-              <input
-                type="checkbox"
-                id="isRemote"
-                checked={isRemote}
-                onChange={(e) => setIsRemote(e.target.checked)}
-                style={{ width: 'auto' }}
-              />
-              <label htmlFor="isRemote" style={{ margin: 0 }}>Remote position</label>
+            <div className="form-group">
+              <label>Work Arrangement</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['in-person', 'hybrid', 'remote'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setWorkMode(mode)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: workMode === mode ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                      background: workMode === mode ? 'var(--primary-light)' : 'var(--bg)',
+                      color: workMode === mode ? 'var(--primary)' : 'var(--text-primary)',
+                      fontWeight: workMode === mode ? 600 : 500,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      textTransform: 'capitalize',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {mode === 'in-person' ? 'In-Person' : mode}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

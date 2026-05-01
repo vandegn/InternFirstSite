@@ -15,6 +15,7 @@ type Application = {
     title: string;
     location: string | null;
     is_remote: boolean;
+    is_hybrid: boolean;
     compensation: string | null;
     industry: string;
     employers: {
@@ -333,11 +334,14 @@ export default function MyApplications() {
                           <circle cx="12" cy="10" r="3" />
                         </svg>
                         {app.listing.location}
-                        {app.listing.is_remote && ' (Remote)'}
+                        {app.listing.is_remote ? ' (Remote)' : app.listing.is_hybrid ? ' (Hybrid)' : ''}
                       </span>
                     )}
                     {!app.listing.location && app.listing.is_remote && (
                       <span>Remote</span>
+                    )}
+                    {!app.listing.location && !app.listing.is_remote && app.listing.is_hybrid && (
+                      <span>Hybrid</span>
                     )}
                     {app.listing.compensation && (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

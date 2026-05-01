@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase, getEmployerByUserId, getEmployerListings, getProfile, getEmployerStats, getEmployerApplications } from '@/lib/supabase';
+import {
+  supabase,
+  getEmployerByUserId,
+  getEmployerListings,
+  getEmployerStats,
+  getEmployerApplications,
+  getEmployerInterviews,
+} from '@/lib/supabase';
 import Pagination from '@/components/Pagination';
 
 type Listing = {
@@ -10,13 +17,37 @@ type Listing = {
   title: string;
   location: string | null;
   is_remote: boolean;
+  is_hybrid: boolean;
   compensation: string | null;
   status: string;
   industry: string;
   created_at: string;
 };
 
+type EmployerInterview = {
+  id: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
+  listing: { id: string; title: string };
+  student: { profile: { full_name: string; avatar_url: string | null } };
+};
+
 const PAGE_SIZE = 10;
+
+const INTERVIEW_BADGE_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+  pending: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
+  accepted: { bg: '#d1fae5', color: '#065f46', label: 'Confirmed' },
+  reschedule_requested: { bg: '#fef3c7', color: '#92400e', label: 'Reschedule Requested' },
+};
+
+function formatInterviewWhen(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  });
+}
 
 export default function EmployerDashboard() {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -28,6 +59,7 @@ export default function EmployerDashboard() {
   const [totalApplicants, setTotalApplicants] = useState(0);
   const [interviewCount, setInterviewCount] = useState(0);
   const [recentCandidates, setRecentCandidates] = useState<any[]>([]);
+  const [upcomingInterviews, setUpcomingInterviews] = useState<EmployerInterview[]>([]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -44,13 +76,22 @@ export default function EmployerDashboard() {
       setCompanyName(employer.company_name);
       setEmployerId(employer.id);
 
-      const [stats, apps] = await Promise.all([
+      const [stats, apps, interviews] = await Promise.all([
         getEmployerStats(employer.id),
         getEmployerApplications(employer.id),
+        getEmployerInterviews(employer.id),
       ]);
       setTotalApplicants(stats.totalApplicants);
       setInterviewCount(stats.interviewing);
       setRecentCandidates(apps.slice(0, 3));
+      const now = Date.now();
+      const upcoming = (interviews as unknown as EmployerInterview[])
+        .filter(i =>
+          ['pending', 'accepted', 'reschedule_requested'].includes(i.status) &&
+          new Date(i.scheduled_at).getTime() + i.duration_minutes * 60_000 > now,
+        )
+        .slice(0, 5);
+      setUpcomingInterviews(upcoming);
     }
     fetchEmployer();
   }, []);
@@ -110,6 +151,54 @@ export default function EmployerDashboard() {
         </div>
       </div>
 
+      {/* Upcoming Interviews */}
+      {upcomingInterviews.length > 0 && (
+        <div className="dash-section">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 className="dash-section-title" style={{ margin: 0 }}>Upcoming Interviews</h3>
+            <Link href="/dashboard/employer/posted-jobs" style={{
+              fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)', textDecoration: 'none',
+            }}>
+              Manage &rarr;
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {upcomingInterviews.map(iv => {
+              const badge = INTERVIEW_BADGE_COLORS[iv.status];
+              return (
+                <div key={iv.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 14px', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)', background: '#fff',
+                }}>
+                  <img
+                    src={iv.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
+                    alt={iv.student.profile.full_name}
+                    style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>
+                      {iv.student.profile.full_name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {iv.listing.title} · {formatInterviewWhen(iv.scheduled_at)} · {iv.duration_minutes} min
+                    </div>
+                  </div>
+                  {badge && (
+                    <span style={{
+                      fontSize: '0.65rem', fontWeight: 600, padding: '3px 10px', borderRadius: 10,
+                      background: badge.bg, color: badge.color, flexShrink: 0,
+                    }}>
+                      {badge.label}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* My Listings */}
       <div className="dash-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -142,6 +231,7 @@ export default function EmployerDashboard() {
                       <span>{listing.industry}</span>
                       <span style={listing.status === 'closed' ? { background: '#fee2e2', color: '#991b1b' } : undefined}>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
                       {listing.is_remote && <span>Remote</span>}
+                      {!listing.is_remote && listing.is_hybrid && <span>Hybrid</span>}
                     </div>
                     <div className="listing-footer">
                       <span className="listing-salary">{listing.compensation || 'TBD'}</span>

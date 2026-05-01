@@ -127,6 +127,7 @@ export async function createListing(listing: {
   description: string;
   location?: string;
   is_remote?: boolean;
+  is_hybrid?: boolean;
   compensation?: string;
   requirements?: string;
   key_responsibilities?: string;
@@ -424,7 +425,7 @@ export async function getStudentApplications(studentId: string) {
       updated_at,
       resume_id,
       listing:internship_listings!inner(
-        id, title, location, is_remote, compensation, industry,
+        id, title, location, is_remote, is_hybrid, compensation, industry, application_deadline,
         employers:employers!inner(company_name, logo_url)
       )
     `)
@@ -840,6 +841,7 @@ export async function updateListing(listingId: string, fields: {
   description?: string;
   location?: string;
   is_remote?: boolean;
+  is_hybrid?: boolean;
   compensation?: string;
   requirements?: string;
   key_responsibilities?: string;
@@ -855,4 +857,177 @@ export async function updateListing(listingId: string, fields: {
     .single();
   if (error) throw error;
   return data;
+}
+
+// ---- Interview Schedules ----
+
+export type InterviewStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'reschedule_requested'
+  | 'cancelled'
+  | 'completed';
+
+export async function createInterview(opts: {
+  applicationId: string;
+  employerId: string;
+  studentId: string;
+  listingId: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  notes?: string;
+}) {
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .insert({
+      application_id: opts.applicationId,
+      employer_id: opts.employerId,
+      student_id: opts.studentId,
+      listing_id: opts.listingId,
+      scheduled_at: opts.scheduledAt,
+      duration_minutes: opts.durationMinutes,
+      employer_notes: opts.notes || null,
+      status: 'pending',
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  await supabase
+    .from('applications')
+    .update({ status: 'interviewing' })
+    .eq('id', opts.applicationId);
+
+  return data;
+}
+
+export async function getEmployerInterviews(employerId: string) {
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .select(`
+      *,
+      application:applications(id, status),
+      listing:internship_listings(id, title),
+      student:students(
+        id, major, graduation_year, user_id,
+        profile:profiles!inner(full_name, email, avatar_url)
+      )
+    `)
+    .eq('employer_id', employerId)
+    .order('scheduled_at', { ascending: true });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function getStudentInterviews(studentId: string) {
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .select(`
+      *,
+      application:applications(id, status),
+      listing:internship_listings(id, title),
+      employer:employers(id, company_name, logo_url, user_id)
+    `)
+    .eq('student_id', studentId)
+    .order('scheduled_at', { ascending: true });
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function getInterviewById(interviewId: string) {
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .select(`
+      *,
+      application:applications(id, status),
+      listing:internship_listings(id, title),
+      employer:employers(id, company_name, logo_url, user_id),
+      student:students(
+        id, major, graduation_year, user_id,
+        profile:profiles!inner(full_name, email, avatar_url)
+      )
+    `)
+    .eq('id', interviewId)
+    .single();
+  if (error) return null;
+  return data;
+}
+
+export async function respondToInterview(
+  interviewId: string,
+  action: 'accept' | 'decline' | 'reschedule',
+) {
+  const newStatus: InterviewStatus =
+    action === 'accept' ? 'accepted'
+    : action === 'decline' ? 'declined'
+    : 'reschedule_requested';
+
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .update({ status: newStatus })
+    .eq('id', interviewId)
+    .select(`*, application_id`)
+    .single();
+  if (error) throw error;
+
+  if (action === 'decline' && data?.application_id) {
+    await supabase
+      .from('applications')
+      .update({ status: 'reviewed' })
+      .eq('id', data.application_id);
+  }
+
+  return data;
+}
+
+export async function cancelInterview(interviewId: string, cancelledBy: 'employer' | 'student') {
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .update({
+      status: 'cancelled',
+      cancelled_by: cancelledBy,
+      cancelled_at: new Date().toISOString(),
+    })
+    .eq('id', interviewId)
+    .select()
+    .single();
+  if (error) throw error;
+
+  return data;
+}
+
+export async function rescheduleInterview(
+  interviewId: string,
+  fields: { scheduledAt: string; durationMinutes: number; notes?: string },
+) {
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .update({
+      scheduled_at: fields.scheduledAt,
+      duration_minutes: fields.durationMinutes,
+      employer_notes: fields.notes ?? null,
+      status: 'pending',
+    })
+    .eq('id', interviewId)
+    .select()
+    .single();
+  if (error) throw error;
+
+  return data;
+}
+
+export async function sendRescheduleRequestMessage(opts: {
+  senderUserId: string;
+  receiverUserId: string;
+  applicationId: string;
+  body: string;
+}) {
+  const { error } = await supabase.from('messages').insert({
+    sender_id: opts.senderUserId,
+    receiver_id: opts.receiverUserId,
+    application_id: opts.applicationId,
+    body: opts.body,
+  });
+  if (error) throw error;
 }

@@ -3,13 +3,27 @@
 import ReactMarkdown from 'react-markdown';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase, getEmployerByUserId, getEmployerListingsWithStats, getEmployerApplications, updateListing, updateApplicationStatus } from '@/lib/supabase';
+import {
+  supabase,
+  getEmployerByUserId,
+  getEmployerListingsWithStats,
+  getEmployerApplications,
+  getEmployerInterviews,
+  createInterview,
+  rescheduleInterview,
+  cancelInterview,
+  updateListing,
+  updateApplicationStatus,
+} from '@/lib/supabase';
+import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
+import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
 
 type ListingWithStats = {
   id: string;
   title: string;
   location: string | null;
   is_remote: boolean;
+  is_hybrid: boolean;
   compensation: string | null;
   status: string;
   industry: string;
@@ -60,14 +74,50 @@ const LISTING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   closed: { bg: '#fee2e2', color: '#991b1b' },
 };
 
+type Interview = {
+  id: string;
+  application_id: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
+  employer_notes: string | null;
+};
+
+const INTERVIEW_STATUS_LABELS: Record<string, string> = {
+  pending: 'Interview Pending',
+  accepted: 'Interview Confirmed',
+  declined: 'Interview Declined',
+  reschedule_requested: 'Reschedule Requested',
+  cancelled: 'Interview Cancelled',
+  completed: 'Interview Completed',
+};
+
+const INTERVIEW_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  pending: { bg: '#fef3c7', color: '#92400e' },
+  accepted: { bg: '#d1fae5', color: '#065f46' },
+  declined: { bg: '#fee2e2', color: '#991b1b' },
+  reschedule_requested: { bg: '#fef3c7', color: '#92400e' },
+  cancelled: { bg: '#f3f4f6', color: '#4b5563' },
+  completed: { bg: '#e0e7ff', color: '#3730a3' },
+};
+
+function formatInterviewWhen(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 export default function PostedJobsPage() {
   const [listings, setListings] = useState<ListingWithStats[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [employerId, setEmployerId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [updatingAppStatus, setUpdatingAppStatus] = useState<string | null>(null);
+  const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null);
+  const [scheduleModalInterview, setScheduleModalInterview] = useState<Interview | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -75,10 +125,12 @@ export default function PostedJobsPage() {
       if (!user) return;
       const employer = await getEmployerByUserId(user.id);
       if (!employer) return;
+      setEmployerId(employer.id);
 
-      const [listingsData, appsData] = await Promise.all([
+      const [listingsData, appsData, interviewsData] = await Promise.all([
         getEmployerListingsWithStats(employer.id),
         getEmployerApplications(employer.id),
+        getEmployerInterviews(employer.id),
       ]);
 
       const normalizedApps = appsData.map((app: any) => ({
@@ -93,11 +145,61 @@ export default function PostedJobsPage() {
 
       setListings(listingsData as ListingWithStats[]);
       setApplications(normalizedApps as Application[]);
+      setInterviews(interviewsData as unknown as Interview[]);
       if (listingsData.length > 0) setSelectedId(listingsData[0].id);
       setLoading(false);
     }
     fetchData();
   }, []);
+
+  function activeInterviewForApp(applicationId: string): Interview | undefined {
+    return interviews.find(i =>
+      i.application_id === applicationId &&
+      !['declined', 'cancelled', 'completed'].includes(i.status)
+    );
+  }
+
+  function openScheduleModal(app: Application) {
+    setScheduleModalInterview(activeInterviewForApp(app.id) ?? null);
+    setScheduleModalApp(app);
+  }
+
+  function closeScheduleModal() {
+    setScheduleModalApp(null);
+    setScheduleModalInterview(null);
+  }
+
+  async function handleScheduleSubmit(data: ScheduleInterviewFormData) {
+    if (!scheduleModalApp || !employerId) return;
+    if (scheduleModalInterview) {
+      const updated = await rescheduleInterview(scheduleModalInterview.id, {
+        scheduledAt: data.scheduledAt,
+        durationMinutes: data.durationMinutes,
+        notes: data.notes,
+      });
+      setInterviews(prev => prev.map(i => i.id === updated.id ? (updated as unknown as Interview) : i));
+    } else {
+      const created = await createInterview({
+        applicationId: scheduleModalApp.id,
+        employerId,
+        studentId: scheduleModalApp.student.id,
+        listingId: scheduleModalApp.listing.id,
+        scheduledAt: data.scheduledAt,
+        durationMinutes: data.durationMinutes,
+        notes: data.notes,
+      });
+      setInterviews(prev => [...prev, created as unknown as Interview]);
+      setApplications(prev => prev.map(a =>
+        a.id === scheduleModalApp.id ? { ...a, status: 'interviewing' } : a,
+      ));
+    }
+    closeScheduleModal();
+  }
+
+  async function handleCancelInterview(interviewId: string) {
+    const cancelled = await cancelInterview(interviewId, 'employer');
+    setInterviews(prev => prev.map(i => i.id === cancelled.id ? (cancelled as unknown as Interview) : i));
+  }
 
   const filteredListings = filterStatus
     ? listings.filter(l => l.status === filterStatus)
@@ -226,7 +328,7 @@ export default function PostedJobsPage() {
                     </span>
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                    {listing.location || 'No location'}{listing.is_remote ? ' (Remote)' : ''} &middot; {listing.industry}
+                    {listing.location || 'No location'}{listing.is_remote ? ' (Remote)' : listing.is_hybrid ? ' (Hybrid)' : ''} &middot; {listing.industry}
                   </p>
                   <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-light)' }}>
                     <span>{listing.applicant_count} applicant{listing.applicant_count !== 1 ? 's' : ''}</span>
@@ -258,7 +360,7 @@ export default function PostedJobsPage() {
               <div>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '4px' }}>{selectedListing.title}</h2>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  {selectedListing.location || 'No location'}{selectedListing.is_remote ? ' (Remote)' : ''} &middot; {selectedListing.industry} &middot; {selectedListing.compensation || 'TBD'}
+                  {selectedListing.location || 'No location'}{selectedListing.is_remote ? ' (Remote)' : selectedListing.is_hybrid ? ' (Hybrid)' : ''} &middot; {selectedListing.industry} &middot; {selectedListing.compensation || 'TBD'}
                 </p>
                 {selectedListing.application_deadline && (
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
@@ -374,72 +476,129 @@ export default function PostedJobsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {selectedApps.map(app => {
                     const statusStyle = STATUS_COLORS[app.status] || STATUS_COLORS.applied;
+                    const interview = activeInterviewForApp(app.id);
+                    const interviewBadge = interview ? INTERVIEW_STATUS_COLORS[interview.status] : null;
                     return (
                       <div key={app.id} style={{
-                        display: 'flex', alignItems: 'center', gap: '14px',
+                        display: 'flex', flexDirection: 'column', gap: 10,
                         padding: '14px 16px', borderRadius: 'var(--radius-sm)',
                         border: '1px solid var(--border)', background: 'var(--bg)',
                       }}>
-                        <img
-                          src={app.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                          alt={app.student.profile.full_name}
-                          style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{app.student.profile.full_name}</span>
-                            <span style={{
-                              fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
-                              background: statusStyle.bg, color: statusStyle.color,
-                            }}>
-                              {STATUS_LABELS[app.status]}
-                            </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <img
+                            src={app.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
+                            alt={app.student.profile.full_name}
+                            style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{app.student.profile.full_name}</span>
+                              <span style={{
+                                fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
+                                background: statusStyle.bg, color: statusStyle.color,
+                              }}>
+                                {STATUS_LABELS[app.status]}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                              {app.student.major || 'No major'}{app.student.graduation_year ? ` · Class of ${app.student.graduation_year}` : ''} &middot; {app.student.profile.email}
+                            </p>
                           </div>
-                          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-                            {app.student.major || 'No major'}{app.student.graduation_year ? ` · Class of ${app.student.graduation_year}` : ''} &middot; {app.student.profile.email}
-                          </p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                          {app.resume && (
-                            <a
-                              href={app.resume.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="View Resume"
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                            {app.resume && (
+                              <a
+                                href={app.resume.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="View Resume"
+                                style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid var(--border)', background: '#fff', color: 'var(--primary)',
+                                }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                              </a>
+                            )}
+                            <select
+                              value={app.status}
+                              onChange={(e) => handleAppStatusChange(app.id, e.target.value)}
+                              disabled={updatingAppStatus === app.id}
+                              style={{
+                                padding: '4px 8px', borderRadius: 'var(--radius-sm)',
+                                border: '1px solid var(--border)', fontSize: '0.78rem', background: '#fff',
+                              }}
+                            >
+                              {STATUS_OPTIONS.map(s => (
+                                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => openScheduleModal(app)}
+                              title={interview ? 'Reschedule interview' : 'Schedule interview'}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                                border: '1px solid var(--border)', background: '#fff', color: 'var(--primary)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                            </button>
+                            <Link
+                              href="/dashboard/employer/inbox"
+                              title="Message"
                               style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: 32, height: 32, borderRadius: 'var(--radius-sm)',
                                 border: '1px solid var(--border)', background: '#fff', color: 'var(--primary)',
                               }}
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            </a>
-                          )}
-                          <select
-                            value={app.status}
-                            onChange={(e) => handleAppStatusChange(app.id, e.target.value)}
-                            disabled={updatingAppStatus === app.id}
-                            style={{
-                              padding: '4px 8px', borderRadius: 'var(--radius-sm)',
-                              border: '1px solid var(--border)', fontSize: '0.78rem', background: '#fff',
-                            }}
-                          >
-                            {STATUS_OPTIONS.map(s => (
-                              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                            ))}
-                          </select>
-                          <Link
-                            href="/dashboard/employer/inbox"
-                            title="Message"
-                            style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              width: 32, height: 32, borderRadius: 'var(--radius-sm)',
-                              border: '1px solid var(--border)', background: '#fff', color: 'var(--primary)',
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                          </Link>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            </Link>
+                          </div>
                         </div>
+                        {interview && interviewBadge && (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '8px 12px', borderRadius: 8,
+                            background: '#fff', border: '1px solid var(--border)',
+                          }}>
+                            <span style={{
+                              fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
+                              background: interviewBadge.bg, color: interviewBadge.color,
+                            }}>
+                              {INTERVIEW_STATUS_LABELS[interview.status]}
+                            </span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                              {formatInterviewWhen(interview.scheduled_at)} · {interview.duration_minutes} min
+                            </span>
+                            <div style={{ flex: 1 }} />
+                            <button
+                              onClick={() => openScheduleModal(app)}
+                              style={{
+                                fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
+                                border: '1px solid var(--border)', background: '#fff', color: 'var(--text)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Reschedule
+                            </button>
+                            <button
+                              onClick={() => handleCancelInterview(interview.id)}
+                              style={{
+                                fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
+                                border: '1px solid #fca5a5', background: '#fff', color: '#dc2626',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -449,6 +608,20 @@ export default function PostedJobsPage() {
           </div>
         )}
       </div>
+
+      <ScheduleInterviewModal
+        open={scheduleModalApp !== null}
+        onClose={closeScheduleModal}
+        onSubmit={handleScheduleSubmit}
+        candidateName={scheduleModalApp?.student.profile.full_name}
+        listingTitle={scheduleModalApp?.listing.title}
+        mode={scheduleModalInterview ? 'reschedule' : 'create'}
+        initialData={scheduleModalInterview ? {
+          scheduledAt: scheduleModalInterview.scheduled_at,
+          durationMinutes: scheduleModalInterview.duration_minutes,
+          notes: scheduleModalInterview.employer_notes || '',
+        } : null}
+      />
     </div>
   );
 }

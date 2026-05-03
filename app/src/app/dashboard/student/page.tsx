@@ -86,9 +86,19 @@ type StudentInterview = {
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
   employer_notes: string | null;
+  zoom_meeting_id?: string | null;
   listing: { id: string; title: string };
   employer: { id: string; company_name: string; logo_url: string | null; user_id?: string } | null;
 };
+
+function joinWindowStatus(scheduledAt: string, durationMinutes: number): 'too_early' | 'open' | 'ended' {
+  const now = Date.now();
+  const start = new Date(scheduledAt).getTime();
+  const end = start + (durationMinutes + 30) * 60 * 1000;
+  if (now < start - 10 * 60 * 1000) return 'too_early';
+  if (now > end) return 'ended';
+  return 'open';
+}
 
 const ATS_STAGES = ['applied', 'under_review', 'interviewing', 'interview_scheduled', 'offered'] as const;
 const ATS_LABELS: Record<string, string> = {
@@ -212,22 +222,35 @@ export default function StudentDashboard() {
 
   async function handleInterviewResponse(action: 'accept' | 'decline' | 'reschedule', message?: string) {
     if (!interviewModalRow) return;
-    const updated = await respondToInterview(interviewModalRow.id, action);
-    setStudentInterviews(prev => prev.map(i =>
-      i.id === interviewModalRow.id ? { ...i, ...(updated as unknown as Partial<StudentInterview>) } : i
-    ));
-    if (action === 'reschedule' && message && studentUserId && interviewModalRow.employer?.user_id) {
-      try {
-        await sendRescheduleRequestMessage({
-          senderUserId: studentUserId,
-          receiverUserId: interviewModalRow.employer.user_id,
-          applicationId: interviewModalRow.application_id,
-          body: message,
-        });
-      } catch {
-        // Best-effort message; main state already updated.
+
+    if (action === 'accept') {
+      // Accept goes through API route so Zoom meeting is provisioned server-side
+      const res = await fetch(`/api/interviews/${interviewModalRow.id}/accept`, { method: 'POST' });
+      if (res.ok) {
+        const updated = await res.json();
+        setStudentInterviews(prev => prev.map(i =>
+          i.id === interviewModalRow.id ? { ...i, ...(updated as Partial<StudentInterview>) } : i
+        ));
+      }
+    } else {
+      const updated = await respondToInterview(interviewModalRow.id, action);
+      setStudentInterviews(prev => prev.map(i =>
+        i.id === interviewModalRow.id ? { ...i, ...(updated as unknown as Partial<StudentInterview>) } : i
+      ));
+      if (action === 'reschedule' && message && studentUserId && interviewModalRow.employer?.user_id) {
+        try {
+          await sendRescheduleRequestMessage({
+            senderUserId: studentUserId,
+            receiverUserId: interviewModalRow.employer.user_id,
+            applicationId: interviewModalRow.application_id,
+            body: message,
+          });
+        } catch {
+          // Best-effort message; main state already updated.
+        }
       }
     }
+
     setInterviewModalId(null);
   }
 
@@ -339,6 +362,48 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Upcoming Confirmed Interviews */}
+      {studentInterviews.filter(i => i.status === 'accepted').length > 0 && (
+        <div style={{ marginTop: '24px', background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '20px' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '12px' }}>Upcoming Interviews</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {studentInterviews.filter(i => i.status === 'accepted').map(interview => {
+              const ws = joinWindowStatus(interview.scheduled_at, interview.duration_minutes);
+              const hasZoom = !!interview.zoom_meeting_id;
+              const canJoin = ws === 'open' && hasZoom;
+              const start = new Date(interview.scheduled_at);
+              const timeStr = start.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+              return (
+                <div key={interview.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{interview.employer?.company_name ?? 'Employer'} — {interview.listing.title}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>{timeStr} · {interview.duration_minutes} min</div>
+                  </div>
+                  {hasZoom ? (
+                    <Link
+                      href={canJoin ? `/dashboard/student/interviews/${interview.id}` : '#'}
+                      onClick={e => { if (!canJoin) e.preventDefault(); }}
+                      style={{
+                        padding: '6px 16px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none',
+                        background: canJoin ? 'var(--primary)' : 'var(--border)',
+                        color: canJoin ? '#fff' : 'var(--text-secondary)',
+                        cursor: canJoin ? 'pointer' : 'not-allowed',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={ws === 'too_early' ? `Joinable at ${new Date(new Date(interview.scheduled_at).getTime() - 10 * 60 * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ws === 'ended' ? 'Interview ended' : 'Join Interview'}
+                    >
+                      {ws === 'too_early' ? 'Not yet open' : ws === 'ended' ? 'Ended' : 'Join Interview'}
+                    </Link>
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Video pending setup</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Recommended for You — driven by career survey industries */}
       {recommended.length > 0 && (

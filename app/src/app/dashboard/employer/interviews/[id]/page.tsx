@@ -75,7 +75,7 @@ export default function EmployerMeetingRoom() {
         await import('@/lib/zoom-shim');
         const { ZoomMtg } = await import('@zoom/meetingsdk');
 
-        ZoomMtg.setZoomJSLib('https://source.zoom.us/lib', '/av');
+        ZoomMtg.setZoomJSLib('/zoom-lib', '/av');
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 

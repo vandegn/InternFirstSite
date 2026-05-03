@@ -82,7 +82,7 @@ export default function StudentMeetingRoom() {
         const { ZoomMtg } = await import('@zoom/meetingsdk');
         console.log('[Zoom] SDK imported, preparing...');
 
-        ZoomMtg.setZoomJSLib('https://source.zoom.us/lib', '/av');
+        ZoomMtg.setZoomJSLib('/zoom-lib', '/av');
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 

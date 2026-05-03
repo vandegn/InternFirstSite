@@ -1,0 +1,355 @@
+# Zoom Meeting SDK Integration Plan — InternFirst
+
+## Context
+
+InternFirst already has a fully-wired interview scheduling system (Phase 1): DB table, state machine, Supabase helpers, modals, banners. This plan adds Phase 2 — in-platform video calls via the Zoom Meeting SDK component view, so interviews happen inside the InternFirst dashboard with the site chrome preserved. No external Zoom links are ever shown to users.
+
+Key constraint: Zoom API secrets (for creating/deleting meetings and generating SDK signatures) must never touch the client. This drives the introduction of three API routes.
+
+---
+
+## What already exists (do not rebuild)
+
+- `interview_schedules` DB table — `supabase/schema.sql:476`
+- All helpers in `app/src/lib/supabase.ts:865–1058`: `createInterview`, `getEmployerInterviews`, `getStudentInterviews`, `getInterviewById`, `respondToInterview`, `cancelInterview`, `rescheduleInterview`, `sendRescheduleRequestMessage`
+- `InterviewResponseModal.tsx`, `InterviewBanner.tsx`, `ScheduleInterviewModal.tsx`
+- Student dashboard interview handling: `app/src/app/dashboard/student/page.tsx:213–231`
+- Employer posted-jobs schedule/cancel: `app/src/app/dashboard/employer/posted-jobs/page.tsx:172–201`
+
+---
+
+## Phase 1 — DB Migration
+
+**File:** `supabase/schema.sql`
+
+Add two columns to `interview_schedules` (no existing `daily_*` columns to rename — they were never applied to the schema file):
+
+```sql
+ALTER TABLE interview_schedules
+  ADD COLUMN zoom_meeting_id text,
+  ADD COLUMN zoom_join_url   text;
+```
+
+Add after the existing index block at line ~501. The RLS policy `"Employers can update own interviews"` already covers writing these fields.
+
+**Update TypeScript types** in `app/src/lib/supabase.ts` — the `Interview` type is inferred from DB selects. Add a local type annotation where needed in page components (the `Interview` type defined locally in `posted-jobs/page.tsx:77` should add `zoom_meeting_id?: string | null; zoom_join_url?: string | null`).
+
+---
+
+## Phase 2 — Environment Variables
+
+Add to `app/.env.local`:
+
+```
+# Zoom Server-to-Server OAuth (for REST API: create/delete meetings, get ZAK)
+ZOOM_ACCOUNT_ID=...
+ZOOM_CLIENT_ID=...
+ZOOM_CLIENT_SECRET=...
+
+# Zoom Meeting SDK (for generating in-browser join signatures)
+ZOOM_SDK_KEY=...
+ZOOM_SDK_SECRET=...
+```
+
+**Zoom Developer Console setup steps:**
+1. Create a **Server-to-Server OAuth** app → get Account ID, Client ID, Client Secret. Scopes needed: `meeting:write:admin`, `user:read:admin`
+2. Create a **Meeting SDK** app → get SDK Key and SDK Secret (separate from the OAuth app)
+
+---
+
+## Phase 3 — Server-side Zoom Helpers
+
+**New file:** `app/src/lib/zoom.ts`
+
+```
+zoom.ts exports:
+  getZoomAccessToken()          → Bearer token via Server-to-Server OAuth
+  createZoomMeeting(opts)       → POST /v2/users/me/meetings → { id, join_url }
+  deleteZoomMeeting(meetingId)  → DELETE /v2/meetings/{id}
+  getZoomZak()                  → GET /v2/users/me/token?type=zak (for host join)
+  generateSdkSignature(mn, role) → HMAC-SHA256 JWT for Meeting SDK
+```
+
+- `getZoomAccessToken` caches the token in a module-level variable with expiry check (tokens last 1 hour)
+- `generateSdkSignature`: standard Zoom SDK JWT — `{sdkKey, mn, role, iat, exp, tokenExp}` signed with HMAC-SHA256 using `ZOOM_SDK_SECRET`. Use Node's built-in `crypto` module (no extra dep).
+- All functions throw on error — callers wrap in try/catch.
+
+---
+
+## Phase 4 — API Routes
+
+### `POST /api/interviews/respond`
+**File:** `app/src/app/api/interviews/respond/route.ts`
+
+Replaces client-side `respondToInterview` for the **accept** action only. Decline and reschedule-request remain client-side (no Zoom action needed).
+
+Flow for `action='accept'`:
+1. Authenticate caller via `createServerClient` from `@supabase/ssr` + request cookies
+2. Verify the authenticated user is the student on this interview
+3. Call `createZoomMeeting({ topic, startTime, duration })` → `{ id, join_url }`
+4. Write to DB with service role client: `update interview_schedules set status='accepted', zoom_meeting_id=..., zoom_join_url=... where id=...`
+5. Return updated row
+
+Body: `{ interviewId: string, action: 'accept' }`
+Response: `{ data: InterviewRow }`
+
+### `POST /api/interviews/cancel`
+**File:** `app/src/app/api/interviews/cancel/route.ts`
+
+Replaces client-side `cancelInterview`.
+
+Flow:
+1. Auth: verify caller is employer or student on this interview
+2. Fetch current row to get `zoom_meeting_id`
+3. If `zoom_meeting_id` exists, call `deleteZoomMeeting(zoom_meeting_id)` — log error but don't fail if Zoom API returns 404
+4. Update DB: `status='cancelled', cancelled_by=..., cancelled_at=now()`
+5. Return updated row
+
+Body: `{ interviewId: string, cancelledBy: 'employer' | 'student' }`
+
+### `POST /api/interviews/zoom-signature`
+**File:** `app/src/app/api/interviews/zoom-signature/route.ts`
+
+Called by the meeting room page just before joining.
+
+Flow:
+1. Auth: verify caller is the student or employer on the interview
+2. Verify interview status is `'accepted'`
+3. Determine role: student → `0` (attendee), employer → `1` (host)
+4. Call `generateSdkSignature(zoom_meeting_id, role)`
+5. If role=1 (employer host), also call `getZoomZak()` and include in response
+6. Return `{ signature, sdkKey: ZOOM_SDK_KEY, meetingNumber: zoom_meeting_id, zak? }`
+
+Body: `{ interviewId: string }`
+
+**Pattern for server-side Supabase** (establish in all three routes):
+```ts
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+const cookieStore = await cookies()
+const supabase = createServerClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,   // service role for admin writes
+  { cookies: { getAll: () => cookieStore.getAll() } }
+)
+// For auth check, use anon key client instead:
+const authClient = createServerClient(url, anonKey, { cookies: ... })
+const { data: { user } } = await authClient.auth.getUser()
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` (server-only, never `NEXT_PUBLIC_`) needs to be added to `.env.local`.
+
+---
+
+## Phase 5 — Meeting Room Pages
+
+### `app/src/app/dashboard/student/interviews/[id]/page.tsx`
+### `app/src/app/dashboard/employer/interviews/[id]/page.tsx`
+
+Both pages are near-identical; they differ in the role passed to the signature endpoint.
+
+Page structure:
+1. On mount: fetch interview by ID (`getInterviewById`), verify status is `'accepted'`, verify current user is authorized
+2. Compute join window: `joinOpen = now >= scheduledAt - 10min`, `joinClosed = now > scheduledAt + durationMinutes + 30min`
+3. Pre-join state: show interview details (company, role, time) + Join button (disabled with countdown if not yet open)
+4. On Join click: call `/api/interviews/zoom-signature` → render `<ZoomMeetingRoom />`
+5. On leave: if `now > scheduledAt`, call `/api/interviews/cancel`-equivalent for completion OR add a dedicated `POST /api/interviews/complete` that sets `status='completed'`; redirect to dashboard
+
+**Error states:**
+- Interview not found / not authorized → redirect to dashboard
+- Status not 'accepted' → show "This interview is not confirmed" message
+- Join window not open yet → "Join opens at {time}" with live countdown
+- Join window expired → "This interview session has ended"
+- Zoom SDK init failure → "Video call unavailable — please contact support"
+
+---
+
+## Phase 6 — ZoomMeetingRoom Component
+
+**New file:** `app/src/components/ZoomMeetingRoom.tsx`
+
+Uses Zoom Meeting SDK **component view** (embedded, not full-page takeover).
+
+```tsx
+'use client';
+// Dynamic import required — Zoom SDK accesses browser globals
+```
+
+Install: `npm install @zoom/meetingsdk` (run from `app/`)
+
+Component receives: `{ meetingNumber, signature, sdkKey, userName, userEmail, zak?, onLeave }`
+
+```tsx
+import { useEffect, useRef } from 'react'
+
+export default function ZoomMeetingRoom({ meetingNumber, signature, sdkKey, userName, userEmail, zak, onLeave }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let client: ReturnType<typeof import('@zoom/meetingsdk/embedded').default.createClient>
+
+    async function init() {
+      const ZoomMtgEmbedded = (await import('@zoom/meetingsdk/embedded')).default
+      client = ZoomMtgEmbedded.createClient()
+      await client.init({
+        zoomAppRoot: containerRef.current!,
+        language: 'en-US',
+      })
+      await client.join({
+        signature,
+        sdkKey,
+        meetingNumber,
+        password: '',
+        userName,
+        userEmail,
+        zak: zak ?? '',
+      })
+      client.on('connection-change', (payload) => {
+        if (payload.state === 'Closed') onLeave()
+      })
+    }
+
+    init().catch(console.error)
+    return () => { client?.leaveMeeting() }
+  }, [])
+
+  return <div ref={containerRef} id="meetingSDKElement" style={{ width: '100%', height: 600 }} />
+}
+```
+
+The `onLeave` callback in the meeting room page triggers the completion + redirect logic.
+
+---
+
+## Phase 7 — Changes to Existing Code
+
+### `app/src/app/dashboard/student/page.tsx`
+`handleInterviewResponse` at line 213: change the `'accept'` branch to call `POST /api/interviews/respond` instead of `respondToInterview` directly. Decline and reschedule branches keep calling the existing helper.
+
+```ts
+if (action === 'accept') {
+  const res = await fetch('/api/interviews/respond', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ interviewId: interviewModalRow.id, action: 'accept' }),
+  })
+  if (!res.ok) throw new Error('Failed to accept interview')
+  const { data: updated } = await res.json()
+  setStudentInterviews(prev => prev.map(i => i.id === updated.id ? { ...i, ...updated } : i))
+} else {
+  // existing respondToInterview call for decline/reschedule
+}
+```
+
+Also add a "Join Interview" button to the accepted interviews section of the student dashboard (or solely on the meeting room page — recommend the meeting room page to keep the dashboard clean; just add a "Join" link button pointing to `/dashboard/student/interviews/[id]`).
+
+### `app/src/app/dashboard/employer/posted-jobs/page.tsx`
+`handleCancelInterview` at line 199: replace `cancelInterview(interviewId, 'employer')` with a fetch to `POST /api/interviews/cancel`. Same for any cancel call.
+
+Add "Join" link button (→ `/dashboard/employer/interviews/[id]`) next to each accepted interview in the UI.
+
+### `app/src/lib/supabase.ts`
+- Keep `respondToInterview` for decline/reschedule (no changes needed)
+- Keep `cancelInterview` for now but note it's superseded by the API route for production use
+- No changes to `createInterview` or `rescheduleInterview`
+
+---
+
+## Flow Diagram
+
+```
+Student accepts interview
+        │
+        ▼
+POST /api/interviews/respond
+        │
+        ├─ Zoom REST API: create meeting ──► zoom_meeting_id, zoom_join_url
+        │
+        └─ Supabase: status='accepted', store zoom fields
+                │
+                ▼
+        Student/Employer see "Join Interview" button
+        (enabled 10 min before scheduled_at)
+                │
+                ▼
+        /dashboard/{role}/interviews/[id]
+                │
+                ▼
+        POST /api/interviews/zoom-signature
+                │
+                └─ Returns: signature, sdkKey, meetingNumber, zak?
+                        │
+                        ▼
+                <ZoomMeetingRoom /> renders embedded Zoom
+                        │
+                        ▼
+                On leave → if past scheduled_at:
+                POST /api/interviews/complete → status='completed'
+                Redirect to dashboard
+
+Employer/Student cancels
+        │
+        ▼
+POST /api/interviews/cancel
+        │
+        ├─ Zoom REST API: delete meeting (fire-and-forget on 404)
+        └─ Supabase: status='cancelled'
+```
+
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `app/src/lib/zoom.ts` | Zoom API helpers + SDK signature generation |
+| `app/src/app/api/interviews/respond/route.ts` | Accept → create Zoom meeting |
+| `app/src/app/api/interviews/cancel/route.ts` | Cancel → delete Zoom meeting |
+| `app/src/app/api/interviews/zoom-signature/route.ts` | Generate SDK join signature |
+| `app/src/app/api/interviews/complete/route.ts` | Mark interview completed |
+| `app/src/components/ZoomMeetingRoom.tsx` | Embedded Zoom SDK component |
+| `app/src/app/dashboard/student/interviews/[id]/page.tsx` | Student meeting room |
+| `app/src/app/dashboard/employer/interviews/[id]/page.tsx` | Employer meeting room |
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `supabase/schema.sql` | Add `zoom_meeting_id`, `zoom_join_url` columns |
+| `app/src/app/dashboard/student/page.tsx` | Accept action → fetch API route; add Join link |
+| `app/src/app/dashboard/employer/posted-jobs/page.tsx` | Cancel → fetch API route; add Join link |
+
+---
+
+## New Environment Variables
+
+```
+# Server-only (no NEXT_PUBLIC_ prefix)
+ZOOM_ACCOUNT_ID=
+ZOOM_CLIENT_ID=
+ZOOM_CLIENT_SECRET=
+ZOOM_SDK_KEY=
+ZOOM_SDK_SECRET=
+SUPABASE_SERVICE_ROLE_KEY=   # already likely set; needed for server-side admin writes
+```
+
+---
+
+## Testing Plan
+
+1. **DB migration**: Run the ALTER TABLE in Supabase SQL editor; verify columns appear in table editor. Check existing interviews are unaffected (NULL values for new columns).
+
+2. **Accept flow**: Schedule an interview via Zoom developer sandbox. Student accepts → check Zoom dashboard shows meeting created → DB row has `zoom_meeting_id` and `zoom_join_url` populated → status = `accepted`.
+
+3. **Cancel flow**: Cancel an accepted interview (employer side) → Zoom meeting deleted (verify in Zoom dashboard) → DB status = `cancelled`.
+
+4. **Join window**: Set `scheduled_at` to now + 15 min → Join button disabled. Set to now + 5 min → button enabled. Set to now - (duration + 35 min) → button disabled "session ended".
+
+5. **Meeting room**: Navigate to `/dashboard/student/interviews/[id]` with a valid accepted interview → Zoom component renders → both participants can join → embedded within InternFirst page chrome.
+
+6. **Completion**: After leaving the call (when past `scheduled_at`) → interview status = `completed` in DB → redirected to student dashboard.
+
+7. **Auth guards**: Attempt to access another user's meeting room → verify 401/redirect.
+
+8. **Signature expiry**: Zoom SDK signatures last 24h max — test that re-visiting the page generates a fresh signature each time.

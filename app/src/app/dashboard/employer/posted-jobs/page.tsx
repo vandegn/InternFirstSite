@@ -11,7 +11,6 @@ import {
   getEmployerInterviews,
   createInterview,
   rescheduleInterview,
-  cancelInterview,
   updateListing,
   updateApplicationStatus,
 } from '@/lib/supabase';
@@ -81,7 +80,17 @@ type Interview = {
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
   employer_notes: string | null;
+  zoom_meeting_id?: string | null;
 };
+
+function joinWindowStatus(scheduledAt: string, durationMinutes: number): 'too_early' | 'open' | 'ended' {
+  const now = Date.now();
+  const start = new Date(scheduledAt).getTime();
+  const end = start + (durationMinutes + 30) * 60 * 1000;
+  if (now < start - 10 * 60 * 1000) return 'too_early';
+  if (now > end) return 'ended';
+  return 'open';
+}
 
 const INTERVIEW_STATUS_LABELS: Record<string, string> = {
   pending: 'Interview Pending',
@@ -197,8 +206,11 @@ export default function PostedJobsPage() {
   }
 
   async function handleCancelInterview(interviewId: string) {
-    const cancelled = await cancelInterview(interviewId, 'employer');
-    setInterviews(prev => prev.map(i => i.id === cancelled.id ? (cancelled as unknown as Interview) : i));
+    const res = await fetch(`/api/interviews/${interviewId}/cancel`, { method: 'POST' });
+    if (res.ok) {
+      const cancelled = await res.json();
+      setInterviews(prev => prev.map(i => i.id === cancelled.id ? (cancelled as unknown as Interview) : i));
+    }
   }
 
   const filteredListings = filterStatus
@@ -561,44 +573,65 @@ export default function PostedJobsPage() {
                             </Link>
                           </div>
                         </div>
-                        {interview && interviewBadge && (
-                          <div style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            padding: '8px 12px', borderRadius: 8,
-                            background: '#fff', border: '1px solid var(--border)',
-                          }}>
-                            <span style={{
-                              fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
-                              background: interviewBadge.bg, color: interviewBadge.color,
+                        {interview && interviewBadge && (() => {
+                          const ws = joinWindowStatus(interview.scheduled_at, interview.duration_minutes);
+                          const hasZoom = !!interview.zoom_meeting_id;
+                          const canJoin = ws === 'open' && hasZoom;
+                          return (
+                            <div style={{
+                              display: 'flex', alignItems: 'center', gap: 10,
+                              padding: '8px 12px', borderRadius: 8,
+                              background: '#fff', border: '1px solid var(--border)',
                             }}>
-                              {INTERVIEW_STATUS_LABELS[interview.status]}
-                            </span>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                              {formatInterviewWhen(interview.scheduled_at)} · {interview.duration_minutes} min
-                            </span>
-                            <div style={{ flex: 1 }} />
-                            <button
-                              onClick={() => openScheduleModal(app)}
-                              style={{
-                                fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
-                                border: '1px solid var(--border)', background: '#fff', color: 'var(--text)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Reschedule
-                            </button>
-                            <button
-                              onClick={() => handleCancelInterview(interview.id)}
-                              style={{
-                                fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
-                                border: '1px solid #fca5a5', background: '#fff', color: '#dc2626',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
+                              <span style={{
+                                fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
+                                background: interviewBadge.bg, color: interviewBadge.color,
+                              }}>
+                                {INTERVIEW_STATUS_LABELS[interview.status]}
+                              </span>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                {formatInterviewWhen(interview.scheduled_at)} · {interview.duration_minutes} min
+                              </span>
+                              <div style={{ flex: 1 }} />
+                              {interview.status === 'accepted' && hasZoom && (
+                                <Link
+                                  href={canJoin ? `/dashboard/employer/interviews/${interview.id}` : '#'}
+                                  onClick={e => { if (!canJoin) e.preventDefault(); }}
+                                  title={ws === 'too_early' ? `Joinable at ${new Date(new Date(interview.scheduled_at).getTime() - 10 * 60 * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ws === 'ended' ? 'Interview ended' : 'Join Interview'}
+                                  style={{
+                                    fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
+                                    background: canJoin ? 'var(--primary)' : 'var(--border)',
+                                    color: canJoin ? '#fff' : 'var(--text-secondary)',
+                                    textDecoration: 'none', whiteSpace: 'nowrap',
+                                    cursor: canJoin ? 'pointer' : 'not-allowed',
+                                  }}
+                                >
+                                  {ws === 'too_early' ? 'Not yet open' : ws === 'ended' ? 'Ended' : 'Join Interview'}
+                                </Link>
+                              )}
+                              <button
+                                onClick={() => openScheduleModal(app)}
+                                style={{
+                                  fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
+                                  border: '1px solid var(--border)', background: '#fff', color: 'var(--text)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Reschedule
+                              </button>
+                              <button
+                                onClick={() => handleCancelInterview(interview.id)}
+                                style={{
+                                  fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
+                                  border: '1px solid #fca5a5', background: '#fff', color: '#dc2626',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}

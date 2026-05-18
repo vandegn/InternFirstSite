@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -13,6 +13,8 @@ type ZoomCredentials = {
   userName: string;
   role: 0 | 1;
 };
+
+type IframeCreds = ZoomCredentials & { leaveUrl: string };
 
 type WindowStatus = 'loading' | 'too_early' | 'open' | 'ended' | 'not_configured' | 'error';
 
@@ -28,6 +30,9 @@ function getWindowStatus(scheduledAt: string, durationMinutes: number): 'too_ear
 export default function EmployerMeetingRoom() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const initStarted = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const credsRef = useRef<IframeCreds | null>(null);
   const [status, setStatus] = useState<WindowStatus>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [interview, setInterview] = useState<{
@@ -38,6 +43,8 @@ export default function EmployerMeetingRoom() {
   } | null>(null);
 
   useEffect(() => {
+    if (initStarted.current) return;
+    initStarted.current = true;
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
@@ -70,55 +77,34 @@ export default function EmployerMeetingRoom() {
       }
 
       const creds: ZoomCredentials = await sigRes.json();
-
-      try {
-        await import('@/lib/zoom-shim');
-        const { ZoomMtg } = await import('@zoom/meetingsdk');
-
-        ZoomMtg.setZoomJSLib('/zoom-lib', '/av');
-        ZoomMtg.preLoadWasm();
-        ZoomMtg.prepareWebSDK();
-
-        const zmmtgRoot = document.getElementById('zmmtg-root');
-        if (zmmtgRoot) zmmtgRoot.style.display = 'block';
-
-        ZoomMtg.init({
-          leaveUrl: '/dashboard/employer',
-          patchJsMedia: true,
-          success: () => {
-            ZoomMtg.join({
-              signature: creds.signature,
-              sdkKey: creds.sdkKey,
-              meetingNumber: creds.meetingNumber,
-              passWord: creds.password,
-              userName: creds.userName,
-              success: () => setStatus('open'),
-              error: (err: unknown) => {
-                console.error('[Zoom] join error:', err);
-                setStatus('error');
-                setErrorMsg('Failed to join the meeting. Please try again.');
-              },
-            });
-          },
-          error: (err: unknown) => {
-            console.error('[Zoom] init error:', err);
-            setStatus('error');
-            setErrorMsg('Failed to initialize the meeting client.');
-          },
-        });
-      } catch (err) {
-        console.error('[Zoom] error:', err);
-        setStatus('error');
-        setErrorMsg(err instanceof Error ? err.message : 'Failed to load the meeting client. Please refresh.');
-      }
+      credsRef.current = { ...creds, leaveUrl: '/dashboard/employer' };
+      setStatus('open');
     }
 
     init();
-
-    return () => {
-      // Client view cleans up on leaveUrl redirect
-    };
   }, [id, router]);
+
+  useEffect(() => {
+    function onMessage(ev: MessageEvent) {
+      if (ev.origin !== window.location.origin) return;
+      const data = ev.data as { zoomIframe?: boolean; type?: string; detail?: unknown } | null;
+      if (!data || data.zoomIframe !== true) return;
+      if (data.type === 'ready' && credsRef.current && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { zoomIframe: true, type: 'init', creds: credsRef.current },
+          window.location.origin
+        );
+      } else if (data.type === 'leave') {
+        router.push('/dashboard/employer');
+      } else if (data.type === 'error') {
+        console.error('[Zoom iframe] error:', data.detail);
+        setStatus('error');
+        setErrorMsg('Failed to join the meeting. Please try again.');
+      }
+    }
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [router]);
 
   const listingTitle = Array.isArray(interview?.listing) ? interview?.listing[0]?.title : (interview?.listing as { title?: string } | undefined)?.title;
   const studentArr = Array.isArray(interview?.student) ? interview?.student[0] : interview?.student;
@@ -164,7 +150,13 @@ export default function EmployerMeetingRoom() {
         </span>
       </div>
 
-      <div style={{ flex: 1 }} />
+      <iframe
+        ref={iframeRef}
+        src="/zoom-meeting.html"
+        allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
+        style={{ flex: 1, width: '100%', border: 'none', background: '#1a1a1a' }}
+        title="Zoom meeting"
+      />
     </div>
   );
 }

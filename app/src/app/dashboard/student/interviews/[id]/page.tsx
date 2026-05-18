@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -13,6 +13,8 @@ type ZoomCredentials = {
   userName: string;
   role: 0 | 1;
 };
+
+type IframeCreds = ZoomCredentials & { leaveUrl: string };
 
 type WindowStatus = 'loading' | 'too_early' | 'open' | 'ended' | 'not_configured' | 'error';
 
@@ -28,6 +30,9 @@ function getWindowStatus(scheduledAt: string, durationMinutes: number): 'too_ear
 export default function StudentMeetingRoom() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const initStarted = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const credsRef = useRef<IframeCreds | null>(null);
   const [status, setStatus] = useState<WindowStatus>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [interview, setInterview] = useState<{
@@ -38,11 +43,12 @@ export default function StudentMeetingRoom() {
   } | null>(null);
 
   useEffect(() => {
+    if (initStarted.current) return;
+    initStarted.current = true;
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
 
-      // Fetch interview via Supabase client (RLS-protected)
       const { data: row } = await supabase
         .from('interview_schedules')
         .select(`
@@ -62,7 +68,6 @@ export default function StudentMeetingRoom() {
 
       if (ws !== 'open') { setStatus(ws); return; }
 
-      // Get signature from server
       const sigRes = await fetch(`/api/zoom/signature?interviewId=${id}`);
       if (!sigRes.ok) {
         const err = await sigRes.json();
@@ -72,65 +77,34 @@ export default function StudentMeetingRoom() {
       }
 
       const creds: ZoomCredentials = await sigRes.json();
-      console.log('[Zoom] signature response:', { meetingNumber: creds.meetingNumber, role: creds.role, sdkKey: creds.sdkKey?.slice(0, 8) + '...' });
-
-      // Load Zoom Meeting SDK client view (browser-only, dynamic import)
-      // Note: embedded view is incompatible with React 19 due to ReactCurrentOwner changes
-      try {
-        console.log('[Zoom] importing SDK...');
-        await import('@/lib/zoom-shim');
-        const { ZoomMtg } = await import('@zoom/meetingsdk');
-        console.log('[Zoom] SDK imported, preparing...');
-
-        ZoomMtg.setZoomJSLib('/zoom-lib', '/av');
-        ZoomMtg.preLoadWasm();
-        ZoomMtg.prepareWebSDK();
-
-        const zmmtgRoot = document.getElementById('zmmtg-root');
-        if (zmmtgRoot) zmmtgRoot.style.display = 'block';
-
-        console.log('[Zoom] calling init...');
-        ZoomMtg.init({
-          leaveUrl: '/dashboard/student',
-          patchJsMedia: true,
-          success: () => {
-            console.log('[Zoom] init done, calling join...');
-            ZoomMtg.join({
-              signature: creds.signature,
-              sdkKey: creds.sdkKey,
-              meetingNumber: creds.meetingNumber,
-              passWord: creds.password,
-              userName: creds.userName,
-              success: () => {
-                console.log('[Zoom] joined successfully');
-                setStatus('open');
-              },
-              error: (err: unknown) => {
-                console.error('[Zoom] join error:', err);
-                setStatus('error');
-                setErrorMsg('Failed to join the meeting. Please try again.');
-              },
-            });
-          },
-          error: (err: unknown) => {
-            console.error('[Zoom] init error:', err);
-            setStatus('error');
-            setErrorMsg('Failed to initialize the meeting client.');
-          },
-        });
-      } catch (err) {
-        console.error('[Zoom] error:', err);
-        setStatus('error');
-        setErrorMsg(err instanceof Error ? err.message : 'Failed to load the meeting client. Please refresh.');
-      }
+      credsRef.current = { ...creds, leaveUrl: '/dashboard/student' };
+      setStatus('open');
     }
 
     init();
-
-    return () => {
-      // Client view cleans up on leaveUrl redirect
-    };
   }, [id, router]);
+
+  useEffect(() => {
+    function onMessage(ev: MessageEvent) {
+      if (ev.origin !== window.location.origin) return;
+      const data = ev.data as { zoomIframe?: boolean; type?: string; detail?: unknown } | null;
+      if (!data || data.zoomIframe !== true) return;
+      if (data.type === 'ready' && credsRef.current && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { zoomIframe: true, type: 'init', creds: credsRef.current },
+          window.location.origin
+        );
+      } else if (data.type === 'leave') {
+        router.push('/dashboard/student');
+      } else if (data.type === 'error') {
+        console.error('[Zoom iframe] error:', data.detail);
+        setStatus('error');
+        setErrorMsg('Failed to join the meeting. Please try again.');
+      }
+    }
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [router]);
 
   const listingTitle = Array.isArray(interview?.listing) ? interview?.listing[0]?.title : (interview?.listing as { title?: string } | undefined)?.title;
   const companyName = Array.isArray(interview?.employer) ? interview?.employer[0]?.company_name : (interview?.employer as { company_name?: string } | undefined)?.company_name;
@@ -175,8 +149,13 @@ export default function StudentMeetingRoom() {
         </span>
       </div>
 
-      {/* Zoom client view renders into #zmmtg-root which it creates automatically */}
-      <div style={{ flex: 1 }} />
+      <iframe
+        ref={iframeRef}
+        src="/zoom-meeting.html"
+        allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
+        style={{ flex: 1, width: '100%', border: 'none', background: '#1a1a1a' }}
+        title="Zoom meeting"
+      />
     </div>
   );
 }

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Zoom Meeting SDK assets — populated by postinstall from node_modules/@zoom/meetingsdk
+/public/zoom-lib/

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/zoom-lib/zoom-meetingsdk.css" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #1a1a1a; color: #fff; font-family: sans-serif; }
+    #status { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 14px; color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="status">Connecting to meeting…</div>
+
+  <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/redux@4.2.1/dist/redux.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-redux@8.1.2/dist/react-redux.min.js"></script>
+  <script crossorigin src="https://unpkg.com/redux-thunk@2.4.2/dist/redux-thunk.min.js"></script>
+  <script crossorigin src="https://unpkg.com/lodash@4.17.21/lodash.min.js"></script>
+
+  <script>
+    function notify(type, detail) {
+      try { window.parent.postMessage({ zoomIframe: true, type: type, detail: detail }, location.origin); } catch (e) {}
+    }
+
+    function loadSdk(cb) {
+      // Use the script-tag bundle (reads React/Redux/ReduxThunk/_ as page globals,
+      // sets window.ZoomMtg). The other bundle, zoomus-websdk.umd.min.js, has
+      // externals wired for module bundlers only.
+      var s = document.createElement('script');
+      s.src = '/zoom-lib/zoom-meeting-6.0.0.min.js';
+      s.onerror = function () { notify('error', 'Failed to load Zoom SDK script'); };
+      s.onload = function () {
+        if (!window.ZoomMtg) { notify('error', 'window.ZoomMtg missing after SDK load'); return; }
+        cb(window.ZoomMtg);
+      };
+      document.head.appendChild(s);
+    }
+
+    function start(ZoomMtg, creds) {
+      ZoomMtg.setZoomJSLib('/zoom-lib', '/av');
+      ZoomMtg.preLoadWasm();
+      ZoomMtg.prepareWebSDK();
+
+      var status = document.getElementById('status');
+      if (status) status.style.display = 'none';
+
+      ZoomMtg.init({
+        // Static page that posts a `leave` event back to the parent — the
+        // parent then routes the TOP window to the real dashboard. If we
+        // pointed leaveUrl at the dashboard directly, the app would re-render
+        // inside this iframe.
+        leaveUrl: '/zoom-leave.html',
+        patchJsMedia: true,
+        success: function () {
+          ZoomMtg.join({
+            meetingNumber: creds.meetingNumber,
+            signature: creds.signature,
+            sdkKey: creds.sdkKey,
+            passWord: creds.password,
+            userName: creds.userName,
+            success: function () { notify('joined', null); },
+            error: function (err) { notify('error', err); },
+          });
+        },
+        error: function (err) { notify('error', err); },
+      });
+    }
+
+    var pending = null;
+    var ZoomMtgRef = null;
+
+    window.addEventListener('message', function (ev) {
+      if (ev.origin !== location.origin) return;
+      var data = ev.data;
+      if (!data || data.zoomIframe !== true) return;
+      if (data.type === 'init') {
+        if (ZoomMtgRef) start(ZoomMtgRef, data.creds);
+        else pending = data.creds;
+      }
+    });
+
+    loadSdk(function (ZoomMtg) {
+      ZoomMtgRef = ZoomMtg;
+      if (pending) start(ZoomMtg, pending);
+      else notify('ready', null);
+    });
+  </script>
+</body>
+</html>

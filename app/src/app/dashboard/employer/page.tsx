@@ -29,9 +29,17 @@ type EmployerInterview = {
   scheduled_at: string;
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
+  zoom_meeting_id?: string | null;
   listing: { id: string; title: string };
   student: { profile: { full_name: string; avatar_url: string | null } };
 };
+
+function joinWindowOpen(scheduledAt: string, durationMinutes: number): boolean {
+  const now = Date.now();
+  const start = new Date(scheduledAt).getTime();
+  const end = start + (durationMinutes + 30) * 60_000;
+  return now >= start - 10 * 60_000 && now <= end;
+}
 
 const PAGE_SIZE = 10;
 
@@ -191,6 +199,14 @@ export default function EmployerDashboard() {
                     }}>
                       {badge.label}
                     </span>
+                  )}
+                  {iv.status === 'accepted' && iv.zoom_meeting_id && joinWindowOpen(iv.scheduled_at, iv.duration_minutes) && (
+                    <Link href={`/dashboard/employer/interviews/${iv.id}`} style={{
+                      fontSize: '0.75rem', fontWeight: 700, padding: '5px 14px', borderRadius: 8,
+                      background: 'var(--primary)', color: '#fff', textDecoration: 'none', flexShrink: 0,
+                    }}>
+                      Join
+                    </Link>
                   )}
                 </div>
               );

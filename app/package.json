@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "mkdir -p public/zoom-lib && cp -R node_modules/@zoom/meetingsdk/dist/lib/. public/zoom-lib/ && cp -R node_modules/@zoom/meetingsdk/dist/ui/. public/zoom-lib/ && cp node_modules/@zoom/meetingsdk/dist/zoom-meeting-6.0.0.min.js public/zoom-lib/"
+    "postinstall": "node scripts/mirror-zoom-assets.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

@@ -80,7 +80,17 @@ export function generateZoomSignature(meetingNumber: string, role: 0 | 1): strin
 
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(
-    JSON.stringify({ sdkKey, mn: meetingNumber, role, iat, exp, appKey: sdkKey, tokenExp: exp }),
+    JSON.stringify({
+      sdkKey,
+      mn: meetingNumber,
+      role,
+      iat,
+      exp,
+      appKey: sdkKey,
+      tokenExp: exp,
+      video_webrtc_mode: 1,
+      audio_webrtc_mode: 1,
+    }),
   ).toString('base64url');
   const sig = crypto
     .createHmac('sha256', sdkSecret)

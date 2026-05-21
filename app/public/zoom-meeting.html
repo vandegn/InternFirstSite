@@ -39,7 +39,7 @@
     }
 
     function start(ZoomMtg, creds) {
-      ZoomMtg.setZoomJSLib('/zoom-lib', '/av');
+      ZoomMtg.setZoomJSLib(window.location.origin + '/zoom-lib', '/av');
       ZoomMtg.preLoadWasm();
       ZoomMtg.prepareWebSDK();
 

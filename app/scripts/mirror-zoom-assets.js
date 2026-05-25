@@ -7,6 +7,10 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const sdkRoot = path.join(root, 'node_modules', '@zoom', 'meetingsdk', 'dist');
 const outDir = path.join(root, 'public', 'zoom-lib');
+// The SDK's internal webpack publicPath resolves some chunks (CSS, preview UMD,
+// etc.) to `/ui/` regardless of setZoomJSLib. Mirror to /public/ui/ too so those
+// requests resolve in prod.
+const uiOutDir = path.join(root, 'public', 'ui');
 
 if (!fs.existsSync(sdkRoot)) {
   console.warn(`[mirror-zoom-assets] Skipping — ${sdkRoot} not found.`);
@@ -23,4 +27,8 @@ fs.copyFileSync(
   path.join(outDir, 'zoom-meeting-6.0.0.min.js'),
 );
 
-console.log(`[mirror-zoom-assets] Mirrored Zoom SDK assets to ${path.relative(root, outDir)}`);
+fs.rmSync(uiOutDir, { recursive: true, force: true });
+fs.mkdirSync(uiOutDir, { recursive: true });
+fs.cpSync(path.join(sdkRoot, 'ui'), uiOutDir, { recursive: true });
+
+console.log(`[mirror-zoom-assets] Mirrored Zoom SDK assets to ${path.relative(root, outDir)} and ${path.relative(root, uiOutDir)}`);

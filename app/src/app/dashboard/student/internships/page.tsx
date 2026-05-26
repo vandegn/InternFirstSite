@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { supabase, getActiveListings, trackListingView } from '@/lib/supabase';
-import { INDUSTRIES } from '@/lib/constants';
+import { INDUSTRIES, DURATIONS } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
 import ReactMarkdown from 'react-markdown';
 
@@ -20,6 +20,7 @@ type Listing = {
   created_at: string;
   application_deadline: string | null;
   key_responsibilities: string | null;
+  duration: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
@@ -67,9 +68,12 @@ export default function BrowseInternships() {
 
   // Search & filter state
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
+  const [debouncedLocation, setDebouncedLocation] = useState('');
   const [paidFilter, setPaidFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [workModeFilter, setWorkModeFilter] = useState<'all' | 'remote' | 'in-person' | 'hybrid'>('all');
+  const [durationFilter, setDurationFilter] = useState<string>('');
   const [industryOpen, setIndustryOpen] = useState(false);
   const [industrySearch, setIndustrySearch] = useState('');
   const industryRef = useRef<HTMLDivElement>(null);
@@ -77,8 +81,20 @@ export default function BrowseInternships() {
   const salaryRef = useRef<HTMLDivElement>(null);
   const [modeOpen, setModeOpen] = useState(false);
   const modeRef = useRef<HTMLDivElement>(null);
+  const [durationOpen, setDurationOpen] = useState(false);
+  const durationRef = useRef<HTMLDivElement>(null);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // Debounce search and location to avoid spamming the API on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocation(locationFilter), 300);
+    return () => clearTimeout(t);
+  }, [locationFilter]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -86,6 +102,7 @@ export default function BrowseInternships() {
       if (industryRef.current && !industryRef.current.contains(e.target as Node)) setIndustryOpen(false);
       if (salaryRef.current && !salaryRef.current.contains(e.target as Node)) setSalaryOpen(false);
       if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false);
+      if (durationRef.current && !durationRef.current.contains(e.target as Node)) setDurationOpen(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -97,19 +114,32 @@ export default function BrowseInternships() {
     return INDUSTRIES.filter((ind) => ind.toLowerCase().includes(q));
   }, [industrySearch]);
 
+  // Reset to page 1 when any filter changes (so we don't request a page that no longer exists)
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedId(null);
+  }, [debouncedSearch, debouncedLocation, paidFilter, workModeFilter, durationFilter, selectedIndustry]);
+
   useEffect(() => {
     async function fetchListings() {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       userIdRef.current = user.id;
-      const result = await getActiveListings(currentPage, PAGE_SIZE, selectedIndustry || undefined);
+      const result = await getActiveListings(currentPage, PAGE_SIZE, {
+        industry: selectedIndustry || undefined,
+        search: debouncedSearch || undefined,
+        location: debouncedLocation || undefined,
+        paid: paidFilter,
+        mode: workModeFilter,
+        duration: durationFilter || undefined,
+      });
       setListings(result.data as Listing[]);
       setTotalCount(result.totalCount);
       setLoading(false);
     }
     fetchListings();
-  }, [currentPage, selectedIndustry]);
+  }, [currentPage, selectedIndustry, debouncedSearch, debouncedLocation, paidFilter, workModeFilter, durationFilter]);
 
   // Auto-select first listing when listings change
   useEffect(() => {
@@ -125,55 +155,33 @@ export default function BrowseInternships() {
     }
   }, [listings, selectedId]);
 
-  // Client-side filtering for search, location, paid, work mode
-  const filteredListings = useMemo(() => {
-    let result = listings;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (l) =>
-          l.title.toLowerCase().includes(q) ||
-          l.employers?.company_name?.toLowerCase().includes(q) ||
-          l.description.toLowerCase().includes(q) ||
-          (l.requirements && l.requirements.toLowerCase().includes(q))
-      );
-    }
-
-    if (locationFilter.trim()) {
-      const loc = locationFilter.toLowerCase();
-      result = result.filter(
-        (l) => l.location && l.location.toLowerCase().includes(loc)
-      );
-    }
-
-    if (paidFilter === 'paid') {
-      result = result.filter(
-        (l) => l.compensation && !l.compensation.toLowerCase().includes('unpaid')
-      );
-    } else if (paidFilter === 'unpaid') {
-      result = result.filter(
-        (l) => !l.compensation || l.compensation.toLowerCase().includes('unpaid')
-      );
-    }
-
-    if (workModeFilter === 'remote') {
-      result = result.filter((l) => l.is_remote);
-    } else if (workModeFilter === 'hybrid') {
-      result = result.filter((l) => l.is_hybrid);
-    } else if (workModeFilter === 'in-person') {
-      result = result.filter((l) => !l.is_remote && !l.is_hybrid && l.location);
-    }
-
-    return result;
-  }, [listings, searchQuery, locationFilter, paidFilter, workModeFilter]);
-
-  const selectedListing = filteredListings.find((l) => l.id === selectedId) || null;
+  const selectedListing = listings.find((l) => l.id === selectedId) || null;
 
   function handleIndustryFilter(industry: string) {
     setSelectedIndustry(industry);
-    setCurrentPage(1);
-    setSelectedId(null);
+  }
+
+  const workModeLabel = {
+    remote: 'Remote',
+    hybrid: 'Hybrid',
+    'in-person': 'In-Person',
+  } as const;
+
+  const activeChips: { key: string; label: string; onRemove: () => void }[] = [];
+  if (searchQuery) activeChips.push({ key: 'search', label: `“${searchQuery}”`, onRemove: () => setSearchQuery('') });
+  if (locationFilter) activeChips.push({ key: 'location', label: locationFilter, onRemove: () => setLocationFilter('') });
+  if (paidFilter !== 'all') activeChips.push({ key: 'paid', label: paidFilter === 'paid' ? 'Paid' : 'Unpaid', onRemove: () => setPaidFilter('all') });
+  if (workModeFilter !== 'all') activeChips.push({ key: 'mode', label: workModeLabel[workModeFilter], onRemove: () => setWorkModeFilter('all') });
+  if (durationFilter) activeChips.push({ key: 'duration', label: durationFilter, onRemove: () => setDurationFilter('') });
+  if (selectedIndustry) activeChips.push({ key: 'industry', label: selectedIndustry, onRemove: () => setSelectedIndustry('') });
+
+  function clearAllFilters() {
+    setSearchQuery('');
+    setLocationFilter('');
+    setPaidFilter('all');
+    setWorkModeFilter('all');
+    setDurationFilter('');
+    setSelectedIndustry('');
   }
 
   function timeAgo(dateStr: string) {
@@ -303,7 +311,7 @@ export default function BrowseInternships() {
             {/* Salary dropdown */}
             <div ref={salaryRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
               <button
-                onClick={() => { setSalaryOpen(!salaryOpen); setModeOpen(false); setIndustryOpen(false); }}
+                onClick={() => { setSalaryOpen(!salaryOpen); setModeOpen(false); setIndustryOpen(false); setDurationOpen(false); }}
                 style={{
                   ...selectStyle,
                   width: '100%',
@@ -361,7 +369,7 @@ export default function BrowseInternships() {
             {/* Work mode dropdown */}
             <div ref={modeRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
               <button
-                onClick={() => { setModeOpen(!modeOpen); setSalaryOpen(false); setIndustryOpen(false); }}
+                onClick={() => { setModeOpen(!modeOpen); setSalaryOpen(false); setIndustryOpen(false); setDurationOpen(false); }}
                 style={{
                   ...selectStyle,
                   width: '100%',
@@ -416,10 +424,91 @@ export default function BrowseInternships() {
               )}
             </div>
 
+            {/* Duration dropdown */}
+            <div ref={durationRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+              <button
+                onClick={() => { setDurationOpen(!durationOpen); setSalaryOpen(false); setModeOpen(false); setIndustryOpen(false); }}
+                style={{
+                  ...selectStyle,
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  fontWeight: durationFilter ? 600 : 500,
+                  borderColor: durationOpen ? 'var(--primary)' : 'var(--border)',
+                  overflow: 'hidden',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {durationFilter || 'Length'}
+                </span>
+              </button>
+              {durationOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  left: 0,
+                  minWidth: '160px',
+                  background: '#fff',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: '10px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  zIndex: 100,
+                  overflow: 'hidden',
+                  padding: '4px 0',
+                }}>
+                  <button
+                    onClick={() => { setDurationFilter(''); setDurationOpen(false); }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '7px 12px',
+                      border: 'none',
+                      background: durationFilter === '' ? 'var(--primary-light)' : 'transparent',
+                      color: durationFilter === '' ? 'var(--primary)' : 'var(--text-primary)',
+                      fontWeight: durationFilter === '' ? 600 : 400,
+                      fontSize: '0.82rem',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'background 0.1s ease',
+                    }}
+                    onMouseEnter={(e) => { if (durationFilter !== '') e.currentTarget.style.background = 'var(--bg)'; }}
+                    onMouseLeave={(e) => { if (durationFilter !== '') e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    Any Length
+                  </button>
+                  {DURATIONS.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => { setDurationFilter(d); setDurationOpen(false); }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '7px 12px',
+                        border: 'none',
+                        background: durationFilter === d ? 'var(--primary-light)' : 'transparent',
+                        color: durationFilter === d ? 'var(--primary)' : 'var(--text-primary)',
+                        fontWeight: durationFilter === d ? 600 : 400,
+                        fontSize: '0.82rem',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'background 0.1s ease',
+                      }}
+                      onMouseEnter={(e) => { if (durationFilter !== d) e.currentTarget.style.background = 'var(--bg)'; }}
+                      onMouseLeave={(e) => { if (durationFilter !== d) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Industry searchable dropdown */}
             <div ref={industryRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
               <button
-                onClick={() => { setIndustryOpen(!industryOpen); setIndustrySearch(''); setSalaryOpen(false); setModeOpen(false); }}
+                onClick={() => { setIndustryOpen(!industryOpen); setIndustrySearch(''); setSalaryOpen(false); setModeOpen(false); setDurationOpen(false); }}
                 style={{
                   ...selectStyle,
                   width: '100%',
@@ -538,13 +627,90 @@ export default function BrowseInternships() {
           </div>
         </div>
 
+        {/* Active filter chips */}
+        {activeChips.length > 0 && (
+          <div style={{
+            padding: '10px 16px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '6px',
+            flexShrink: 0,
+          }}>
+            {activeChips.map((chip) => (
+              <span
+                key={chip.key}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  padding: '3px 4px 3px 10px',
+                  fontSize: '0.76rem',
+                  fontWeight: 500,
+                  color: 'var(--primary)',
+                  background: 'var(--primary-light)',
+                  borderRadius: '999px',
+                  maxWidth: '160px',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {chip.label}
+                </span>
+                <button
+                  onClick={chip.onRemove}
+                  aria-label={`Remove ${chip.label} filter`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '18px',
+                    height: '18px',
+                    border: 'none',
+                    borderRadius: '999px',
+                    background: 'transparent',
+                    color: 'var(--primary)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(123,97,255,0.18)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+            <button
+              onClick={clearAllFilters}
+              style={{
+                marginLeft: 'auto',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                fontSize: '0.76rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                padding: '4px 6px',
+                textDecoration: 'underline',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
         {/* Listing cards or loading/empty */}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {loading ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <p>Loading internships...</p>
             </div>
-          ) : filteredListings.length === 0 ? (
+          ) : listings.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '12px', opacity: 0.5 }}>
                 <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z" />
@@ -553,7 +719,7 @@ export default function BrowseInternships() {
               <p style={{ fontSize: '0.85rem', marginTop: '6px' }}>Try adjusting your search or filters.</p>
             </div>
           ) : (
-            filteredListings.map((listing) => (
+            listings.map((listing) => (
               <div
                 key={listing.id}
                 onClick={() => selectListing(listing.id)}
@@ -757,6 +923,17 @@ export default function BrowseInternships() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                     Posted {new Date(selectedListing.created_at).toLocaleDateString()}
                   </span>
+                  {selectedListing.duration && (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '5px',
+                      fontSize: '0.82rem', color: 'var(--text-secondary)',
+                      padding: '5px 12px', borderRadius: '6px',
+                      background: 'var(--bg-secondary, #f5f5f5)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                      {selectedListing.duration}
+                    </span>
+                  )}
                   {selectedListing.application_deadline && (() => {
                     const state = deadlineState(selectedListing.application_deadline);
                     const styles =

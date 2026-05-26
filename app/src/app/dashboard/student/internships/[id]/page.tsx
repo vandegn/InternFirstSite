@@ -20,6 +20,7 @@ type Listing = {
   industry: string;
   created_at: string;
   application_deadline: string | null;
+  duration: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
@@ -190,6 +191,12 @@ export default function InternshipDetail() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             {listing.industry}
           </div>
+          {listing.duration && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              {listing.duration}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Posted {new Date(listing.created_at).toLocaleDateString()}
@@ -345,6 +352,25 @@ export default function InternshipDetail() {
                     No resumes uploaded yet. You can <a href="/dashboard/student/settings" style={{ color: 'var(--primary)' }}>upload one in Settings</a> or apply without one.
                   </p>
                 )}
+
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  padding: '10px 14px', marginBottom: '14px',
+                  borderRadius: 'var(--radius-sm, 8px)',
+                  background: 'var(--bg-light, #f7f8fb)',
+                  border: '1px solid var(--border)',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 2, flexShrink: 0 }}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                    Your standard application info (work authorization, voluntary self-identification)
+                    is on file and will be submitted with this application.{' '}
+                    <a href="/dashboard/student/welcome?from=settings" style={{ color: 'var(--primary)', fontWeight: 500 }}>
+                      Edit
+                    </a>
+                  </p>
+                </div>
 
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <button

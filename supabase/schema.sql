@@ -63,6 +63,7 @@ create table internship_listings (
   industry text not null default 'Other' check (industry in ('Technology', 'Finance', 'Healthcare', 'Marketing', 'Legal', 'Engineering', 'Education', 'Media', 'Nonprofit', 'Government', 'Retail', 'Other')),
   status text default 'active' check (status in ('active', 'paused', 'closed')),
   application_deadline date,
+  duration text,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
@@ -531,3 +532,48 @@ create policy "Employers can update own interviews"
 create policy "Students can update own interviews"
   on interview_schedules for update to authenticated
   using (student_id in (select id from students where user_id = auth.uid()));
+
+-- =============================================
+-- STUDENT EEO / VOLUNTARY SELF-IDENTIFICATION
+-- =============================================
+-- Federally-recognized voluntary self-id (race, ethnicity, gender,
+-- veteran, disability) plus work authorization. Voluntariness is
+-- enforced by application code (every question accepts "declined").
+-- IMPORTANT: This table is NOT readable by employers — there is no
+-- employer SELECT policy on it, which is intentional.
+
+CREATE TABLE student_eeo (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id uuid NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
+  ethnicity_hispanic_latino text CHECK (ethnicity_hispanic_latino IN ('yes', 'no', 'declined')),
+  race text[] NOT NULL DEFAULT '{}',
+  race_declined boolean NOT NULL DEFAULT false,
+  gender text CHECK (gender IN ('male', 'female', 'non_binary', 'self_describe', 'declined')),
+  gender_self_describe text,
+  veteran_status text CHECK (veteran_status IN ('protected_veteran', 'not_veteran', 'declined')),
+  disability_status text CHECK (disability_status IN ('yes', 'no', 'declined')),
+  work_authorized_us text CHECK (work_authorized_us IN ('yes', 'no')),
+  requires_sponsorship text CHECK (requires_sponsorship IN ('yes', 'no')),
+  completed_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_student_eeo_student ON student_eeo(student_id);
+
+ALTER TABLE student_eeo ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Students can view own EEO"
+  ON student_eeo FOR SELECT
+  USING (student_id IN (SELECT id FROM students WHERE user_id = auth.uid()));
+
+CREATE POLICY "Students can insert own EEO"
+  ON student_eeo FOR INSERT
+  WITH CHECK (student_id IN (SELECT id FROM students WHERE user_id = auth.uid()));
+
+CREATE POLICY "Students can update own EEO"
+  ON student_eeo FOR UPDATE
+  USING (student_id IN (SELECT id FROM students WHERE user_id = auth.uid()));
+
+CREATE TRIGGER set_student_eeo_updated_at
+  BEFORE UPDATE ON student_eeo
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();

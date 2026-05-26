@@ -15,6 +15,18 @@ export const INDUSTRIES = [
 
 export type Industry = (typeof INDUSTRIES)[number];
 
+export const DURATIONS = [
+  'Summer',
+  'Fall Semester',
+  'Spring Semester',
+  'Year-round',
+  '1-3 months',
+  '3-6 months',
+  '6+ months',
+] as const;
+
+export type Duration = (typeof DURATIONS)[number];
+
 export const MAJOR_TO_INDUSTRIES: Record<string, string[]> = {
   'Accounting': ['Finance', 'Government'],
   'Actuarial Science': ['Finance', 'Technology'],

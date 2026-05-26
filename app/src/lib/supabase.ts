@@ -133,6 +133,7 @@ export async function createListing(listing: {
   key_responsibilities?: string;
   industry: string;
   application_deadline?: string;
+  duration?: string;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -156,7 +157,20 @@ export async function getEmployerListings(employerId: string, page = 1, pageSize
   return { data: data ?? [], totalCount: count ?? 0 };
 }
 
-export async function getActiveListings(page = 1, pageSize = 10, industry?: string) {
+export type ActiveListingsFilters = {
+  industry?: string;
+  search?: string;
+  location?: string;
+  paid?: 'all' | 'paid' | 'unpaid';
+  mode?: 'all' | 'remote' | 'hybrid' | 'in-person';
+  duration?: string;
+};
+
+export async function getActiveListings(
+  page = 1,
+  pageSize = 10,
+  filters: ActiveListingsFilters = {}
+) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   let query = supabase
@@ -164,8 +178,39 @@ export async function getActiveListings(page = 1, pageSize = 10, industry?: stri
     .select('*, employers(company_name, logo_url)', { count: 'exact' })
     .eq('status', 'active');
 
-  if (industry) {
-    query = query.eq('industry', industry);
+  if (filters.industry) {
+    query = query.eq('industry', filters.industry);
+  }
+
+  if (filters.duration) {
+    query = query.eq('duration', filters.duration);
+  }
+
+  if (filters.location && filters.location.trim()) {
+    query = query.ilike('location', `%${filters.location.trim()}%`);
+  }
+
+  if (filters.search && filters.search.trim()) {
+    // PostgREST .or() uses commas/parens/periods/quotes as separators — strip them.
+    const q = filters.search.trim().replace(/[,()."*]/g, ' ');
+    query = query.or(
+      `title.ilike.%${q}%,description.ilike.%${q}%,requirements.ilike.%${q}%`
+    );
+  }
+
+  if (filters.paid === 'paid') {
+    // Paid = compensation set and not "Unpaid"
+    query = query.not('compensation', 'is', null).neq('compensation', 'Unpaid');
+  } else if (filters.paid === 'unpaid') {
+    query = query.or('compensation.is.null,compensation.eq.Unpaid');
+  }
+
+  if (filters.mode === 'remote') {
+    query = query.eq('is_remote', true);
+  } else if (filters.mode === 'hybrid') {
+    query = query.eq('is_hybrid', true);
+  } else if (filters.mode === 'in-person') {
+    query = query.eq('is_remote', false).eq('is_hybrid', false);
   }
 
   const { data, error, count } = await query
@@ -746,6 +791,61 @@ export async function upsertCareerSurvey(studentId: string, data: CareerSurveyDa
   if (error) throw error;
 }
 
+// ---- Student EEO / Voluntary Self-Identification ----
+//
+// IMPORTANT: This data is intentionally not exposed to employers. The
+// student_eeo table has no employer SELECT policy in RLS, so even if a
+// future code path joined against it, employers would not be able to read
+// the rows. Keep it that way.
+
+export type StudentEeoData = {
+  ethnicity_hispanic_latino: 'yes' | 'no' | 'declined' | null;
+  race: string[];
+  race_declined: boolean;
+  gender: 'male' | 'female' | 'non_binary' | 'self_describe' | 'declined' | null;
+  gender_self_describe: string | null;
+  veteran_status: 'protected_veteran' | 'not_veteran' | 'declined' | null;
+  disability_status: 'yes' | 'no' | 'declined' | null;
+  work_authorized_us: 'yes' | 'no' | null;
+  requires_sponsorship: 'yes' | 'no' | null;
+};
+
+export async function getStudentEeo(
+  studentId: string
+): Promise<(StudentEeoData & { completed_at: string; updated_at: string }) | null> {
+  const { data, error } = await supabase
+    .from('student_eeo')
+    .select(
+      'ethnicity_hispanic_latino, race, race_declined, gender, gender_self_describe, veteran_status, disability_status, work_authorized_us, requires_sponsorship, completed_at, updated_at'
+    )
+    .eq('student_id', studentId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as StudentEeoData & { completed_at: string; updated_at: string };
+}
+
+export async function upsertStudentEeo(studentId: string, data: StudentEeoData) {
+  const { error } = await supabase
+    .from('student_eeo')
+    .upsert(
+      {
+        student_id: studentId,
+        ethnicity_hispanic_latino: data.ethnicity_hispanic_latino,
+        race: data.race,
+        race_declined: data.race_declined,
+        gender: data.gender,
+        gender_self_describe: data.gender_self_describe,
+        veteran_status: data.veteran_status,
+        disability_status: data.disability_status,
+        work_authorized_us: data.work_authorized_us,
+        requires_sponsorship: data.requires_sponsorship,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'student_id' }
+    );
+  if (error) throw error;
+}
+
 // ---- Events ----
 
 export async function getEventById(eventId: string) {
@@ -849,6 +949,7 @@ export async function updateListing(listingId: string, fields: {
   industry?: string;
   status?: string;
   application_deadline?: string | null;
+  duration?: string | null;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')

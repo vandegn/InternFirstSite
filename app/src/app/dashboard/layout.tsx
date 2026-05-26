@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase, getProfile, DASHBOARD_ROUTES } from '@/lib/supabase';
+import { supabase, getProfile, getStudentByUserId, getStudentEeo, DASHBOARD_ROUTES } from '@/lib/supabase';
 import DashboardShell from '@/components/DashboardShell';
+
+const STUDENT_WELCOME_PATH = '/dashboard/student/welcome';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -32,6 +34,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!allowedPath || !pathname.startsWith(allowedPath)) {
         router.replace(allowedPath || '/login');
         return;
+      }
+
+      // Students must complete the voluntary self-id welcome screen before
+      // accessing the rest of the dashboard. The welcome page itself is exempt.
+      if (profile.role === 'student' && pathname !== STUDENT_WELCOME_PATH) {
+        const student = await getStudentByUserId(user.id);
+        if (student) {
+          const eeo = await getStudentEeo(student.id);
+          if (!eeo) {
+            router.replace(STUDENT_WELCOME_PATH);
+            return;
+          }
+        }
       }
 
       setRole(profile.role);

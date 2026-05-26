@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git -C \"C:/Users/Eliot Seifrit/InternFirstSite\" status --short)",
+      "Bash(git -C \"C:/Users/Eliot Seifrit/InternFirstSite\" branch --show-current)",
+      "Bash(git -C \"C:/Users/Eliot Seifrit/InternFirstSite\" checkout -b feature/student-eeo-and-job-filters)",
+      "Bash(git -C \"C:/Users/Eliot Seifrit/InternFirstSite\" branch)"
     ]
   }
 }

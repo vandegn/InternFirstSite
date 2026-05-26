@@ -318,6 +318,34 @@ export default function StudentSettings() {
         )}
       </div>
 
+      {/* Equal Employment Information */}
+      <div className="profile-card" style={{ padding: '28px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>Equal Employment Information</h3>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
+          Your responses to the standard voluntary self-identification questions (race,
+          ethnicity, gender, veteran, disability, work authorization). These are{' '}
+          <strong>private to you</strong> — InternFirst does not show this information to
+          employers, and you can update or change your answers at any time.
+        </p>
+        <a
+          href="/dashboard/student/welcome?from=settings"
+          style={{
+            display: 'inline-block',
+            padding: '9px 20px',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            border: '1px solid var(--border)',
+            background: '#fff',
+            color: 'var(--text)',
+            textDecoration: 'none',
+            transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          Edit responses
+        </a>
+      </div>
+
       {/* Notifications */}
       {/* Local state only — notification preferences will be synced when email integration is enabled */}
       <div className="profile-card" style={{ padding: '28px', marginBottom: '24px' }}>

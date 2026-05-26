@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase, getEmployerByUserId, getListingById, updateListing } from '@/lib/supabase';
-import { INDUSTRIES } from '@/lib/constants';
+import { INDUSTRIES, DURATIONS } from '@/lib/constants';
 
 export default function EditListingPage() {
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function EditListingPage() {
   const [requirements, setRequirements] = useState('');
   const [keyResponsibilities, setKeyResponsibilities] = useState('');
   const [industry, setIndustry] = useState('');
+  const [duration, setDuration] = useState('');
   const [status, setStatus] = useState('active');
   const [applicationDeadline, setApplicationDeadline] = useState('');
   const [error, setError] = useState('');
@@ -50,6 +51,7 @@ export default function EditListingPage() {
         setRequirements(listing.requirements || '');
         setKeyResponsibilities(listing.key_responsibilities || '');
         setIndustry(listing.industry || '');
+        setDuration(listing.duration || '');
         setStatus(listing.status || 'active');
         setApplicationDeadline(listing.application_deadline || '');
       } catch (err: any) {
@@ -78,6 +80,7 @@ export default function EditListingPage() {
         requirements: requirements || undefined,
         key_responsibilities: keyResponsibilities || undefined,
         industry,
+        duration: duration || null,
         application_deadline: applicationDeadline || null,
       });
 
@@ -205,6 +208,20 @@ export default function EditListingPage() {
                 value={applicationDeadline}
                 onChange={(e) => setApplicationDeadline(e.target.value)}
               />
+            </div>
+            <div className="form-group">
+              <label htmlFor="duration">Internship Length</label>
+              <select
+                id="duration"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select length...</option>
+                {DURATIONS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </div>
             <div className="form-group">
               <label>Work Arrangement</label>

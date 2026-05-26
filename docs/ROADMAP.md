@@ -59,14 +59,14 @@ Gap analysis comparing the current codebase against the product spec (Website Ov
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| LinkedIn-style split view (list left, detail right) | MISSING | Currently separate list and detail pages |
+| LinkedIn-style split view (list left, detail right) | DONE | Split view on `/dashboard/student/internships` |
 | Scrollable job listings | DONE | Paginated list works |
-| Search bar (keyword) | MISSING | Input exists, no logic |
-| Filter: Location | MISSING | |
+| Search bar (keyword) | DONE | Server-side search across title/description/requirements, debounced |
+| Filter: Location | DONE | Server-side ilike on location |
 | Filter: Industry | DONE | Industry pill filter works |
-| Filter: Paid vs unpaid | MISSING | |
-| Filter: Internship length | MISSING | |
-| Filter: Remote/hybrid/in-person | MISSING | |
+| Filter: Paid vs unpaid | DONE | Server-side filter |
+| Filter: Internship length | DONE | New `duration` column + filter dropdown |
+| Filter: Remote/hybrid/in-person | DONE | Server-side filter |
 | In-platform apply | DONE | Works with resume selection |
 
 ### 1.4 Messaging (DONE)

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, getEmployerByUserId, createListing } from '@/lib/supabase';
-import { INDUSTRIES } from '@/lib/constants';
+import { INDUSTRIES, DURATIONS } from '@/lib/constants';
 import ReactMarkdown from 'react-markdown';
 
 function AutoResizeTextarea({ id, placeholder, required, rows, value, onChange, style }: {
@@ -47,6 +47,7 @@ export default function NewListingPage() {
   const [requirements, setRequirements] = useState('');
   const [keyResponsibilities, setKeyResponsibilities] = useState('');
   const [industry, setIndustry] = useState('');
+  const [duration, setDuration] = useState('');
   const [applicationDeadline, setApplicationDeadline] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,6 +90,7 @@ export default function NewListingPage() {
         requirements: requirements || undefined,
         key_responsibilities: keyResponsibilities || undefined,
         industry,
+        duration: duration || undefined,
         application_deadline: applicationDeadline || undefined,
       });
 
@@ -183,6 +185,20 @@ export default function NewListingPage() {
                   value={applicationDeadline}
                   onChange={(e) => setApplicationDeadline(e.target.value)}
                 />
+              </div>
+              <div className="form-group">
+                <label htmlFor="duration">Internship Length</label>
+                <select
+                  id="duration"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Select length...</option>
+                  {DURATIONS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Work Arrangement</label>
@@ -304,6 +320,12 @@ export default function NewListingPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                   {industry}
+                </div>
+              )}
+              {duration && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  {duration}
                 </div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>

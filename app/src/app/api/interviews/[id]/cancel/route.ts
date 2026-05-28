@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { deleteZoomMeeting } from '@/lib/zoom';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,23 +48,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Interview cannot be cancelled in its current state' }, { status: 409 });
   }
 
-  // Clean up the Zoom meeting if one was created
-  if (interview.zoom_meeting_id) {
-    try {
-      await deleteZoomMeeting(interview.zoom_meeting_id);
-    } catch {
-      // Best-effort — proceed even if deletion fails
-    }
-  }
-
   const { data: updated, error: updateError } = await supabase
     .from('interview_schedules')
     .update({
       status: 'cancelled',
       cancelled_by: isEmployer ? 'employer' : 'student',
       cancelled_at: new Date().toISOString(),
-      zoom_meeting_id: null,
-      zoom_meeting_password: null,
     })
     .eq('id', id)
     .select()

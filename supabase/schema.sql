@@ -485,8 +485,6 @@ create table interview_schedules (
   status text not null default 'pending' check (status in
     ('pending', 'accepted', 'declined', 'reschedule_requested', 'cancelled', 'completed')),
   employer_notes text,
-  zoom_meeting_id text,
-  zoom_meeting_password text,
   cancelled_by text check (cancelled_by in ('employer', 'student')),
   cancelled_at timestamptz,
   created_at timestamptz not null default now(),

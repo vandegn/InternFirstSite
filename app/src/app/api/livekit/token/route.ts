@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { generateZoomSignature } from '@/lib/zoom';
+import { generateLiveKitToken, getLiveKitRoomName } from '@/lib/livekit';
 
 export async function GET(req: NextRequest) {
   const interviewId = req.nextUrl.searchParams.get('interviewId');
@@ -40,10 +40,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Interview is not confirmed' }, { status: 409 });
   }
 
-  if (!interview.zoom_meeting_id) {
-    return NextResponse.json({ error: 'No Zoom meeting associated with this interview' }, { status: 404 });
-  }
-
   const student = Array.isArray(interview.student) ? interview.student[0] : interview.student;
   const employer = Array.isArray(interview.employer) ? interview.employer[0] : interview.employer;
 
@@ -54,7 +50,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Validate join window: 10 min before → scheduled_at + duration + 30 min
   const start = new Date(interview.scheduled_at).getTime();
   const end = start + (interview.duration_minutes + 30) * 60 * 1000;
   const earliest = start - 10 * 60 * 1000;
@@ -71,27 +66,35 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'outside_window', message: 'This interview has ended' }, { status: 400 });
   }
 
-  const role = isEmployer ? 1 : 0;
-
-  let signature: string;
-  try {
-    signature = generateZoomSignature(interview.zoom_meeting_id, role as 0 | 1);
-  } catch {
-    return NextResponse.json({ error: 'Zoom SDK is not configured on this server' }, { status: 503 });
-  }
-
   const studentProfile = Array.isArray(student?.profile) ? student.profile[0] : student?.profile;
   const employerProfile = Array.isArray(employer?.profile) ? employer.profile[0] : employer?.profile;
   const userName = isEmployer
     ? (employerProfile?.full_name ?? 'Employer')
     : (studentProfile?.full_name ?? 'Student');
 
+  const url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  if (!url) {
+    return NextResponse.json({ error: 'LiveKit URL is not configured on this server' }, { status: 503 });
+  }
+
+  let token: string;
+  try {
+    token = await generateLiveKitToken({
+      interviewId,
+      userId: user.id,
+      userName,
+      isHost: isEmployer,
+    });
+  } catch {
+    return NextResponse.json({ error: 'LiveKit is not configured on this server' }, { status: 503 });
+  }
+
   return NextResponse.json({
-    signature,
-    meetingNumber: interview.zoom_meeting_id,
-    password: interview.zoom_meeting_password ?? '',
-    sdkKey: process.env.ZOOM_SDK_KEY ?? '',
+    token,
+    url,
+    roomName: getLiveKitRoomName(interviewId),
+    identity: `user-${user.id}`,
     userName,
-    role,
+    isHost: isEmployer,
   });
 }

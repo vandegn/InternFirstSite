@@ -287,14 +287,17 @@ export async function getMessagesWith(userId: string, otherUserId: string) {
   return data ?? [];
 }
 
-export async function sendMessage(senderId: string, receiverId: string, body: string) {
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({ sender_id: senderId, receiver_id: receiverId, body })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+export async function sendMessage(_senderId: string, receiverId: string, body: string) {
+  const res = await fetch('/api/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ receiverId, body }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to send message');
+  }
+  return res.json();
 }
 
 export async function markMessagesAsRead(userId: string, otherUserId: string) {
@@ -980,28 +983,16 @@ export async function createInterview(opts: {
   durationMinutes: number;
   notes?: string;
 }) {
-  const { data, error } = await supabase
-    .from('interview_schedules')
-    .insert({
-      application_id: opts.applicationId,
-      employer_id: opts.employerId,
-      student_id: opts.studentId,
-      listing_id: opts.listingId,
-      scheduled_at: opts.scheduledAt,
-      duration_minutes: opts.durationMinutes,
-      employer_notes: opts.notes || null,
-      status: 'pending',
-    })
-    .select()
-    .single();
-  if (error) throw error;
-
-  await supabase
-    .from('applications')
-    .update({ status: 'interviewing' })
-    .eq('id', opts.applicationId);
-
-  return data;
+  const res = await fetch('/api/interviews', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to create interview');
+  }
+  return res.json();
 }
 
 export async function getEmployerInterviews(employerId: string) {
@@ -1103,20 +1094,16 @@ export async function rescheduleInterview(
   interviewId: string,
   fields: { scheduledAt: string; durationMinutes: number; notes?: string },
 ) {
-  const { data, error } = await supabase
-    .from('interview_schedules')
-    .update({
-      scheduled_at: fields.scheduledAt,
-      duration_minutes: fields.durationMinutes,
-      employer_notes: fields.notes ?? null,
-      status: 'pending',
-    })
-    .eq('id', interviewId)
-    .select()
-    .single();
-  if (error) throw error;
-
-  return data;
+  const res = await fetch(`/api/interviews/${interviewId}/reschedule`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to reschedule interview');
+  }
+  return res.json();
 }
 
 export async function sendRescheduleRequestMessage(opts: {

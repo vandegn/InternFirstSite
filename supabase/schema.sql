@@ -121,7 +121,8 @@ create table messages (
   application_id uuid references applications(id) on delete set null,
   body text not null,
   read boolean default false,
-  sent_at timestamptz default now() not null
+  sent_at timestamptz default now() not null,
+  email_notified_at timestamptz
 );
 
 -- ============================================
@@ -487,6 +488,7 @@ create table interview_schedules (
   employer_notes text,
   cancelled_by text check (cancelled_by in ('employer', 'student')),
   cancelled_at timestamptz,
+  reminder_sent_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

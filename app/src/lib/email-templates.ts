@@ -89,26 +89,3 @@ export function interviewScheduledEmployerEmail(opts: {
   return { subject, html };
 }
 
-export function interviewReminderEmail(opts: {
-  recipientRole: 'student' | 'employer';
-  otherPartyName: string;
-  listingTitle: string;
-  scheduledAt: string;
-  durationMinutes: number;
-  interviewId: string;
-}) {
-  const path = opts.recipientRole === 'student'
-    ? `/dashboard/student/interviews/${opts.interviewId}`
-    : `/dashboard/employer/interviews/${opts.interviewId}`;
-  const ctaUrl = `${APP_URL}${path}`;
-  const subject = `Reminder: interview with ${opts.otherPartyName} in 30 minutes`;
-  const html = shell(
-    `Your interview starts in 30 minutes`,
-    `<p>This is a reminder that your interview with <strong>${escapeHtml(opts.otherPartyName)}</strong> for the <strong>${escapeHtml(opts.listingTitle)}</strong> position starts in about 30 minutes.</p>
-     <p><strong>When:</strong> ${escapeHtml(formatWhen(opts.scheduledAt, opts.durationMinutes))}</p>
-     <p>Join the interview room from your dashboard.</p>`,
-    ctaUrl,
-    'Open Interview Room',
-  );
-  return { subject, html };
-}

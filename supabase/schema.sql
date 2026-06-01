@@ -488,7 +488,6 @@ create table interview_schedules (
   employer_notes text,
   cancelled_by text check (cancelled_by in ('employer', 'student')),
   cancelled_at timestamptz,
-  reminder_sent_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

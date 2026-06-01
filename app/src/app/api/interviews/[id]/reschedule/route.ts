@@ -47,7 +47,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       duration_minutes: durationMinutes,
       employer_notes: notes ?? null,
       status: 'pending',
-      reminder_sent_at: null,
     })
     .eq('id', id)
     .select()

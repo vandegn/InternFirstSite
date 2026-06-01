@@ -127,12 +127,12 @@ export default function AboutPage() {
               </div>
               <h3>Universities</h3>
               <ul>
-                <li>Real-time KPI dashboards</li>
-                <li>Survey distribution</li>
-                <li>Event tracking</li>
-                <li>Appointment management</li>
-                <li>Simplified CRM</li>
-                <li>Student outcome measurement</li>
+                <li>Student application &amp; outcome data</li>
+                <li>Placement &amp; hiring analytics</li>
+                <li>Employer engagement insights</li>
+                <li>Skills &amp; major demand trends</li>
+                <li>Exportable reports</li>
+                <li>Subscription-based access</li>
               </ul>
             </div>
 

@@ -63,7 +63,10 @@ function LoginForm() {
     try {
       const profile = await getProfile(data.user.id);
       const dashRole = profile?.role || role;
-      router.push(DASHBOARD_ROUTES[dashRole] || '/dashboard/student');
+      const nextParam = searchParams.get('next');
+      // Only honor same-origin paths to prevent open-redirect attacks
+      const safeNext = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+      router.push(safeNext || DASHBOARD_ROUTES[dashRole] || '/dashboard/student');
     } catch {
       setError('Login succeeded but failed to load your profile. Please try again.');
       setLoading(false);

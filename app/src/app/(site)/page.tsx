@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { supabase, getProfile, DASHBOARD_ROUTES } from '@/lib/supabase';
 
 const faqData = [
   {
@@ -52,8 +54,23 @@ const featuredJobs = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [email, setEmail] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function redirectIfLoggedIn() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || !session?.user) return;
+      const profile = await getProfile(session.user.id);
+      if (cancelled || !profile) return;
+      const route = DASHBOARD_ROUTES[profile.role];
+      if (route) router.replace(route);
+    }
+    redirectIfLoggedIn();
+    return () => { cancelled = true; };
+  }, [router]);
 
   return (
     <>

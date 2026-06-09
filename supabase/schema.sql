@@ -295,7 +295,7 @@ create policy "Employers can view skills of applicants"
 create table student_experiences (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade not null,
-  type text not null check (type in ('internship', 'project', 'campus_involvement')),
+  type text not null check (type in ('internship', 'work', 'project', 'campus_involvement')),
   title text not null,
   organization text,
   location text,

@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, getStudentByUserId, getCareerSurvey, upsertCareerSurvey } from '@/lib/supabase';
+import {
+  supabase,
+  getStudentByUserId,
+  getCareerSurvey,
+  upsertCareerSurvey,
+  getStudentExperiences,
+  addStudentExperience,
+  updateStudentExperience,
+  deleteStudentExperience,
+} from '@/lib/supabase';
 import type { CareerSurveyData } from '@/lib/supabase';
 import CareerSurveyModal from '@/components/CareerSurveyModal';
 import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
@@ -9,6 +18,7 @@ import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 const SECTIONS: { id: string; label: string; danger?: boolean; icon: React.ReactNode }[] = [
   { id: 'account', label: 'Account', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
   { id: 'career', label: 'Career Preferences', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> },
+  { id: 'experience', label: 'Work Experience', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><line x1="2" y1="13" x2="22" y2="13"/></svg> },
   { id: 'eeo', label: 'Equal Employment', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> },
   { id: 'notifications', label: 'Notifications', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
   { id: 'appearance', label: 'Appearance', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> },
@@ -51,6 +61,13 @@ export default function StudentSettings() {
   // Active settings section
   const [activeSection, setActiveSection] = useState('account');
 
+  // Work experience
+  const [workExperiences, setWorkExperiences] = useState<WorkExperience[]>([]);
+  const [expFormOpen, setExpFormOpen] = useState(false);
+  const [expFormDraft, setExpFormDraft] = useState<WorkExperienceDraft>(emptyExperience());
+  const [editingExpId, setEditingExpId] = useState<string | null>(null);
+  const [expSaving, setExpSaving] = useState(false);
+
   useEffect(() => {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -64,8 +81,12 @@ export default function StudentSettings() {
       const student = await getStudentByUserId(user.id);
       if (student) {
         setStudentId(student.id);
-        const surveyData = await getCareerSurvey(student.id);
+        const [surveyData, allExperiences] = await Promise.all([
+          getCareerSurvey(student.id),
+          getStudentExperiences(student.id, 'work'),
+        ]);
         setCareerSurvey(surveyData);
+        setWorkExperiences(allExperiences as WorkExperience[]);
       }
 
       setLoading(false);
@@ -104,6 +125,70 @@ export default function StudentSettings() {
       setPasswordError(message);
     } finally {
       setPasswordSaving(false);
+    }
+  }
+
+  function openAddExperience() {
+    setEditingExpId(null);
+    setExpFormDraft(emptyExperience());
+    setExpFormOpen(true);
+  }
+
+  function openEditExperience(exp: WorkExperience) {
+    setEditingExpId(exp.id);
+    setExpFormDraft({
+      title: exp.title ?? '',
+      organization: exp.organization ?? '',
+      location: exp.location ?? '',
+      start_date: exp.start_date ? exp.start_date.slice(0, 7) : '',
+      end_date: exp.end_date ? exp.end_date.slice(0, 7) : '',
+      is_current: !!exp.is_current,
+      description: exp.description ?? '',
+    });
+    setExpFormOpen(true);
+  }
+
+  function cancelExperienceForm() {
+    setExpFormOpen(false);
+    setEditingExpId(null);
+    setExpFormDraft(emptyExperience());
+  }
+
+  async function saveExperience() {
+    if (!studentId || !expFormDraft.title.trim()) return;
+    setExpSaving(true);
+    try {
+      const payload = {
+        title: expFormDraft.title.trim(),
+        organization: expFormDraft.organization.trim() || undefined,
+        location: expFormDraft.location.trim() || undefined,
+        description: expFormDraft.description.trim() || undefined,
+        start_date: expFormDraft.start_date ? `${expFormDraft.start_date}-01` : undefined,
+        end_date: expFormDraft.is_current ? null : (expFormDraft.end_date ? `${expFormDraft.end_date}-01` : undefined),
+        is_current: expFormDraft.is_current,
+      };
+      if (editingExpId) {
+        const updated = await updateStudentExperience(editingExpId, payload);
+        setWorkExperiences((prev) => prev.map((e) => (e.id === editingExpId ? (updated as WorkExperience) : e)));
+      } else {
+        const created = await addStudentExperience(studentId, { type: 'work', ...payload, end_date: payload.end_date === null ? undefined : payload.end_date });
+        setWorkExperiences((prev) => [created as WorkExperience, ...prev]);
+      }
+      cancelExperienceForm();
+    } catch (err) {
+      console.error('Failed to save work experience:', err);
+    } finally {
+      setExpSaving(false);
+    }
+  }
+
+  async function removeExperience(id: string) {
+    if (!confirm('Delete this work experience?')) return;
+    try {
+      await deleteStudentExperience(id);
+      setWorkExperiences((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      console.error('Failed to delete work experience:', err);
     }
   }
 
@@ -384,6 +469,164 @@ export default function StudentSettings() {
 
       )}
 
+      {/* Work Experience */}
+      {activeSection === 'experience' && (
+      <div className="profile-card" style={{ padding: '28px' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>Work Experience</h3>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
+          Save any prior jobs so you don&apos;t have to re-enter them on every application.
+        </p>
+
+        {workExperiences.length === 0 && !expFormOpen && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            No experiences added yet.
+          </p>
+        )}
+
+        {workExperiences.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: expFormOpen ? '16px' : '12px' }}>
+            {workExperiences.map((exp) => (
+              <div
+                key={exp.id}
+                style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: '14px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  background: 'var(--bg)',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{exp.title}</div>
+                  {(exp.organization || exp.location) && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                      {[exp.organization, exp.location].filter(Boolean).join(' — ')}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                    {formatRange(exp.start_date, exp.end_date, exp.is_current)}
+                  </div>
+                  {exp.description && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text)', marginTop: 6, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                      {exp.description}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <button type="button" onClick={() => openEditExperience(exp)} style={miniBtnStyle}>Edit</button>
+                  <button type="button" onClick={() => removeExperience(exp.id)} style={{ ...miniBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' }}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {expFormOpen ? (
+          <div
+            style={{
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              background: 'var(--bg-light)',
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Job title (e.g. Barista)"
+              value={expFormDraft.title}
+              onChange={(e) => setExpFormDraft({ ...expFormDraft, title: e.target.value })}
+              style={expInputStyle}
+            />
+            <input
+              type="text"
+              placeholder="Company"
+              value={expFormDraft.organization}
+              onChange={(e) => setExpFormDraft({ ...expFormDraft, organization: e.target.value })}
+              style={expInputStyle}
+            />
+            <input
+              type="text"
+              placeholder="Location"
+              value={expFormDraft.location}
+              onChange={(e) => setExpFormDraft({ ...expFormDraft, location: e.target.value })}
+              style={expInputStyle}
+            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Start date
+                <input
+                  type="month"
+                  value={expFormDraft.start_date}
+                  onChange={(e) => setExpFormDraft({ ...expFormDraft, start_date: e.target.value })}
+                  style={{ ...expInputStyle, marginTop: '4px' }}
+                />
+              </label>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                End date
+                <input
+                  type="month"
+                  value={expFormDraft.end_date}
+                  disabled={expFormDraft.is_current}
+                  onChange={(e) => setExpFormDraft({ ...expFormDraft, end_date: e.target.value })}
+                  style={{ ...expInputStyle, marginTop: '4px', opacity: expFormDraft.is_current ? 0.5 : 1 }}
+                />
+              </label>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+              <input
+                type="checkbox"
+                checked={expFormDraft.is_current}
+                onChange={(e) => setExpFormDraft({ ...expFormDraft, is_current: e.target.checked, end_date: e.target.checked ? '' : expFormDraft.end_date })}
+              />
+              <span>I currently work here</span>
+            </label>
+            <textarea
+              placeholder="Description (optional)"
+              value={expFormDraft.description}
+              onChange={(e) => setExpFormDraft({ ...expFormDraft, description: e.target.value })}
+              rows={3}
+              style={{ ...expInputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={cancelExperienceForm} style={miniBtnStyle}>Cancel</button>
+              <button
+                type="button"
+                onClick={saveExperience}
+                disabled={!expFormDraft.title.trim() || expSaving}
+                style={{ ...miniBtnStyle, background: 'var(--primary)', color: '#fff', border: '1px solid var(--primary)', opacity: !expFormDraft.title.trim() || expSaving ? 0.5 : 1 }}
+              >
+                {expSaving ? 'Saving...' : editingExpId ? 'Save changes' : 'Add experience'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={openAddExperience}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: '1.5px dashed var(--border)',
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            + Add experience
+          </button>
+        )}
+      </div>
+      )}
+
       {/* Notifications */}
       {/* Local state only — notification preferences will be synced when email integration is enabled */}
       {activeSection === 'notifications' && (
@@ -540,3 +783,63 @@ export default function StudentSettings() {
     </div>
   );
 }
+
+type WorkExperience = {
+  id: string;
+  title: string;
+  organization?: string | null;
+  location?: string | null;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_current?: boolean | null;
+};
+
+type WorkExperienceDraft = {
+  title: string;
+  organization: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  description: string;
+};
+
+function emptyExperience(): WorkExperienceDraft {
+  return { title: '', organization: '', location: '', start_date: '', end_date: '', is_current: false, description: '' };
+}
+
+function formatRange(start?: string | null, end?: string | null, isCurrent?: boolean | null): string {
+  const fmt = (d: string) => {
+    const [y, m] = d.split('-');
+    if (!y || !m) return d;
+    const date = new Date(Number(y), Number(m) - 1, 1);
+    return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  };
+  const startLabel = start ? fmt(start) : '';
+  const endLabel = isCurrent ? 'Present' : end ? fmt(end) : '';
+  if (!startLabel && !endLabel) return '';
+  if (!startLabel) return endLabel;
+  if (!endLabel) return startLabel;
+  return `${startLabel} — ${endLabel}`;
+}
+
+const expInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: '1.5px solid var(--border)',
+  fontSize: '0.9rem',
+  background: 'var(--bg)',
+};
+
+const miniBtnStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  fontSize: '0.8rem',
+  fontWeight: 600,
+  borderRadius: 6,
+  border: '1px solid var(--border)',
+  background: '#fff',
+  color: 'var(--text)',
+  cursor: 'pointer',
+};

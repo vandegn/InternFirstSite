@@ -55,6 +55,7 @@ const featuredJobs = [
 
 export default function LandingPage() {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [email, setEmail] = useState('');
 
@@ -62,15 +63,32 @@ export default function LandingPage() {
     let cancelled = false;
     async function redirectIfLoggedIn() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled || !session?.user) return;
+      if (cancelled) return;
+      if (!session?.user) {
+        setAuthChecked(true);
+        return;
+      }
       const profile = await getProfile(session.user.id);
-      if (cancelled || !profile) return;
-      const route = DASHBOARD_ROUTES[profile.role];
-      if (route) router.replace(route);
+      if (cancelled) return;
+      const route = profile ? DASHBOARD_ROUTES[profile.role] : null;
+      if (route) {
+        router.replace(route);
+        // keep loader visible while the route transition happens
+      } else {
+        setAuthChecked(true);
+      }
     }
     redirectIfLoggedIn();
     return () => { cancelled = true; };
   }, [router]);
+
+  if (!authChecked) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: '#888' }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <>

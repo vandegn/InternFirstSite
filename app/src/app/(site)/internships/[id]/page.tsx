@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import TestPostingBadge from '@/components/TestPostingBadge';
 import { supabase, getListingById, getProfile } from '@/lib/supabase';
 
 type Listing = {
@@ -174,6 +175,7 @@ export default function PublicListingDetailPage() {
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ marginBottom: 10 }}><TestPostingBadge /></div>
                 <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--dark)', marginBottom: 6 }}>
                   {listing.title}
                 </h1>

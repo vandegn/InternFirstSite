@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase, getActiveListings, trackListingView } from '@/lib/supabase';
 import { INDUSTRIES, DURATIONS } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
+import TestPostingBadge from '@/components/TestPostingBadge';
 import ReactMarkdown from 'react-markdown';
 
 type Listing = {
@@ -776,6 +777,7 @@ export default function BrowseInternships() {
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 6px' }}>
                       {listing.employers?.company_name}
                     </p>
+                    <div style={{ marginBottom: '6px' }}><TestPostingBadge compact /></div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
@@ -861,6 +863,7 @@ export default function BrowseInternships() {
                     </div>
                   )}
                   <div style={{ flex: 1 }}>
+                    <div style={{ marginBottom: '8px' }}><TestPostingBadge /></div>
                     <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 4px' }}>
                       {selectedListing.title}
                     </h2>

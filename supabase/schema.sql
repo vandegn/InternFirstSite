@@ -242,6 +242,12 @@ create policy "Users can send messages"
   on messages for insert to authenticated
   with check (auth.uid() = sender_id);
 
+-- Receivers can update their received messages (used to mark them as read).
+create policy "Receivers can mark messages read"
+  on messages for update to authenticated
+  using (auth.uid() = receiver_id)
+  with check (auth.uid() = receiver_id);
+
 -- ============================================
 -- 7. STUDENT SKILLS
 -- ============================================
@@ -577,3 +583,40 @@ CREATE POLICY "Students can update own EEO"
 CREATE TRIGGER set_student_eeo_updated_at
   BEFORE UPDATE ON student_eeo
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================
+-- 16. NOTIFICATIONS
+-- ============================================
+-- In-platform notifications surfaced by the header bell. A row is inserted
+-- by the actor (current user) for the recipient whenever a relevant event
+-- happens: a first message in a conversation, an application status change
+-- (CRM move), a new applicant, or an interview event.
+
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(user_id) on delete cascade not null,   -- recipient
+  actor_id uuid references profiles(user_id) on delete set null,          -- who triggered it
+  type text not null check (type in ('message', 'application_status', 'new_application', 'interview')),
+  title text not null,
+  body text,
+  link text,
+  read boolean default false,
+  created_at timestamptz default now() not null
+);
+
+create index idx_notifications_user on notifications(user_id, created_at desc);
+create index idx_notifications_unread on notifications(user_id) where read = false;
+
+alter table notifications enable row level security;
+
+create policy "Users can view own notifications"
+  on notifications for select to authenticated
+  using (auth.uid() = user_id);
+
+create policy "Users can update own notifications"
+  on notifications for update to authenticated
+  using (auth.uid() = user_id);
+
+create policy "Users can create notifications as themselves"
+  on notifications for insert to authenticated
+  with check (auth.uid() = actor_id);

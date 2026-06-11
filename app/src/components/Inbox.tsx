@@ -106,7 +106,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
   const selectedConv = conversations.find(c => c.otherUserId === selectedUserId);
 
   return (
-    <div className="dash-main" style={{ padding: '32px', maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="dash-main" style={{ padding: '32px', maxWidth: '1100px', margin: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Inbox</h2>
         <Link href={backLink} className="btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 16px', textDecoration: 'none' }}>

@@ -166,6 +166,20 @@ export type ActiveListingsFilters = {
   duration?: string;
 };
 
+// Local "today" as YYYY-MM-DD, for comparing against the date-typed
+// application_deadline column. A listing is considered expired the day
+// after its deadline, so it stays visible through the deadline date itself.
+function todayDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Filter out listings whose application deadline has passed. Listings with no
+// deadline (null) never expire and always pass.
+function excludeExpired<T extends { or: (f: string) => T }>(query: T): T {
+  return query.or(`application_deadline.is.null,application_deadline.gte.${todayDateStr()}`);
+}
+
 export async function getActiveListings(
   page = 1,
   pageSize = 10,
@@ -177,6 +191,7 @@ export async function getActiveListings(
     .from('internship_listings')
     .select('*, employers(company_name, logo_url)', { count: 'exact' })
     .eq('status', 'active');
+  query = excludeExpired(query);
 
   if (filters.industry) {
     query = query.eq('industry', filters.industry);
@@ -232,11 +247,13 @@ export async function getListingById(id: string) {
 
 export async function getRecommendedListings(industries: string[], limit = 3) {
   if (industries.length === 0) return [];
-  const { data, error } = await supabase
-    .from('internship_listings')
-    .select('*, employers(company_name, logo_url)')
-    .eq('status', 'active')
-    .in('industry', industries)
+  const { data, error } = await excludeExpired(
+    supabase
+      .from('internship_listings')
+      .select('*, employers(company_name, logo_url)')
+      .eq('status', 'active')
+      .in('industry', industries)
+  )
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) return [];
@@ -288,12 +305,45 @@ export async function getMessagesWith(userId: string, otherUserId: string) {
 }
 
 export async function sendMessage(senderId: string, receiverId: string, body: string) {
+  // Detect whether this is the first message exchanged between the two users,
+  // so we only fire a notification when a brand-new conversation starts.
+  const { count: priorCount } = await supabase
+    .from('messages')
+    .select('*', { count: 'exact', head: true })
+    .or(
+      `and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`
+    );
+  const isFirstMessage = (priorCount ?? 0) === 0;
+
   const { data, error } = await supabase
     .from('messages')
     .insert({ sender_id: senderId, receiver_id: receiverId, body })
     .select()
     .single();
   if (error) throw error;
+
+  if (isFirstMessage) {
+    try {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, role')
+        .in('user_id', [senderId, receiverId]);
+      const sender = profs?.find(p => p.user_id === senderId);
+      const receiver = profs?.find(p => p.user_id === receiverId);
+      const inboxPath = receiver?.role ? `/dashboard/${receiver.role}/inbox` : undefined;
+      await createNotification({
+        userId: receiverId,
+        actorId: senderId,
+        type: 'message',
+        title: `New message from ${sender?.full_name ?? 'someone'}`,
+        body: body.slice(0, 140),
+        link: inboxPath,
+      });
+    } catch (e) {
+      console.error('[sendMessage] notification failed', e);
+    }
+  }
+
   return data;
 }
 
@@ -337,6 +387,31 @@ export async function getStudentByUserId(userId: string) {
   return data;
 }
 
+// Notifies the listing's employer that a new student applied. Best-effort.
+async function notifyEmployerOfApplication(listingId: string) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const [employerUserId, listingRes, me] = await Promise.all([
+      getEmployerUserIdByListingId(listingId),
+      supabase.from('internship_listings').select('title').eq('id', listingId).single(),
+      getProfile(user.id),
+    ]);
+    if (!employerUserId) return;
+    const listingTitle = (listingRes.data as any)?.title as string | undefined;
+    await createNotification({
+      userId: employerUserId,
+      actorId: user.id,
+      type: 'new_application',
+      title: 'New applicant',
+      body: `${me?.full_name ?? 'A student'} applied to "${listingTitle ?? 'your listing'}".`,
+      link: '/dashboard/employer/applications',
+    });
+  } catch (e) {
+    console.error('[notifyEmployerOfApplication] failed', e);
+  }
+}
+
 export async function applyToListing(studentId: string, listingId: string) {
   const { data, error } = await supabase
     .from('applications')
@@ -344,6 +419,7 @@ export async function applyToListing(studentId: string, listingId: string) {
     .select()
     .single();
   if (error) throw error;
+  await notifyEmployerOfApplication(listingId);
   return data;
 }
 
@@ -381,9 +457,32 @@ export async function updateApplicationStatus(applicationId: string, status: str
     .from('applications')
     .update({ status })
     .eq('id', applicationId)
-    .select()
+    .select('*, student:students!inner(user_id), listing:internship_listings!inner(title)')
     .single();
   if (error) throw error;
+
+  // Notify the student that their application moved to a new stage.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const studentUserId = (data as any).student?.user_id as string | undefined;
+    const listingTitle = (data as any).listing?.title as string | undefined;
+    const label = APPLICATION_STATUS_LABELS[status] ?? status;
+    if (user && studentUserId) {
+      await createNotification({
+        userId: studentUserId,
+        actorId: user.id,
+        type: 'application_status',
+        title: `Application update: ${label}`,
+        body: listingTitle
+          ? `Your application for "${listingTitle}" is now ${label}.`
+          : `Your application is now ${label}.`,
+        link: '/dashboard/student/applications',
+      });
+    }
+  } catch (e) {
+    console.error('[updateApplicationStatus] notification failed', e);
+  }
+
   return data;
 }
 
@@ -600,6 +699,7 @@ export async function applyToListingWithResume(studentId: string, listingId: str
     .select()
     .single();
   if (error) throw error;
+  await notifyEmployerOfApplication(listingId);
   return data;
 }
 
@@ -1001,6 +1101,28 @@ export async function createInterview(opts: {
     .update({ status: 'interviewing' })
     .eq('id', opts.applicationId);
 
+  // Notify the student that an interview was scheduled.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const [recipient, listing] = await Promise.all([
+      studentUserId(opts.studentId),
+      supabase.from('internship_listings').select('title').eq('id', opts.listingId).single(),
+    ]);
+    const listingTitle = (listing.data as any)?.title as string | undefined;
+    if (user && recipient) {
+      await createNotification({
+        userId: recipient,
+        actorId: user.id,
+        type: 'interview',
+        title: 'Interview scheduled',
+        body: `You've been invited to interview${listingTitle ? ` for "${listingTitle}"` : ''}. Tap to respond.`,
+        link: `/dashboard/student/interviews/${data.id}`,
+      });
+    }
+  } catch (e) {
+    console.error('[createInterview] notification failed', e);
+  }
+
   return data;
 }
 
@@ -1080,6 +1202,32 @@ export async function respondToInterview(
       .eq('id', data.application_id);
   }
 
+  // Notify the employer how the candidate responded.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const recipient = await employerUserId((data as any).employer_id);
+    const titleByAction = {
+      accept: 'Interview accepted',
+      decline: 'Interview declined',
+      reschedule: 'Reschedule requested',
+    } as const;
+    if (user && recipient) {
+      await createNotification({
+        userId: recipient,
+        actorId: user.id,
+        type: 'interview',
+        title: titleByAction[action],
+        body:
+          action === 'accept' ? 'A candidate accepted the interview invitation.'
+          : action === 'decline' ? 'A candidate declined the interview invitation.'
+          : 'A candidate requested a different interview time.',
+        link: '/dashboard/employer/applications',
+      });
+    }
+  } catch (e) {
+    console.error('[respondToInterview] notification failed', e);
+  }
+
   return data;
 }
 
@@ -1095,6 +1243,29 @@ export async function cancelInterview(interviewId: string, cancelledBy: 'employe
     .select()
     .single();
   if (error) throw error;
+
+  // Notify the other party that the interview was cancelled.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const notifyEmployer = cancelledBy === 'student';
+    const recipient = notifyEmployer
+      ? await employerUserId((data as any).employer_id)
+      : await studentUserId((data as any).student_id);
+    if (user && recipient) {
+      await createNotification({
+        userId: recipient,
+        actorId: user.id,
+        type: 'interview',
+        title: 'Interview cancelled',
+        body: `Your interview was cancelled by the ${cancelledBy}.`,
+        link: notifyEmployer
+          ? '/dashboard/employer/applications'
+          : `/dashboard/student/interviews/${(data as any).id}`,
+      });
+    }
+  } catch (e) {
+    console.error('[cancelInterview] notification failed', e);
+  }
 
   return data;
 }
@@ -1116,6 +1287,24 @@ export async function rescheduleInterview(
     .single();
   if (error) throw error;
 
+  // Notify the student that the interview was rescheduled (re-invitation).
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const recipient = await studentUserId((data as any).student_id);
+    if (user && recipient) {
+      await createNotification({
+        userId: recipient,
+        actorId: user.id,
+        type: 'interview',
+        title: 'Interview rescheduled',
+        body: 'Your interview has a new proposed time. Tap to respond.',
+        link: `/dashboard/student/interviews/${(data as any).id}`,
+      });
+    }
+  } catch (e) {
+    console.error('[rescheduleInterview] notification failed', e);
+  }
+
   return data;
 }
 
@@ -1132,4 +1321,100 @@ export async function sendRescheduleRequestMessage(opts: {
     body: opts.body,
   });
   if (error) throw error;
+}
+
+// ---- Notifications ----
+
+export type NotificationType =
+  | 'message'
+  | 'application_status'
+  | 'new_application'
+  | 'interview';
+
+export type NotificationRow = {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+  actor?: { full_name: string | null; avatar_url: string | null } | null;
+};
+
+// Human-readable labels for application statuses, used in notification copy.
+export const APPLICATION_STATUS_LABELS: Record<string, string> = {
+  applied: 'Applied',
+  reviewed: 'Under Review',
+  interviewing: 'Interviewing',
+  offered: 'Offered',
+  rejected: 'Not Selected',
+};
+
+// Creates a notification for `userId`, with the current user as the actor.
+// Failures are logged but never thrown — a notification should never break
+// the underlying action (sending a message, moving a CRM card, etc.).
+async function createNotification(opts: {
+  userId: string;
+  actorId: string;
+  type: NotificationType;
+  title: string;
+  body?: string;
+  link?: string;
+}) {
+  if (!opts.userId || opts.userId === opts.actorId) return;
+  const { error } = await supabase.from('notifications').insert({
+    user_id: opts.userId,
+    actor_id: opts.actorId,
+    type: opts.type,
+    title: opts.title,
+    body: opts.body ?? null,
+    link: opts.link ?? null,
+  });
+  if (error) console.error('[createNotification]', error.message);
+}
+
+export async function getNotifications(userId: string, limit = 20): Promise<NotificationRow[]> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*, actor:profiles!notifications_actor_id_fkey(full_name, avatar_url)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? []) as NotificationRow[];
+}
+
+export async function getUnreadNotificationCount(userId: string) {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function markNotificationRead(notificationId: string) {
+  await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+}
+
+export async function markAllNotificationsRead(userId: string) {
+  await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+}
+
+async function employerUserId(employerId: string): Promise<string | undefined> {
+  const { data } = await supabase.from('employers').select('user_id').eq('id', employerId).single();
+  return (data as any)?.user_id;
+}
+
+async function studentUserId(studentId: string): Promise<string | undefined> {
+  const { data } = await supabase.from('students').select('user_id').eq('id', studentId).single();
+  return (data as any)?.user_id;
 }

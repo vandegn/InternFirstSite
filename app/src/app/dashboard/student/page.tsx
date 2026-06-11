@@ -21,6 +21,7 @@ import CareerSurveyModal from '@/components/CareerSurveyModal';
 import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 import InterviewBanner from '@/components/InterviewBanner';
 import InterviewResponseModal from '@/components/InterviewResponseModal';
+import TestPostingBadge from '@/components/TestPostingBadge';
 
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
@@ -491,6 +492,7 @@ export default function StudentDashboard() {
                         </div>
                       </div>
                     </div>
+                    <div><TestPostingBadge compact /></div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: 'auto' }}>
                       <span style={{
                         fontSize: '0.68rem',

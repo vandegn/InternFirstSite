@@ -58,8 +58,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!authorized || !role) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#888' }}>
-        Loading...
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div className="spinner" role="status" aria-label="Loading" />
       </div>
     );
   }

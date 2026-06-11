@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
+import PasswordInput from '@/components/PasswordInput';
 import { supabase, isEduEmail } from '@/lib/supabase';
 import { MAJORS } from '@/lib/constants';
 
@@ -101,6 +102,18 @@ export default function RegisterPage() {
   return (
     <div className="auth-page">
       <div className="auth-container" style={{ maxWidth: 680 }}>
+        <button
+          type="button"
+          onClick={() => { if (typeof window !== 'undefined' && window.history.length > 1) router.back(); else router.push('/'); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500, marginBottom: '4px',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+          Back
+        </button>
         <div className="auth-logo">
           <Link href="/">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
@@ -129,11 +142,11 @@ export default function RegisterPage() {
             </div>
             <div className="form-group">
               <label htmlFor="password">Password</label>
-              <input type="password" id="password" placeholder="Create a password" required value={password} onChange={e => setPassword(e.target.value)} />
+              <PasswordInput id="password" placeholder="Create a password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
             </div>
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirm Password</label>
-              <input type="password" id="confirmPassword" placeholder="Confirm your password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+              <PasswordInput id="confirmPassword" placeholder="Confirm your password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" />
             </div>
 
             {/* Student fields */}

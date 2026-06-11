@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import PasswordInput from '@/components/PasswordInput';
 import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordPage() {
@@ -65,6 +66,18 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-container narrow">
+        <button
+          type="button"
+          onClick={() => { if (typeof window !== 'undefined' && window.history.length > 1) router.back(); else router.push('/'); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500, marginBottom: '4px',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+          Back
+        </button>
         <div className="auth-logo">
           <Link href="/">
             <img
@@ -112,24 +125,24 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label htmlFor="password">New Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="password"
                   placeholder="At least 6 characters"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
                 />
               </div>
               <div className="form-group" style={{ marginTop: '16px' }}>
                 <label htmlFor="confirm">Confirm Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="confirm"
                   placeholder="Re-enter your password"
                   required
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
+                  autoComplete="new-password"
                 />
               </div>
 

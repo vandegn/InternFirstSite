@@ -163,6 +163,8 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
       boxShadow: 'var(--shadow)',
       overflow: 'hidden',
     }}>
+      <div className="cal-layout">
+        <div className="cal-main">
       {/* ── Header ── */}
       <div style={{
         display: 'flex',
@@ -325,22 +327,24 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
           );
         })}
       </div>
+        </div>{/* /cal-main */}
 
-      {/* ── Event detail panel ── */}
-      {selectedDate && selectedEvents.length > 0 && (
-        <div style={{
-          borderTop: '1px solid var(--border)',
-          padding: '16px 20px',
-          background: 'var(--bg)',
-        }}>
-          <h4 style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--text-secondary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: 12,
-          }}>
+      {/* ── Event detail side panel ── */}
+      <div className="cal-side">
+        {!selectedDate && (
+          <div className="cal-side-empty">Select a day to see its events.</div>
+        )}
+
+        {selectedDate && selectedEvents.length === 0 && (
+          <>
+            <h4 style={sidePanelHeaderStyle}>{formatSelectedDate(selectedDate)}</h4>
+            <div className="cal-side-empty">No events scheduled.</div>
+          </>
+        )}
+
+        {selectedDate && selectedEvents.length > 0 && (
+          <>
+          <h4 style={sidePanelHeaderStyle}>
             {formatSelectedDate(selectedDate)}
             <span style={{ fontWeight: 400, marginLeft: 8 }}>
               {selectedEvents.length} event{selectedEvents.length !== 1 ? 's' : ''}
@@ -421,8 +425,10 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
               </button>
             ))}
           </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>{/* /cal-side */}
+      </div>{/* /cal-layout */}
     </div>
   );
 }
@@ -459,6 +465,15 @@ const navBtnStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   cursor: 'pointer',
   transition: 'var(--transition)',
+};
+
+const sidePanelHeaderStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: 'var(--text-secondary)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginBottom: 12,
 };
 
 function formatSelectedDate(dateKey: string): string {

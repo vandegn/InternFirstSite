@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes, trackListingView } from '@/lib/supabase';
+import TestPostingBadge from '@/components/TestPostingBadge';
 import ReactMarkdown from 'react-markdown';
 
 type Listing = {
@@ -162,6 +163,7 @@ export default function InternshipDetail() {
             </div>
           )}
           <div>
+            <div style={{ marginBottom: '8px' }}><TestPostingBadge /></div>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{listing.title}</h2>
             <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0' }}>{listing.employers?.company_name}</p>
           </div>

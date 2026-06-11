@@ -6,6 +6,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getActiveListings } from '@/lib/supabase';
 import { INDUSTRIES } from '@/lib/constants';
+import TestPostingBadge from '@/components/TestPostingBadge';
+import Pagination from '@/components/Pagination';
 
 type Listing = {
   id: string;
@@ -30,22 +32,30 @@ export default function PublicInternshipsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [industry, setIndustry] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
+  // Reset to the first page whenever the filters change.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [industry, debouncedSearch]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const result = await getActiveListings(1, PAGE_SIZE, {
+      const result = await getActiveListings(currentPage, PAGE_SIZE, {
         industry: industry || undefined,
         search: debouncedSearch || undefined,
       });
       if (!cancelled) {
         setListings(result.data as Listing[]);
+        setTotalCount(result.totalCount);
         setLoading(false);
       }
     }
@@ -53,7 +63,13 @@ export default function PublicInternshipsPage() {
     return () => {
       cancelled = true;
     };
-  }, [industry, debouncedSearch]);
+  }, [industry, debouncedSearch, currentPage]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  function goToPage(page: number) {
+    setCurrentPage(page);
+  }
 
   const popularIndustries = useMemo(() => INDUSTRIES.slice(0, 10), []);
 
@@ -181,20 +197,27 @@ export default function PublicInternshipsPage() {
               }}
             >
               <h3 style={{ fontSize: 20, color: 'var(--dark)', marginBottom: 8 }}>
-                No open internships visible
+                No internships found
               </h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-                Either there are no listings matching your filters, or live listings are only visible
-                to signed-in students. Create a free account to see everything.
+                {search || industry
+                  ? 'No open internships match your search or filters right now. Try adjusting them.'
+                  : 'There are no open internships at the moment. Check back soon.'}
               </p>
-              <Link href="/register" className="btn-primary">
-                Create a free account
-              </Link>
+              {(search || industry) && (
+                <button
+                  type="button"
+                  onClick={() => { setSearch(''); setIndustry(''); }}
+                  className="btn-primary"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           ) : (
             <>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 14 }}>
-                Showing {listings.length} {listings.length === 1 ? 'opportunity' : 'opportunities'}
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{(currentPage - 1) * PAGE_SIZE + listings.length} of {totalCount} {totalCount === 1 ? 'opportunity' : 'opportunities'}
               </p>
               <div className="internship-grid">
                 {listings.map((l) => (
@@ -233,6 +256,7 @@ export default function PublicInternshipsPage() {
                       </div>
                     </div>
                     <div className="internship-body">
+                      <div style={{ marginBottom: '8px' }}><TestPostingBadge compact /></div>
                       <h3>{l.title}</h3>
                       <p className="location">
                         {l.is_remote
@@ -254,6 +278,12 @@ export default function PublicInternshipsPage() {
                   </article>
                 ))}
               </div>
+
+              {totalPages > 1 && (
+                <div style={{ marginTop: 40, display: 'flex', justifyContent: 'center' }}>
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
+                </div>
+              )}
             </>
           )}
         </div>

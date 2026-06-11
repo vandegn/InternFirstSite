@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
+import PasswordInput from '@/components/PasswordInput';
 import { supabase, getProfile, DASHBOARD_ROUTES, isEduEmail } from '@/lib/supabase';
 
 type Role = 'student' | 'employer';
@@ -86,6 +87,18 @@ function LoginForm() {
   return (
     <div className="auth-page">
       <div className="auth-container">
+        <button
+          type="button"
+          onClick={() => { if (typeof window !== 'undefined' && window.history.length > 1) router.back(); else router.push('/'); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500, marginBottom: '4px',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+          Back
+        </button>
         <div className="auth-logo">
           <Link href="/">
             <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
@@ -113,21 +126,17 @@ function LoginForm() {
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              type="password"
+            <PasswordInput
               id="password"
-              placeholder="Enter your password"
-              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+              autoComplete="current-password"
             />
           </div>
 
-          <div className="form-row-between">
-            <div className="remember-me">
-              <input type="checkbox" id="remember" />
-              <label htmlFor="remember">Remember me</label>
-            </div>
+          <div className="form-row-between" style={{ justifyContent: 'flex-end' }}>
             <Link href="/forgot-password" className="forgot-link">Forgot password?</Link>
           </div>
 

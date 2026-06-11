@@ -178,13 +178,30 @@ export default function NewListingPage() {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="applicationDeadline">Application Deadline</label>
-                <input
-                  type="date"
-                  id="applicationDeadline"
-                  value={applicationDeadline}
-                  onChange={(e) => setApplicationDeadline(e.target.value)}
-                />
+                <label htmlFor="applicationDeadline">
+                  Application Deadline <span style={{ color: 'var(--text-light)', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="date"
+                    id="applicationDeadline"
+                    value={applicationDeadline}
+                    onChange={(e) => setApplicationDeadline(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  {applicationDeadline && (
+                    <button
+                      type="button"
+                      onClick={() => setApplicationDeadline('')}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <small style={{ color: 'var(--text-light)', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
+                  Leave blank for no deadline — the listing stays open until you close it.
+                </small>
               </div>
               <div className="form-group">
                 <label htmlFor="duration">Internship Length</label>

@@ -304,47 +304,17 @@ export async function getMessagesWith(userId: string, otherUserId: string) {
   return data ?? [];
 }
 
-export async function sendMessage(senderId: string, receiverId: string, body: string) {
-  // Detect whether this is the first message exchanged between the two users,
-  // so we only fire a notification when a brand-new conversation starts.
-  const { count: priorCount } = await supabase
-    .from('messages')
-    .select('*', { count: 'exact', head: true })
-    .or(
-      `and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`
-    );
-  const isFirstMessage = (priorCount ?? 0) === 0;
-
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({ sender_id: senderId, receiver_id: receiverId, body })
-    .select()
-    .single();
-  if (error) throw error;
-
-  if (isFirstMessage) {
-    try {
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, role')
-        .in('user_id', [senderId, receiverId]);
-      const sender = profs?.find(p => p.user_id === senderId);
-      const receiver = profs?.find(p => p.user_id === receiverId);
-      const inboxPath = receiver?.role ? `/dashboard/${receiver.role}/inbox` : undefined;
-      await createNotification({
-        userId: receiverId,
-        actorId: senderId,
-        type: 'message',
-        title: `New message from ${sender?.full_name ?? 'someone'}`,
-        body: body.slice(0, 140),
-        link: inboxPath,
-      });
-    } catch (e) {
-      console.error('[sendMessage] notification failed', e);
-    }
+export async function sendMessage(_senderId: string, receiverId: string, body: string) {
+  const res = await fetch('/api/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ receiverId, body }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to send message');
   }
-
-  return data;
+  return res.json();
 }
 
 export async function markMessagesAsRead(userId: string, otherUserId: string) {
@@ -1080,50 +1050,16 @@ export async function createInterview(opts: {
   durationMinutes: number;
   notes?: string;
 }) {
-  const { data, error } = await supabase
-    .from('interview_schedules')
-    .insert({
-      application_id: opts.applicationId,
-      employer_id: opts.employerId,
-      student_id: opts.studentId,
-      listing_id: opts.listingId,
-      scheduled_at: opts.scheduledAt,
-      duration_minutes: opts.durationMinutes,
-      employer_notes: opts.notes || null,
-      status: 'pending',
-    })
-    .select()
-    .single();
-  if (error) throw error;
-
-  await supabase
-    .from('applications')
-    .update({ status: 'interviewing' })
-    .eq('id', opts.applicationId);
-
-  // Notify the student that an interview was scheduled.
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const [recipient, listing] = await Promise.all([
-      studentUserId(opts.studentId),
-      supabase.from('internship_listings').select('title').eq('id', opts.listingId).single(),
-    ]);
-    const listingTitle = (listing.data as any)?.title as string | undefined;
-    if (user && recipient) {
-      await createNotification({
-        userId: recipient,
-        actorId: user.id,
-        type: 'interview',
-        title: 'Interview scheduled',
-        body: `You've been invited to interview${listingTitle ? ` for "${listingTitle}"` : ''}. Tap to respond.`,
-        link: `/dashboard/student/interviews/${data.id}`,
-      });
-    }
-  } catch (e) {
-    console.error('[createInterview] notification failed', e);
+  const res = await fetch('/api/interviews', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to create interview');
   }
-
-  return data;
+  return res.json();
 }
 
 export async function getEmployerInterviews(employerId: string) {
@@ -1274,38 +1210,16 @@ export async function rescheduleInterview(
   interviewId: string,
   fields: { scheduledAt: string; durationMinutes: number; notes?: string },
 ) {
-  const { data, error } = await supabase
-    .from('interview_schedules')
-    .update({
-      scheduled_at: fields.scheduledAt,
-      duration_minutes: fields.durationMinutes,
-      employer_notes: fields.notes ?? null,
-      status: 'pending',
-    })
-    .eq('id', interviewId)
-    .select()
-    .single();
-  if (error) throw error;
-
-  // Notify the student that the interview was rescheduled (re-invitation).
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const recipient = await studentUserId((data as any).student_id);
-    if (user && recipient) {
-      await createNotification({
-        userId: recipient,
-        actorId: user.id,
-        type: 'interview',
-        title: 'Interview rescheduled',
-        body: 'Your interview has a new proposed time. Tap to respond.',
-        link: `/dashboard/student/interviews/${(data as any).id}`,
-      });
-    }
-  } catch (e) {
-    console.error('[rescheduleInterview] notification failed', e);
+  const res = await fetch(`/api/interviews/${interviewId}/reschedule`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to reschedule interview');
   }
-
-  return data;
+  return res.json();
 }
 
 export async function sendRescheduleRequestMessage(opts: {

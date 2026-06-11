@@ -87,7 +87,6 @@ type StudentInterview = {
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
   employer_notes: string | null;
-  zoom_meeting_id?: string | null;
   listing: { id: string; title: string };
   employer: { id: string; company_name: string; logo_url: string | null; user_id?: string } | null;
 };
@@ -225,7 +224,6 @@ export default function StudentDashboard() {
     if (!interviewModalRow) return;
 
     if (action === 'accept') {
-      // Accept goes through API route so Zoom meeting is provisioned server-side
       const res = await fetch(`/api/interviews/${interviewModalRow.id}/accept`, { method: 'POST' });
       if (res.ok) {
         const updated = await res.json();
@@ -371,8 +369,7 @@ export default function StudentDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {studentInterviews.filter(i => i.status === 'accepted').map(interview => {
               const ws = joinWindowStatus(interview.scheduled_at, interview.duration_minutes);
-              const hasZoom = !!interview.zoom_meeting_id;
-              const canJoin = ws === 'open' && hasZoom;
+              const canJoin = ws === 'open';
               const start = new Date(interview.scheduled_at);
               const timeStr = start.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
               return (
@@ -381,24 +378,20 @@ export default function StudentDashboard() {
                     <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{interview.employer?.company_name ?? 'Employer'} — {interview.listing.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>{timeStr} · {interview.duration_minutes} min</div>
                   </div>
-                  {hasZoom ? (
-                    <Link
-                      href={canJoin ? `/dashboard/student/interviews/${interview.id}` : '#'}
-                      onClick={e => { if (!canJoin) e.preventDefault(); }}
-                      style={{
-                        padding: '6px 16px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none',
-                        background: canJoin ? 'var(--primary)' : 'var(--border)',
-                        color: canJoin ? '#fff' : 'var(--text-secondary)',
-                        cursor: canJoin ? 'pointer' : 'not-allowed',
-                        whiteSpace: 'nowrap',
-                      }}
-                      title={ws === 'too_early' ? `Joinable at ${new Date(new Date(interview.scheduled_at).getTime() - 10 * 60 * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ws === 'ended' ? 'Interview ended' : 'Join Interview'}
-                    >
-                      {ws === 'too_early' ? 'Not yet open' : ws === 'ended' ? 'Ended' : 'Join Interview'}
-                    </Link>
-                  ) : (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Video pending setup</span>
-                  )}
+                  <Link
+                    href={canJoin ? `/dashboard/student/interviews/${interview.id}` : '#'}
+                    onClick={e => { if (!canJoin) e.preventDefault(); }}
+                    style={{
+                      padding: '6px 16px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none',
+                      background: canJoin ? 'var(--primary)' : 'var(--border)',
+                      color: canJoin ? '#fff' : 'var(--text-secondary)',
+                      cursor: canJoin ? 'pointer' : 'not-allowed',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={ws === 'too_early' ? `Joinable at ${new Date(new Date(interview.scheduled_at).getTime() - 10 * 60 * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ws === 'ended' ? 'Interview ended' : 'Join Interview'}
+                  >
+                    {ws === 'too_early' ? 'Not yet open' : ws === 'ended' ? 'Ended' : 'Join Interview'}
+                  </Link>
                 </div>
               );
             })}

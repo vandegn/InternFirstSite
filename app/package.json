@@ -4,16 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/mirror-zoom-assets.js",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "node scripts/mirror-zoom-assets.js"
+    "lint": "eslint"
   },
   "dependencies": {
+    "@livekit/components-react": "^2.9.21",
+    "@livekit/components-styles": "^1.2.0",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.101.1",
-    "@zoom/meetingsdk": "^6.0.0",
+    "livekit-client": "^2.19.0",
+    "livekit-server-sdk": "^2.15.3",
     "next": "16.1.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

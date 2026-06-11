@@ -3649,3 +3649,85 @@ img { max-width: 100%; height: auto; display: block; }
         border-top: 1px solid var(--border);
     }
 }
+
+/* ── Interview room (LiveKit) ───────────────────────────────────────── */
+
+.interview-room {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 64px);
+    background: #0f0f12;
+}
+
+.interview-room__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.interview-room__back {
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.82rem;
+    gap: 4px;
+}
+
+.interview-room__divider {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+}
+
+.interview-room__title {
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.interview-room__stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* LiveKit theme overrides — bind brand color into the prebuilt components */
+.interview-room[data-lk-theme="default"] {
+    --lk-accent-bg: var(--primary);
+    --lk-accent-fg: #ffffff;
+    --lk-bg: #0f0f12;
+    --lk-bg2: #1a1a1f;
+    --lk-fg: #f5f5f7;
+    --lk-control-bar-bg: #1a1a1f;
+    --lk-border-radius: 12px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.interview-room .lk-prejoin {
+    background: #0f0f12;
+    color: #f5f5f7;
+    padding: 24px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.interview-room .lk-prejoin .lk-button-primary,
+.interview-room .lk-prejoin .lk-join-button {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 8px;
+}
+
+.interview-room .lk-video-conference {
+    flex: 1;
+    min-height: 0;
+}

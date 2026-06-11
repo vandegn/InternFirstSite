@@ -80,7 +80,6 @@ type Interview = {
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
   employer_notes: string | null;
-  zoom_meeting_id?: string | null;
 };
 
 function joinWindowStatus(scheduledAt: string, durationMinutes: number): 'too_early' | 'open' | 'ended' {
@@ -575,8 +574,7 @@ export default function PostedJobsPage() {
                         </div>
                         {interview && interviewBadge && (() => {
                           const ws = joinWindowStatus(interview.scheduled_at, interview.duration_minutes);
-                          const hasZoom = !!interview.zoom_meeting_id;
-                          const canJoin = ws === 'open' && hasZoom;
+                          const canJoin = ws === 'open';
                           return (
                             <div style={{
                               display: 'flex', alignItems: 'center', gap: 10,
@@ -593,7 +591,7 @@ export default function PostedJobsPage() {
                                 {formatInterviewWhen(interview.scheduled_at)} · {interview.duration_minutes} min
                               </span>
                               <div style={{ flex: 1 }} />
-                              {interview.status === 'accepted' && hasZoom && (
+                              {interview.status === 'accepted' && (
                                 <Link
                                   href={canJoin ? `/dashboard/employer/interviews/${interview.id}` : '#'}
                                   onClick={e => { if (!canJoin) e.preventDefault(); }}

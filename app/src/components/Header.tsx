@@ -38,6 +38,9 @@ export default function Header() {
           </ul>
         </nav>
         <div className="header-actions">
+          <Link href="/waitlist" className="btn-waitlist">
+            Join Waitlist
+          </Link>
           <Link href="/login" className="btn-login">
             Login
           </Link>

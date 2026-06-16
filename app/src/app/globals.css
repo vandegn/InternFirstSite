@@ -113,13 +113,21 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .header-inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 24px;
+    max-width: none;
+    margin: 0;
+    padding: 0 32px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 32px;
     height: 72px;
+}
+
+.header-inner .logo {
+    flex-shrink: 0;
+}
+
+.header-inner .header-actions {
+    margin-left: auto;
 }
 
 .logo img {
@@ -177,6 +185,40 @@ img { max-width: 100%; height: auto; display: block; }
 
 .btn-register:hover {
     background: var(--primary-dark);
+}
+
+.btn-waitlist {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1A2D49;
+    background: var(--accent);
+    padding: 10px 22px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+    box-shadow: 0 0 0 0 rgba(159, 198, 60, 0.55);
+    animation: waitlist-pulse 2.4s ease-out infinite;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-waitlist::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #1A2D49;
+}
+
+.btn-waitlist:hover {
+    background: var(--accent-dark);
+    transform: translateY(-1px);
+}
+
+@keyframes waitlist-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(159, 198, 60, 0.55); }
+    70%  { box-shadow: 0 0 0 10px rgba(159, 198, 60, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(159, 198, 60, 0); }
 }
 
 .mobile-menu-toggle {

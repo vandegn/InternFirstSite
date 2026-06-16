@@ -1323,6 +1323,19 @@ export async function markAllNotificationsRead(userId: string) {
     .eq('read', false);
 }
 
+export async function joinWaitlist(opts: {
+  email: string;
+  fullName: string;
+  role: 'student' | 'employer' | 'other';
+}) {
+  const { error } = await supabase.from('waitlist').insert({
+    email: opts.email.trim().toLowerCase(),
+    full_name: opts.fullName.trim(),
+    role: opts.role,
+  });
+  return { error };
+}
+
 async function employerUserId(employerId: string): Promise<string | undefined> {
   const { data } = await supabase.from('employers').select('user_id').eq('id', employerId).single();
   return (data as any)?.user_id;

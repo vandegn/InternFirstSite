@@ -619,3 +619,35 @@ create policy "Users can update own notifications"
 create policy "Users can create notifications as themselves"
   on notifications for insert to authenticated
   with check (auth.uid() = actor_id);
+
+-- ============================================
+-- 17. WAITLIST
+-- ============================================
+-- Pre-launch signups collected from the public /waitlist page. Anyone can
+-- insert (anon role) but only authenticated admins should read.
+
+create table waitlist (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  full_name text,
+  role text check (role in ('student', 'employer', 'other')),
+  created_at timestamptz default now() not null
+);
+
+create index idx_waitlist_created on waitlist(created_at desc);
+
+alter table waitlist enable row level security;
+
+create policy "Anyone can join the waitlist"
+  on waitlist for insert to anon, authenticated
+  with check (true);
+
+create policy "Admins can view waitlist"
+  on waitlist for select to authenticated
+  using (
+    exists (
+      select 1 from profiles
+      where profiles.user_id = auth.uid()
+        and profiles.role = 'intern_first_admin'
+    )
+  );

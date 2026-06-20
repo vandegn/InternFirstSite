@@ -313,7 +313,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* NEWSLETTER */}
+      {/* NEWSLETTER, currently doesn't do anything, come here for newsletter stuff in future*/}
       <section className="newsletter">
         <div className="container">
           <div className="newsletter-inner">

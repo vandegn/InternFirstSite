@@ -47,6 +47,18 @@ export default function WaitlistPage() {
       console.error('Failed to send waitlist notification:', err);
     }
 
+    // Notify the team of the new signup. Best-effort — a failed email
+    // shouldn't block someone who is already on the waitlist.
+    try {
+      await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, email, role }),
+      });
+    } catch (err) {
+      console.error('Failed to send waitlist notification:', err);
+    }
+
     setStatus('success');
     setFullName('');
     setEmail('');
@@ -63,7 +75,7 @@ export default function WaitlistPage() {
           <div className="hero-badge">Coming Soon</div>
           <h1>Join the InternFirst waitlist</h1>
           <p className="hero-subtitle">
-            Be the first to know when we open up. We&apos;ll send a single email when your spot is ready — no spam, no off-platform redirects.
+            Be the first to know when we open up. We&apos;ll send a single email when your spot is ready. No spam, no off-platform redirects.
           </p>
         </div>
       </section>
@@ -133,7 +145,13 @@ export default function WaitlistPage() {
                   <input
                     id="email"
                     type="email"
-                    placeholder={role === 'student' ? 'you@school.edu' : 'you@company.com'}
+                    placeholder={
+                      role === 'student'
+                        ? 'you@school.edu'
+                        : role === 'employer'
+                          ? 'you@company.com'
+                          : 'you@example.com'
+                    }
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -145,7 +163,20 @@ export default function WaitlistPage() {
                   )}
                 </div>
 
-                <button type="submit" className="btn-auth" disabled={loading} style={{ marginTop: 20 }}>
+                <div className="form-group">
+                  <label htmlFor="role">I&apos;m a...</label>
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as Role)}
+                  >
+                    <option value="student">Student</option>
+                    <option value="employer">Employer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <button type="submit" className="btn-auth" style={{ marginTop: 24 }} disabled={loading}>
                   {loading ? 'Joining...' : 'Join the waitlist'}
                 </button>
 

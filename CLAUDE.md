@@ -70,7 +70,7 @@ npm run lint     # ESLint
 - `/listings/new` — create a new listing; `/listings/[id]/edit` — edit existing
 - `/posted-jobs` — split-view of all posted listings
 - `/applications` — review and manage candidate applications
-- `/crm` — kanban board for candidate relationship management
+- `/pipeline` — kanban board with per-listing customizable columns for moving candidates through hiring stages
 - `/inbox` — in-platform messaging with students
 - `/account` — company account page
 - `/settings` — account settings

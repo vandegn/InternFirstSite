@@ -4,12 +4,21 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase, getStudentByUserId, getStudentApplications } from '@/lib/supabase';
 
+type StageType = 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+
 type Application = {
   id: string;
   status: string;
+  stage_id: string | null;
   applied_at: string;
   updated_at: string;
   resume_id: string | null;
+  stage: {
+    label: string;
+    color_bg: string;
+    color_text: string;
+    stage_type: StageType;
+  } | null;
   listing: {
     id: string;
     title: string;
@@ -25,38 +34,23 @@ type Application = {
   };
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  applied: 'Application Submitted',
-  under_review: 'Under Review',
-  reviewed: 'Under Review',
-  interviewing: 'Interview Requested',
-  interview_scheduled: 'Interview Scheduled',
-  offered: 'Offer Extended',
-  rejected: 'Rejected/Closed',
-  closed: 'Rejected/Closed',
-  not_selected: 'Rejected/Closed',
+// Fallback styling when an application has no stage joined (e.g., legacy
+// rows). Keyed by stage_type — used by the filter buckets too.
+const STAGE_TYPE_FALLBACK: Record<StageType, { bg: string; color: string; label: string }> = {
+  applied:      { bg: '#eff6ff', color: '#2563eb', label: 'Application Submitted' },
+  reviewing:    { bg: '#fef3c7', color: '#92400e', label: 'Under Review' },
+  interviewing: { bg: '#f5f3ff', color: '#7c3aed', label: 'Interview Requested' },
+  offered:      { bg: '#ecfdf5', color: '#059669', label: 'Offer Extended' },
+  rejected:     { bg: '#fef2f2', color: '#dc2626', label: 'Rejected/Closed' },
 };
 
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  applied: { bg: '#eff6ff', color: '#2563eb' },
-  under_review: { bg: '#fef3c7', color: '#92400e' },
-  reviewed: { bg: '#fef3c7', color: '#92400e' },
-  interviewing: { bg: '#f5f3ff', color: '#7c3aed' },
-  interview_scheduled: { bg: '#ecfdf5', color: '#059669' },
-  offered: { bg: '#ecfdf5', color: '#059669' },
-  rejected: { bg: '#fef2f2', color: '#dc2626' },
-  closed: { bg: '#f3f4f6', color: '#6b7280' },
-  not_selected: { bg: '#fef2f2', color: '#dc2626' },
-};
-
-const FILTER_OPTIONS = [
-  { value: '', label: 'All Statuses' },
-  { value: 'applied', label: 'Application Submitted' },
-  { value: 'under_review', label: 'Under Review' },
+const FILTER_OPTIONS: { value: '' | StageType; label: string }[] = [
+  { value: '',             label: 'All Statuses' },
+  { value: 'applied',      label: 'Application Submitted' },
+  { value: 'reviewing',    label: 'Under Review' },
   { value: 'interviewing', label: 'Interview Requested' },
-  { value: 'interview_scheduled', label: 'Interview Scheduled' },
-  { value: 'offered', label: 'Offer Extended' },
-  { value: 'rejected', label: 'Rejected/Closed' },
+  { value: 'offered',      label: 'Offer Extended' },
+  { value: 'rejected',     label: 'Rejected/Closed' },
 ];
 
 function formatDate(dateStr: string) {
@@ -98,8 +92,10 @@ export default function MyApplications() {
       // Normalize Supabase nested joins (may return arrays instead of objects)
       const normalized = raw.map((app: any) => {
         const listing = Array.isArray(app.listing) ? app.listing[0] : app.listing;
+        const stage = Array.isArray(app.stage) ? app.stage[0] : app.stage;
         return {
           ...app,
+          stage: stage ?? null,
           listing: listing
             ? {
                 ...listing,
@@ -118,7 +114,7 @@ export default function MyApplications() {
   }, []);
 
   const filtered = statusFilter
-    ? applications.filter((a) => a.status === statusFilter)
+    ? applications.filter((a) => a.stage?.stage_type === statusFilter)
     : applications;
 
   return (
@@ -255,7 +251,10 @@ export default function MyApplications() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {filtered.map((app) => {
             const employer = app.listing.employers;
-            const statusStyle = STATUS_COLORS[app.status] || STATUS_COLORS.applied;
+            const fallback = STAGE_TYPE_FALLBACK[app.stage?.stage_type ?? 'applied'];
+            const statusBg = app.stage?.color_bg ?? fallback.bg;
+            const statusColor = app.stage?.color_text ?? fallback.color;
+            const statusLabel = app.stage?.label ?? app.status ?? fallback.label;
 
             return (
               <div
@@ -316,13 +315,13 @@ export default function MyApplications() {
                         borderRadius: '20px',
                         fontSize: '0.8rem',
                         fontWeight: 600,
-                        background: statusStyle.bg,
-                        color: statusStyle.color,
+                        background: statusBg,
+                        color: statusColor,
                         whiteSpace: 'nowrap',
                         flexShrink: 0,
                       }}
                     >
-                      {STATUS_LABELS[app.status] || app.status}
+                      {statusLabel}
                     </span>
                   </div>
 

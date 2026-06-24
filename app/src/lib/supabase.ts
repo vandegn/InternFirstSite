@@ -399,11 +399,13 @@ export async function getEmployerApplications(employerId: string) {
     .select(`
       id,
       status,
+      stage_id,
       applied_at,
       updated_at,
       resume_id,
       resume:student_resumes(id, name, file_url),
       listing:internship_listings!inner(id, title, employer_id),
+      stage:pipeline_stages(id, label, color_bg, color_text, position, stage_type),
       student:students!inner(
         id,
         major,
@@ -467,15 +469,162 @@ export async function getEmployerStats(employerId: string) {
   const listingIds = listings.map(l => l.id);
   const { data: apps } = await supabase
     .from('applications')
-    .select('status')
+    .select('stage:pipeline_stages(stage_type)')
     .in('listing_id', listingIds);
   if (!apps) return { totalApplicants: 0, interviewing: 0, offered: 0 };
 
+  const stageType = (a: any) =>
+    Array.isArray(a.stage) ? a.stage[0]?.stage_type : a.stage?.stage_type;
+
   return {
     totalApplicants: apps.length,
-    interviewing: apps.filter(a => a.status === 'interviewing').length,
-    offered: apps.filter(a => a.status === 'offered').length,
+    interviewing: apps.filter(a => stageType(a) === 'interviewing').length,
+    offered: apps.filter(a => stageType(a) === 'offered').length,
   };
+}
+
+// ---- Pipeline Stages (per-listing kanban columns) ----
+
+export type PipelineStage = {
+  id: string;
+  listing_id: string;
+  label: string;
+  color_bg: string;
+  color_text: string;
+  position: number;
+  stage_type: 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+  locked: boolean;
+};
+
+export async function getListingStages(listingId: string): Promise<PipelineStage[]> {
+  const { data, error } = await supabase
+    .from('pipeline_stages')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('position', { ascending: true });
+  if (error) {
+    console.error('[getListingStages] Error:', error.message);
+    return [];
+  }
+  return (data ?? []) as PipelineStage[];
+}
+
+export async function createStage(opts: {
+  listingId: string;
+  label: string;
+  colorBg?: string;
+  colorText?: string;
+}) {
+  // Insert just before the "Offered" anchor: take the max position
+  // among non-offered stages and add one.
+  const { data: existing } = await supabase
+    .from('pipeline_stages')
+    .select('position')
+    .eq('listing_id', opts.listingId)
+    .neq('stage_type', 'offered')
+    .order('position', { ascending: false })
+    .limit(1);
+  const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 1;
+
+  const { data, error } = await supabase
+    .from('pipeline_stages')
+    .insert({
+      listing_id: opts.listingId,
+      label: opts.label,
+      color_bg: opts.colorBg ?? '#e0e7ff',
+      color_text: opts.colorText ?? '#3730a3',
+      position: nextPosition,
+      stage_type: 'reviewing',
+      locked: false,
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as PipelineStage;
+}
+
+export async function updateStage(stageId: string, patch: Partial<{
+  label: string;
+  color_bg: string;
+  color_text: string;
+  position: number;
+  stage_type: PipelineStage['stage_type'];
+}>) {
+  const { data, error } = await supabase
+    .from('pipeline_stages')
+    .update(patch)
+    .eq('id', stageId)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as PipelineStage;
+}
+
+// Reassign every application in `stageId` to `reassignToStageId`, then
+// delete the stage. If `reassignToStageId` is null, the applications in
+// that stage are deleted along with it.
+export async function deleteStage(stageId: string, reassignToStageId: string | null) {
+  if (reassignToStageId) {
+    const { error: moveErr } = await supabase
+      .from('applications')
+      .update({ stage_id: reassignToStageId })
+      .eq('stage_id', stageId);
+    if (moveErr) throw moveErr;
+  } else {
+    const { error: delAppsErr } = await supabase
+      .from('applications')
+      .delete()
+      .eq('stage_id', stageId);
+    if (delAppsErr) throw delAppsErr;
+  }
+  const { error } = await supabase
+    .from('pipeline_stages')
+    .delete()
+    .eq('id', stageId);
+  if (error) throw error;
+}
+
+export async function reorderStages(orderedStageIds: string[]) {
+  const updates = orderedStageIds.map((id, position) =>
+    supabase.from('pipeline_stages').update({ position }).eq('id', id)
+  );
+  await Promise.all(updates);
+}
+
+// Move an application to a new stage. The DB trigger keeps
+// applications.status in sync with the new stage's label.
+export async function updateApplicationStage(applicationId: string, stageId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .update({ stage_id: stageId })
+    .eq('id', applicationId)
+    .select('*, student:students!inner(user_id), listing:internship_listings!inner(title), stage:pipeline_stages(label)')
+    .single();
+  if (error) throw error;
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const studentUserId = (data as any).student?.user_id as string | undefined;
+    const listingTitle = (data as any).listing?.title as string | undefined;
+    const stageRow = (data as any).stage;
+    const label = (Array.isArray(stageRow) ? stageRow[0]?.label : stageRow?.label) ?? 'Updated';
+    if (user && studentUserId) {
+      await createNotification({
+        userId: studentUserId,
+        actorId: user.id,
+        type: 'application_status',
+        title: `Application update: ${label}`,
+        body: listingTitle
+          ? `Your application for "${listingTitle}" is now ${label}.`
+          : `Your application is now ${label}.`,
+        link: '/dashboard/student/applications',
+      });
+    }
+  } catch (e) {
+    console.error('[updateApplicationStage] notification failed', e);
+  }
+
+  return data;
 }
 
 export async function getApplicationStatus(studentId: string, listingId: string) {
@@ -536,9 +685,11 @@ export async function getStudentApplications(studentId: string) {
     .select(`
       id,
       status,
+      stage_id,
       applied_at,
       updated_at,
       resume_id,
+      stage:pipeline_stages(label, color_bg, color_text, stage_type),
       listing:internship_listings!inner(
         id, title, location, is_remote, is_hybrid, compensation, industry, application_deadline,
         employers:employers!inner(company_name, logo_url)
@@ -1269,7 +1420,7 @@ export const APPLICATION_STATUS_LABELS: Record<string, string> = {
 
 // Creates a notification for `userId`, with the current user as the actor.
 // Failures are logged but never thrown — a notification should never break
-// the underlying action (sending a message, moving a CRM card, etc.).
+// the underlying action (sending a message, moving a pipeline card, etc.).
 async function createNotification(opts: {
   userId: string;
   actorId: string;

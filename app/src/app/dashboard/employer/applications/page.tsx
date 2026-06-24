@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase, getEmployerByUserId, getEmployerApplications, updateApplicationStatus } from '@/lib/supabase';
+import {
+  supabase,
+  getEmployerByUserId,
+  getEmployerApplications,
+  getListingStages,
+  updateApplicationStage,
+  type PipelineStage,
+} from '@/lib/supabase';
 
 type Application = {
   id: string;
   status: string;
+  stage_id: string | null;
   applied_at: string;
   updated_at: string;
   resume_id: string | null;
@@ -20,6 +28,13 @@ type Application = {
     title: string;
     employer_id: string;
   };
+  stage: {
+    id: string;
+    label: string;
+    color_bg: string;
+    color_text: string;
+    stage_type: PipelineStage['stage_type'];
+  } | null;
   student: {
     id: string;
     major: string | null;
@@ -34,28 +49,12 @@ type Application = {
   };
 };
 
-const STATUS_OPTIONS = ['applied', 'reviewed', 'interviewing', 'offered', 'rejected'] as const;
-
-const STATUS_LABELS: Record<string, string> = {
-  applied: 'Applied',
-  reviewed: 'Under Review',
-  interviewing: 'Interviewing',
-  offered: 'Offered',
-  rejected: 'Not Selected',
-};
-
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  applied: { bg: '#e0e7ff', color: '#3730a3' },
-  reviewed: { bg: '#fef3c7', color: '#92400e' },
-  interviewing: { bg: '#dbeafe', color: '#1e40af' },
-  offered: { bg: '#d1fae5', color: '#065f46' },
-  rejected: { bg: '#fee2e2', color: '#991b1b' },
-};
+const FALLBACK_PILL = { bg: '#e0e7ff', color: '#3730a3', label: 'Applied' };
 
 export default function EmployerApplications() {
   const [applications, setApplications] = useState<Application[]>([]);
+  const [stagesByListing, setStagesByListing] = useState<Record<string, PipelineStage[]>>({});
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('');
   const [filterListing, setFilterListing] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -72,23 +71,51 @@ export default function EmployerApplications() {
         ...app,
         listing: Array.isArray(app.listing) ? app.listing[0] : app.listing,
         resume: Array.isArray(app.resume) ? app.resume[0] || null : app.resume,
+        stage: Array.isArray(app.stage) ? app.stage[0] || null : (app.stage ?? null),
         student: (() => {
           const s = Array.isArray(app.student) ? app.student[0] : app.student;
           return s ? { ...s, profile: Array.isArray(s.profile) ? s.profile[0] : s.profile } : s;
         })(),
-      }));
-      setApplications(normalized as Application[]);
+      })) as Application[];
+      setApplications(normalized);
+
+      // Pull stages for every unique listing in one batch.
+      const listingIds = Array.from(new Set(normalized.map(a => a.listing.id)));
+      const stageLists = await Promise.all(listingIds.map(id => getListingStages(id)));
+      const stageMap: Record<string, PipelineStage[]> = {};
+      listingIds.forEach((id, i) => { stageMap[id] = stageLists[i]; });
+      setStagesByListing(stageMap);
+
       setLoading(false);
     }
     fetchData();
   }, []);
 
-  async function handleStatusChange(applicationId: string, newStatus: string) {
+  async function handleStageChange(applicationId: string, newStageId: string) {
     setUpdating(applicationId);
     try {
-      await updateApplicationStatus(applicationId, newStatus);
-      setApplications(prev => prev.map(app =>
-        app.id === applicationId ? { ...app, status: newStatus } : app
+      await updateApplicationStage(applicationId, newStageId);
+      const app = applications.find(a => a.id === applicationId);
+      const newStage = app
+        ? stagesByListing[app.listing.id]?.find(s => s.id === newStageId)
+        : undefined;
+      setApplications(prev => prev.map(a =>
+        a.id === applicationId
+          ? {
+              ...a,
+              stage_id: newStageId,
+              status: newStage?.label ?? a.status,
+              stage: newStage
+                ? {
+                    id: newStage.id,
+                    label: newStage.label,
+                    color_bg: newStage.color_bg,
+                    color_text: newStage.color_text,
+                    stage_type: newStage.stage_type,
+                  }
+                : a.stage,
+            }
+          : a
       ));
     } catch {
       // silently fail
@@ -101,7 +128,6 @@ export default function EmployerApplications() {
   const listingTitles = Array.from(new Set(applications.map(a => a.listing.title)));
 
   const filtered = applications.filter(app => {
-    if (filterStatus && app.status !== filterStatus) return false;
     if (filterListing && app.listing.title !== filterListing) return false;
     return true;
   });
@@ -127,16 +153,6 @@ export default function EmployerApplications() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{ padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.85rem', background: 'var(--bg)' }}
-        >
-          <option value="">All Statuses</option>
-          {STATUS_OPTIONS.map(s => (
-            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-          ))}
-        </select>
         <select
           value={filterListing}
           onChange={(e) => setFilterListing(e.target.value)}
@@ -168,7 +184,10 @@ export default function EmployerApplications() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((app) => {
             const isExpanded = expandedId === app.id;
-            const statusStyle = STATUS_COLORS[app.status] || STATUS_COLORS.applied;
+            const pillBg = app.stage?.color_bg ?? FALLBACK_PILL.bg;
+            const pillColor = app.stage?.color_text ?? FALLBACK_PILL.color;
+            const pillLabel = app.stage?.label ?? app.status ?? FALLBACK_PILL.label;
+            const listingStages = stagesByListing[app.listing.id] ?? [];
             return (
               <div
                 key={app.id}
@@ -204,10 +223,10 @@ export default function EmployerApplications() {
                         fontWeight: 600,
                         padding: '2px 10px',
                         borderRadius: '10px',
-                        background: statusStyle.bg,
-                        color: statusStyle.color,
+                        background: pillBg,
+                        color: pillColor,
                       }}>
-                        {STATUS_LABELS[app.status]}
+                        {pillLabel}
                       </span>
                     </div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
@@ -273,11 +292,11 @@ export default function EmployerApplications() {
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Update status:</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Move to:</span>
                       <select
-                        value={app.status}
-                        onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                        disabled={updating === app.id}
+                        value={app.stage_id ?? ''}
+                        onChange={(e) => handleStageChange(app.id, e.target.value)}
+                        disabled={updating === app.id || listingStages.length === 0}
                         style={{
                           padding: '6px 12px',
                           borderRadius: 'var(--radius-sm)',
@@ -287,8 +306,8 @@ export default function EmployerApplications() {
                           cursor: updating === app.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {STATUS_OPTIONS.map(s => (
-                          <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                        {listingStages.map(s => (
+                          <option key={s.id} value={s.id}>{s.label}</option>
                         ))}
                       </select>
                       {updating === app.id && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Saving...</span>}

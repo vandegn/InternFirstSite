@@ -12,7 +12,9 @@ import {
   createInterview,
   rescheduleInterview,
   updateListing,
-  updateApplicationStatus,
+  updateApplicationStage,
+  getListingStages,
+  type PipelineStage,
 } from '@/lib/supabase';
 import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
 import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
@@ -38,9 +40,17 @@ type ListingWithStats = {
 type Application = {
   id: string;
   status: string;
+  stage_id: string | null;
   applied_at: string;
   resume: { id: string; name: string; file_url: string } | null;
   listing: { id: string; title: string };
+  stage: {
+    id: string;
+    label: string;
+    color_bg: string;
+    color_text: string;
+    stage_type: PipelineStage['stage_type'];
+  } | null;
   student: {
     id: string;
     major: string | null;
@@ -51,21 +61,7 @@ type Application = {
   };
 };
 
-const STATUS_OPTIONS = ['applied', 'reviewed', 'interviewing', 'offered', 'rejected'] as const;
-const STATUS_LABELS: Record<string, string> = {
-  applied: 'Applied',
-  reviewed: 'Under Review',
-  interviewing: 'Interviewing',
-  offered: 'Offered',
-  rejected: 'Not Selected',
-};
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  applied: { bg: '#e0e7ff', color: '#3730a3' },
-  reviewed: { bg: '#fef3c7', color: '#92400e' },
-  interviewing: { bg: '#dbeafe', color: '#1e40af' },
-  offered: { bg: '#d1fae5', color: '#065f46' },
-  rejected: { bg: '#fee2e2', color: '#991b1b' },
-};
+const FALLBACK_PILL = { bg: '#e0e7ff', color: '#3730a3', label: 'Applied' };
 
 const LISTING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   active: { bg: '#d1fae5', color: '#065f46' },
@@ -126,6 +122,9 @@ export default function PostedJobsPage() {
   const [updatingAppStatus, setUpdatingAppStatus] = useState<string | null>(null);
   const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null);
   const [scheduleModalInterview, setScheduleModalInterview] = useState<Interview | null>(null);
+  // Pipeline stages for the currently-selected listing — drives the
+  // per-applicant status dropdown.
+  const [selectedListingStages, setSelectedListingStages] = useState<PipelineStage[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -145,6 +144,7 @@ export default function PostedJobsPage() {
         ...app,
         listing: Array.isArray(app.listing) ? app.listing[0] : app.listing,
         resume: Array.isArray(app.resume) ? app.resume[0] || null : app.resume,
+        stage: Array.isArray(app.stage) ? app.stage[0] || null : (app.stage ?? null),
         student: (() => {
           const s = Array.isArray(app.student) ? app.student[0] : app.student;
           return s ? { ...s, profile: Array.isArray(s.profile) ? s.profile[0] : s.profile } : s;
@@ -159,6 +159,16 @@ export default function PostedJobsPage() {
     }
     fetchData();
   }, []);
+
+  // Whenever the selected listing changes, load its pipeline stages so
+  // the per-applicant dropdown shows that listing's actual columns.
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedListingStages([]);
+      return;
+    }
+    getListingStages(selectedId).then(setSelectedListingStages);
+  }, [selectedId]);
 
   function activeInterviewForApp(applicationId: string): Interview | undefined {
     return interviews.find(i =>
@@ -240,11 +250,29 @@ export default function PostedJobsPage() {
     }
   }
 
-  async function handleAppStatusChange(appId: string, newStatus: string) {
+  async function handleAppStageChange(appId: string, newStageId: string) {
     setUpdatingAppStatus(appId);
     try {
-      await updateApplicationStatus(appId, newStatus);
-      setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
+      await updateApplicationStage(appId, newStageId);
+      const newStage = selectedListingStages.find(s => s.id === newStageId);
+      setApplications(prev => prev.map(a =>
+        a.id === appId
+          ? {
+              ...a,
+              stage_id: newStageId,
+              status: newStage?.label ?? a.status,
+              stage: newStage
+                ? {
+                    id: newStage.id,
+                    label: newStage.label,
+                    color_bg: newStage.color_bg,
+                    color_text: newStage.color_text,
+                    stage_type: newStage.stage_type,
+                  }
+                : a.stage,
+            }
+          : a
+      ));
     } catch { /* silently fail */ } finally {
       setUpdatingAppStatus(null);
     }
@@ -486,7 +514,9 @@ export default function PostedJobsPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {selectedApps.map(app => {
-                    const statusStyle = STATUS_COLORS[app.status] || STATUS_COLORS.applied;
+                    const pillBg = app.stage?.color_bg ?? FALLBACK_PILL.bg;
+                    const pillColor = app.stage?.color_text ?? FALLBACK_PILL.color;
+                    const pillLabel = app.stage?.label ?? app.status ?? FALLBACK_PILL.label;
                     const interview = activeInterviewForApp(app.id);
                     const interviewBadge = interview ? INTERVIEW_STATUS_COLORS[interview.status] : null;
                     return (
@@ -506,9 +536,9 @@ export default function PostedJobsPage() {
                               <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{app.student.profile.full_name}</span>
                               <span style={{
                                 fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
-                                background: statusStyle.bg, color: statusStyle.color,
+                                background: pillBg, color: pillColor,
                               }}>
-                                {STATUS_LABELS[app.status]}
+                                {pillLabel}
                               </span>
                             </div>
                             <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
@@ -532,16 +562,16 @@ export default function PostedJobsPage() {
                               </a>
                             )}
                             <select
-                              value={app.status}
-                              onChange={(e) => handleAppStatusChange(app.id, e.target.value)}
-                              disabled={updatingAppStatus === app.id}
+                              value={app.stage_id ?? ''}
+                              onChange={(e) => handleAppStageChange(app.id, e.target.value)}
+                              disabled={updatingAppStatus === app.id || selectedListingStages.length === 0}
                               style={{
                                 padding: '4px 8px', borderRadius: 'var(--radius-sm)',
                                 border: '1px solid var(--border)', fontSize: '0.78rem', background: '#fff',
                               }}
                             >
-                              {STATUS_OPTIONS.map(s => (
-                                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                              {selectedListingStages.map(s => (
+                                <option key={s.id} value={s.id}>{s.label}</option>
                               ))}
                             </select>
                             <button

@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { joinWaitlist } from '@/lib/supabase';
 
-type Role = 'student' | 'employer' | 'other';
+type Role = 'student' | 'employer';
 
 export default function WaitlistPage() {
   const [fullName, setFullName] = useState('');
@@ -93,6 +93,18 @@ export default function WaitlistPage() {
                 )}
 
                 <div className="form-group">
+                  <label htmlFor="role">I&apos;m signing up as...</label>
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as Role)}
+                  >
+                    <option value="student">Student</option>
+                    <option value="employer">Employer</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
                   <label htmlFor="fullName">Full name</label>
                   <input
                     id="fullName"
@@ -109,27 +121,19 @@ export default function WaitlistPage() {
                   <input
                     id="email"
                     type="email"
-                    placeholder="you@school.edu"
+                    placeholder={role === 'student' ? 'you@school.edu' : 'you@company.com'}
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
+                  {role === 'student' && (
+                    <p style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
+                      Please use your .edu email so we can verify you&apos;re a student.
+                    </p>
+                  )}
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="role">I&apos;m a...</label>
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as Role)}
-                  >
-                    <option value="student">Student</option>
-                    <option value="employer">Employer</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <button type="submit" className="btn-auth" disabled={loading}>
+                <button type="submit" className="btn-auth" disabled={loading} style={{ marginTop: 20 }}>
                   {loading ? 'Joining...' : 'Join the waitlist'}
                 </button>
 

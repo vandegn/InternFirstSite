@@ -130,6 +130,20 @@ export default function PostedJobsPage() {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Returning from PPJ Checkout: verify the session and activate the listing
+      // in case the webhook was missed (safety net). Runs before loading so the
+      // listing shows as active. Idempotent if the webhook already handled it.
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('checkout') === 'success' && params.get('session_id')) {
+        await fetch('/api/billing/verify-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: params.get('session_id') }),
+        }).catch(() => {});
+        window.history.replaceState({}, '', '/dashboard/employer/posted-jobs');
+      }
+
       const employer = await getEmployerByUserId(user.id);
       if (!employer) return;
       setEmployerId(employer.id);

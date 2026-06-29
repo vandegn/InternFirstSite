@@ -3,8 +3,13 @@ import { stripe } from '@/lib/stripe';
 import { getServerSupabase, getAdminSupabase } from '@/lib/supabase-server';
 
 // Tallies un-invoiced PPA applicant charges and bills each employer once via a
-// Stripe invoice. Intended to run monthly (manual/admin trigger for now; can be
-// driven by pg_cron or an external scheduler later).
+// Stripe invoice. Runs monthly via Supabase pg_cron (see
+// supabase/migrations/20260629_ppa_invoicing_cron.sql) and can also be triggered
+// manually by an admin.
+//
+// By default only *closed* billing periods are billed (everything before the
+// current month) so an in-progress month is never cut off mid-stream. Pass
+// `{ "all": true }` in the body to bill open periods too — useful for testing.
 //
 // Auth: either a matching `x-cron-secret` header (for schedulers) or a logged-in
 // intern_first_admin.
@@ -34,12 +39,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const includeOpen = body?.all === true;
+
   const admin = getAdminSupabase();
 
-  const { data: charges, error } = await admin
+  // First day of the current month (UTC). Closed periods are strictly before it.
+  const now = new Date();
+  const firstOfMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+
+  let query = admin
     .from('applicant_charges')
     .select('id, employer_id, amount_cents, billing_period')
     .eq('invoiced', false);
+  if (!includeOpen) query = query.lt('billing_period', firstOfMonth);
+
+  const { data: charges, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -56,7 +71,7 @@ export async function POST(req: NextRequest) {
     byEmployer.set(c.employer_id, list);
   }
 
-  const results: { employer_id: string; status: string; invoice?: string; amount_cents?: number }[] = [];
+  const results: { employer_id: string; status: string; invoice?: string | null; amount_cents?: number; paid?: boolean }[] = [];
 
   for (const [employerId, employerCharges] of byEmployer) {
     const { data: billing } = await admin
@@ -77,24 +92,29 @@ export async function POST(req: NextRequest) {
       .slice(-1)[0];
 
     try {
-      // One aggregated line item for the period's applicants.
-      await stripe.invoiceItems.create({
-        customer: billing.stripe_customer_id,
-        amount: total,
-        currency: 'usd',
-        description: `Applicants received (${employerCharges.length}) — ${period}`,
-      });
-
+      // Create the invoice first, then attach the line item to THIS invoice
+      // explicitly (creating a pending item first doesn't reliably sweep onto
+      // the new invoice), then finalize and charge the card on file.
       const invoice = await stripe.invoices.create({
         customer: billing.stripe_customer_id,
         collection_method: 'charge_automatically',
-        auto_advance: true,
+        auto_advance: false,
         metadata: { kind: 'ppa_monthly', employer_id: employerId },
       });
 
-      if (invoice.id) {
-        await stripe.invoices.finalizeInvoice(invoice.id);
-      }
+      await stripe.invoiceItems.create({
+        customer: billing.stripe_customer_id,
+        invoice: invoice.id,
+        amount: total,
+        currency: 'usd',
+        description: `Applications billed (${employerCharges.length}) — ${period}`,
+      });
+
+      await stripe.invoices.finalizeInvoice(invoice.id!);
+      const charged = await stripe.invoices.pay(invoice.id!).catch((e) => {
+        console.error('[invoice-ppa] pay failed', invoice.id, e?.message);
+        return null;
+      });
 
       const { data: payment } = await admin
         .from('listing_payments')
@@ -103,7 +123,7 @@ export async function POST(req: NextRequest) {
           type: 'ppa_monthly',
           stripe_ref: invoice.id,
           amount_cents: total,
-          status: 'pending',
+          status: charged?.status === 'paid' ? 'paid' : 'pending',
           billing_period: period,
         })
         .select('id')
@@ -114,7 +134,7 @@ export async function POST(req: NextRequest) {
         .update({ invoiced: true, listing_payment_id: payment?.id ?? null })
         .in('id', employerCharges.map((c) => c.id));
 
-      results.push({ employer_id: employerId, status: 'invoiced', invoice: invoice.id, amount_cents: total });
+      results.push({ employer_id: employerId, status: 'invoiced', invoice: invoice.id, amount_cents: total, paid: charged?.status === 'paid' });
     } catch (err: any) {
       console.error('[invoice-ppa] employer', employerId, err.message);
       results.push({ employer_id: employerId, status: 'error' });

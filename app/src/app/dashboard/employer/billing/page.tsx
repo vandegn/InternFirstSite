@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   supabase,
   getEmployerByUserId,
-  getEmployerBilling,
   getEmployerPayments,
   getEmployerListings,
 } from '@/lib/supabase';
@@ -37,6 +36,7 @@ export default function BillingPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [savingCard, setSavingCard] = useState(false);
+  const [cardError, setCardError] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -45,13 +45,13 @@ export default function BillingPage() {
       const employer = await getEmployerByUserId(user.id);
       if (!employer) { setLoading(false); return; }
 
-      const [billing, pays, listed] = await Promise.all([
-        getEmployerBilling(employer.id),
+      const [syncRes, pays, listed] = await Promise.all([
+        fetch('/api/billing/sync', { method: 'POST' }).then((r) => r.json()).catch(() => ({ hasCard: false })),
         getEmployerPayments(employer.id),
         getEmployerListings(employer.id, 1, 100),
       ]);
 
-      setHasCard(!!billing?.default_payment_method);
+      setHasCard(!!syncRes.hasCard);
       setPayments(pays as Payment[]);
       setListings((listed.data as Listing[]).filter((l) => l.pricing_model));
       setLoading(false);
@@ -61,14 +61,20 @@ export default function BillingPage() {
 
   async function manageCard() {
     setSavingCard(true);
-    const res = await fetch('/api/billing/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ returnTo: '/dashboard/employer/billing' }),
-    });
-    const json = await res.json();
-    if (json.url) window.location.href = json.url;
-    else setSavingCard(false);
+    setCardError('');
+    try {
+      const res = await fetch('/api/billing/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnTo: '/dashboard/employer/billing' }),
+      });
+      const json = await res.json();
+      if (json.url) { window.location.href = json.url; return; }
+      setCardError(json.error || 'Could not start card setup.');
+    } catch {
+      setCardError('Could not reach the billing service.');
+    }
+    setSavingCard(false);
   }
 
   if (loading) {
@@ -92,6 +98,9 @@ export default function BillingPage() {
             {savingCard ? 'Opening…' : hasCard ? 'Update card' : 'Add card'}
           </button>
         </div>
+        {cardError && (
+          <p style={{ color: 'var(--danger, #dc2626)', fontSize: '0.85rem', margin: '12px 0 0' }}>{cardError}</p>
+        )}
       </div>
 
       {/* Active plans / usage */}

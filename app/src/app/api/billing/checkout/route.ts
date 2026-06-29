@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         },
       },
     ],
-    success_url: `${APP_URL}/dashboard/employer/posted-jobs?checkout=success`,
+    success_url: `${APP_URL}/dashboard/employer/posted-jobs?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${APP_URL}/dashboard/employer/listings/${listing.id}/edit?checkout=cancel`,
     metadata: {
       kind: 'ppj_upfront',

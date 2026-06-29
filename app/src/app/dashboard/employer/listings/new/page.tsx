@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, createListing, getEmployerBilling } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, createListing } from '@/lib/supabase';
 import {
   INDUSTRIES,
   DURATIONS,
@@ -86,8 +86,14 @@ export default function NewListingPage() {
         setCompanyLogo(employer.logo_url || null);
         setCompanyWebsite(employer.website || null);
         setEmployerId(employer.id);
-        const billing = await getEmployerBilling(employer.id);
-        setHasCard(!!billing?.default_payment_method);
+        // Check card status against Stripe directly (resilient to missed webhooks).
+        try {
+          const res = await fetch('/api/billing/sync', { method: 'POST' });
+          const json = await res.json();
+          setHasCard(!!json.hasCard);
+        } catch {
+          setHasCard(false);
+        }
       }
     }
     fetchEmployer();

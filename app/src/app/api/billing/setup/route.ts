@@ -27,21 +27,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Employer profile not found' }, { status: 404 });
   }
 
-  const admin = getAdminSupabase();
-  const customerId = await ensureStripeCustomer(stripe, admin, employer, user.email);
-
   const dest = typeof returnTo === 'string' && returnTo.startsWith('/')
     ? returnTo
     : '/dashboard/employer/billing';
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'setup',
-    customer: customerId,
-    payment_method_types: ['card'],
-    success_url: `${APP_URL}${dest}?card=saved`,
-    cancel_url: `${APP_URL}${dest}?card=cancel`,
-    metadata: { kind: 'setup', employer_id: employer.id },
-  });
+  try {
+    const admin = getAdminSupabase();
+    const customerId = await ensureStripeCustomer(stripe, admin, employer, user.email);
 
-  return NextResponse.json({ url: session.url });
+    const session = await stripe.checkout.sessions.create({
+      mode: 'setup',
+      customer: customerId,
+      payment_method_types: ['card'],
+      success_url: `${APP_URL}${dest}?card=saved`,
+      cancel_url: `${APP_URL}${dest}?card=cancel`,
+      metadata: { kind: 'setup', employer_id: employer.id },
+    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (err: any) {
+    console.error('[billing/setup]', err?.message, err);
+    return NextResponse.json({ error: err?.message || 'Failed to start card setup.' }, { status: 500 });
+  }
 }

@@ -1,5 +1,6 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
+import { computeMatchScoreStub } from '@/lib/constants';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -135,6 +136,13 @@ export async function createListing(listing: {
   industry: string;
   application_deadline?: string;
   duration?: string;
+  // Billing
+  pricing_model?: 'ppj' | 'ppa';
+  applicant_quota?: number | null;   // PPJ: upper bound of the estimate (informational, no cap)
+  cpa_cents?: number;                // snapshot of the group CPA at posting time
+  expires_at?: string;
+  status?: string;
+  payment_status?: 'pending' | 'paid' | 'active';
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -386,7 +394,7 @@ async function notifyEmployerOfApplication(listingId: string) {
 export async function applyToListing(studentId: string, listingId: string) {
   const { data, error } = await supabase
     .from('applications')
-    .insert({ student_id: studentId, listing_id: listingId })
+    .insert({ student_id: studentId, listing_id: listingId, match_score: computeMatchScoreStub(studentId, listingId) })
     .select()
     .single();
   if (error) throw error;
@@ -813,7 +821,7 @@ export async function getEmployerListingsWithStats(employerId: string) {
 }
 
 export async function applyToListingWithResume(studentId: string, listingId: string, resumeId: string | null) {
-  const row: any = { student_id: studentId, listing_id: listingId };
+  const row: any = { student_id: studentId, listing_id: listingId, match_score: computeMatchScoreStub(studentId, listingId) };
   if (resumeId) row.resume_id = resumeId;
   const { data, error } = await supabase
     .from('applications')
@@ -1180,6 +1188,49 @@ export async function updateListing(listingId: string, fields: {
     .select()
     .single();
   if (error) throw error;
+  return data;
+}
+
+// ---- Billing (Employer Payment Plans) ----
+
+export async function getEmployerBilling(employerId: string) {
+  const { data, error } = await supabase
+    .from('employer_billing')
+    .select('*')
+    .eq('employer_id', employerId)
+    .maybeSingle();
+  if (error) {
+    console.error('[getEmployerBilling]', error.message);
+    return null;
+  }
+  return data;
+}
+
+export async function getEmployerPayments(employerId: string) {
+  const { data, error } = await supabase
+    .from('listing_payments')
+    .select('*, listing:internship_listings(title)')
+    .eq('employer_id', employerId)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('[getEmployerPayments]', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+// Current applicant usage for a listing (drives the "X / Y applicants" display
+// and the auto-close state). applicant_count is maintained by a DB trigger.
+export async function getListingUsage(listingId: string) {
+  const { data, error } = await supabase
+    .from('internship_listings')
+    .select('pricing_model, applicant_quota, applicant_count, cpa_cents, payment_status, status, expires_at')
+    .eq('id', listingId)
+    .single();
+  if (error) {
+    console.error('[getListingUsage]', error.message);
+    return null;
+  }
   return data;
 }
 

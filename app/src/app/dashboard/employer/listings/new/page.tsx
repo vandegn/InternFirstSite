@@ -3,8 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, createListing } from '@/lib/supabase';
-import { INDUSTRIES, DURATIONS } from '@/lib/constants';
+import { supabase, getEmployerByUserId, createListing, getEmployerBilling } from '@/lib/supabase';
+import {
+  INDUSTRIES,
+  DURATIONS,
+  POSTING_DURATIONS,
+  PPJ_APPLICATION_RANGES,
+  PPA_MATCH_THRESHOLD,
+  computePpjPriceCents,
+  cpaForIndustry,
+  formatCents,
+  type PricingModel,
+} from '@/lib/constants';
 import ReactMarkdown from 'react-markdown';
 
 function AutoResizeTextarea({ id, placeholder, required, rows, value, onChange, style }: {
@@ -56,6 +66,16 @@ export default function NewListingPage() {
   const [companyWebsite, setCompanyWebsite] = useState<string | null>(null);
   const [employerId, setEmployerId] = useState<string | null>(null);
 
+  // ── Plan / billing ──
+  const [pricingModel, setPricingModel] = useState<PricingModel>('ppj');
+  const [postingDays, setPostingDays] = useState<number>(POSTING_DURATIONS[0].days);
+  const [rangeIndex, setRangeIndex] = useState<number>(2);
+  const [hasCard, setHasCard] = useState(false);
+
+  const cpaCents = cpaForIndustry(industry);
+  const selectedRange = PPJ_APPLICATION_RANGES[rangeIndex];
+  const ppjPrice = computePpjPriceCents(industry, selectedRange);
+
   useEffect(() => {
     async function fetchEmployer() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -66,10 +86,23 @@ export default function NewListingPage() {
         setCompanyLogo(employer.logo_url || null);
         setCompanyWebsite(employer.website || null);
         setEmployerId(employer.id);
+        const billing = await getEmployerBilling(employer.id);
+        setHasCard(!!billing?.default_payment_method);
       }
     }
     fetchEmployer();
   }, []);
+
+  async function startCardSetup() {
+    const res = await fetch('/api/billing/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ returnTo: '/dashboard/employer/listings/new' }),
+    });
+    const json = await res.json();
+    if (json.url) window.location.href = json.url;
+    else setError(json.error || 'Could not start card setup.');
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +112,13 @@ export default function NewListingPage() {
     try {
       if (!employerId) throw new Error('Employer profile not found.');
 
-      await createListing({
+      if (pricingModel === 'ppa' && !hasCard) {
+        setLoading(false);
+        await startCardSetup();
+        return;
+      }
+
+      const base = {
         employer_id: employerId,
         title,
         description,
@@ -92,9 +131,45 @@ export default function NewListingPage() {
         industry,
         duration: duration || undefined,
         application_deadline: applicationDeadline || undefined,
+      };
+
+      if (pricingModel === 'ppj') {
+        // Create paused/pending, then send to Stripe Checkout. The webhook
+        // activates the listing and sets expires_at once payment succeeds.
+        const listing = await createListing({
+          ...base,
+          pricing_model: 'ppj',
+          applicant_quota: selectedRange.max,
+          cpa_cents: cpaCents,
+          status: 'paused',
+          payment_status: 'pending',
+        });
+
+        const res = await fetch('/api/billing/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listingId: listing.id, durationDays: postingDays, rangeIndex }),
+        });
+        const json = await res.json();
+        if (json.url) {
+          window.location.href = json.url;
+          return;
+        }
+        throw new Error(json.error || 'Could not start checkout.');
+      }
+
+      // PPA — active immediately, billed monthly per qualifying application.
+      const expiresAt = new Date(Date.now() + postingDays * 86400_000).toISOString();
+      await createListing({
+        ...base,
+        pricing_model: 'ppa',
+        cpa_cents: cpaCents,
+        expires_at: expiresAt,
+        status: 'active',
+        payment_status: 'active',
       });
 
-      router.push('/dashboard/employer');
+      router.push('/dashboard/employer/posted-jobs');
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -283,8 +358,114 @@ export default function NewListingPage() {
               />
             </div>
 
+            {/* ── Posting Plan ── */}
+            <div className="form-group" style={{ marginTop: '8px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+              <label style={{ fontSize: '1.05rem', fontWeight: 600 }}>Posting Plan</label>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: '8px' }}>
+                {([
+                  { key: 'ppj', title: 'Pay Per Job', sub: 'One fixed upfront fee based on your estimate.' },
+                  { key: 'ppa', title: 'Pay Per Application', sub: 'No upfront cost. Billed monthly per qualifying application.' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setPricingModel(opt.key)}
+                    style={{
+                      flex: 1,
+                      textAlign: 'left',
+                      padding: '14px',
+                      borderRadius: 10,
+                      border: pricingModel === opt.key ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                      background: pricingModel === opt.key ? 'var(--primary-light)' : 'var(--bg)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: pricingModel === opt.key ? 'var(--primary)' : 'var(--text-primary)' }}>{opt.title}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{opt.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="postingDays">Posting Duration</label>
+                <select
+                  id="postingDays"
+                  value={postingDays}
+                  onChange={(e) => setPostingDays(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                >
+                  {POSTING_DURATIONS.map((d) => (
+                    <option key={d.days} value={d.days}>{d.label}</option>
+                  ))}
+                </select>
+                <small style={{ color: 'var(--text-light)', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
+                  How long the listing stays live. Doesn&apos;t affect price.
+                </small>
+              </div>
+
+              {pricingModel === 'ppj' && (
+                <div className="form-group">
+                  <label htmlFor="rangeIndex">Estimated Applications</label>
+                  <select
+                    id="rangeIndex"
+                    value={rangeIndex}
+                    onChange={(e) => setRangeIndex(Number(e.target.value))}
+                    style={{ width: '100%' }}
+                  >
+                    {PPJ_APPLICATION_RANGES.map((r, i) => (
+                      <option key={r.label} value={i}>{r.label}</option>
+                    ))}
+                  </select>
+                  <small style={{ color: 'var(--text-light)', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
+                    Fixed fee based on this estimate — you&apos;re never charged more if applications run higher.
+                  </small>
+                </div>
+              )}
+            </div>
+
+            {/* Price / billing summary — both tiers anchored to the industry CPA */}
+            {pricingModel === 'ppj' ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '16px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  {selectedRange.min}–{selectedRange.max} apps · {formatCents(cpaCents)}/app{!industry && ' (blended)'}
+                </span>
+                <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{formatCents(ppjPrice)}</span>
+              </div>
+            ) : (
+              <div style={{ padding: '14px 16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                    Per qualifying application{!industry && ' (blended CPA)'}, billed monthly
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{formatCents(cpaCents)}</span>
+                </div>
+                <div style={{ marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-light)' }}>
+                  Only applications scoring {PPA_MATCH_THRESHOLD}%+ match are billed. No cap.
+                </div>
+                {!hasCard && (
+                  <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>A card on file is required for monthly billing.</span>
+                    <button type="button" onClick={startCardSetup} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Add card
+                    </button>
+                  </div>
+                )}
+                {hasCard && (
+                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>✓ Card on file</div>
+                )}
+              </div>
+            )}
+
             <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', padding: '12px', fontSize: '1rem' }}>
-              {loading ? 'Posting...' : 'Post Listing'}
+              {loading
+                ? 'Posting...'
+                : pricingModel === 'ppj'
+                  ? `Continue to Payment · ${formatCents(ppjPrice)}`
+                  : 'Post Listing'}
             </button>
           </form>
         </div>

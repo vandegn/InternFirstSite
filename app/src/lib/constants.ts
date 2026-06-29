@@ -27,6 +27,130 @@ export const DURATIONS = [
 
 export type Duration = (typeof DURATIONS)[number];
 
+// ============================================
+// Employer payment plans (PPJ / PPA)
+// ============================================
+// All prices are in US cents. CPA (Cost-Per-Application) is the per–occupation-
+// group benchmark that anchors both paid tiers; it is the single source of
+// truth here. Tiers, anchored to a listing's `industry`:
+//   PPA (Pay-Per-Application): billed the group CPA for each *completed,
+//        qualifying* application (match >= PPA_MATCH_THRESHOLD), invoiced
+//        monthly, no ceiling.
+//   PPJ (Pay-Per-Job): employer picks an estimated application range; the
+//        median of that range × the group CPA is one fixed upfront fee,
+//        regardless of how many applications actually arrive (no cap).
+// Both sit above the free "organic" tier (a listing with pricing_model = null).
+//
+// Benchmarks are recalibrated monthly via exponential smoothing
+//   Updated CPA = Old CPA + α(Observed CPA − Old CPA), α ∈ [0.1, 0.3]
+// which is an ops/admin process, not performed in this code.
+
+// How long a posting stays live, in days. Does NOT affect price — PPJ pricing is
+// driven solely by the application-range estimate and the group CPA.
+export const POSTING_DURATIONS = [
+  { days: 30, label: '30 days' },
+  { days: 60, label: '60 days' },
+  { days: 90, label: '90 days' },
+] as const;
+
+export type PricingModel = 'ppj' | 'ppa';
+
+// Blended weighted-average CPA across all occupation groups (fallback default).
+export const BLENDED_CPA_CENTS = 1609; // $16.09
+
+// Real CPA benchmark table (Appendix D.2): median CPA per occupation group, in
+// cents. This is the verbatim source of truth from the InternFirst pricing doc.
+export const CPA_BY_OCCUPATION_GROUP: Record<string, number> = {
+  'Administration': 1188,                 // $11.88
+  'Business and Consumer Services': 1017, // $10.17
+  'Construction and Skilled Trades': 1737,// $17.37
+  'Consulting': 1297,                     // $12.97
+  'Customer Services': 1167,              // $11.67
+  'Education': 2236,                       // $22.36
+  'Finance': 1487,                         // $14.87
+  'Food Service': 1174,                    // $11.74
+  'Healthcare': 3500,                      // $35.00
+  'Hospitality': 1316,                     // $13.16
+  'Human Resources': 1229,                 // $12.29
+  'Insurance': 1474,                       // $14.74
+  'Legal': 1682,                           // $16.82
+  'Management': 1506,                      // $15.06
+  'Manufacturing': 1426,                   // $14.26
+  'Marketing and Advertising': 1453,       // $14.53
+  'Real Estate': 1298,                     // $12.98
+  'Retail': 1393,                          // $13.93
+  'Sales': 1382,                           // $13.82
+  'Science and Engineering': 2079,         // $20.79
+  'Security': 1202,                        // $12.02
+  'Technology': 1555,                      // $15.55
+  'Transportation': 1151,                  // $11.51
+  'Warehousing and Logistics': 1478,       // $14.78
+};
+
+// Listings are categorized by `industry` (12 values) while pricing is defined
+// per occupation group (24). Each industry maps to the closest group's CPA;
+// the four with no clean match fall back to the blended average ($16.09).
+// TODO: add a true occupation-group field on listings for exact 1:1 parity.
+export const CPA_BY_INDUSTRY: Record<string, number> = {
+  Technology: CPA_BY_OCCUPATION_GROUP['Technology'],                // $15.55
+  Finance: CPA_BY_OCCUPATION_GROUP['Finance'],                      // $14.87
+  Healthcare: CPA_BY_OCCUPATION_GROUP['Healthcare'],                // $35.00
+  Marketing: CPA_BY_OCCUPATION_GROUP['Marketing and Advertising'],  // $14.53
+  Legal: CPA_BY_OCCUPATION_GROUP['Legal'],                          // $16.82
+  Engineering: CPA_BY_OCCUPATION_GROUP['Science and Engineering'],  // $20.79
+  Education: CPA_BY_OCCUPATION_GROUP['Education'],                  // $22.36
+  Retail: CPA_BY_OCCUPATION_GROUP['Retail'],                        // $13.93
+  // No clean occupation-group match → blended weighted average:
+  Media: BLENDED_CPA_CENTS,
+  Nonprofit: BLENDED_CPA_CENTS,
+  Government: BLENDED_CPA_CENTS,
+  Other: BLENDED_CPA_CENTS,
+};
+
+// CPA for a listing's industry, falling back to the blended average.
+export function cpaForIndustry(industry?: string | null): number {
+  return (industry && CPA_BY_INDUSTRY[industry]) || BLENDED_CPA_CENTS;
+}
+
+// PPA only bills applications scoring at or above this match percentage.
+export const PPA_MATCH_THRESHOLD = 70;
+
+// PPJ application-range bands the employer picks from. The band's median drives
+// the fixed fee (no cap on actual applications).
+export const PPJ_APPLICATION_RANGES = [
+  { label: '5–10 applications', min: 5, max: 10 },
+  { label: '10–20 applications', min: 10, max: 20 },
+  { label: '20–35 applications', min: 20, max: 35 },
+  { label: '35–50 applications', min: 35, max: 50 },
+  { label: '50–75 applications', min: 50, max: 75 },
+] as const;
+
+export type ApplicationRange = { min: number; max: number };
+
+export function rangeMedian(range: ApplicationRange): number {
+  return (range.min + range.max) / 2;
+}
+
+// Fixed upfront PPJ fee: median of the chosen range × the group CPA.
+export function computePpjPriceCents(industry: string | null | undefined, range: ApplicationRange): number {
+  return Math.round(rangeMedian(range) * cpaForIndustry(industry));
+}
+
+// Stub match scorer. Deterministic 50–100 from the student/listing pair so the
+// >= PPA_MATCH_THRESHOLD billing gate is exercised. TODO: replace with real
+// skill/requirement matching once the match system exists.
+export function computeMatchScoreStub(studentId: string, listingId: string): number {
+  const s = studentId + listingId;
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return 50 + (h % 51); // 50..100
+}
+
+// Format cents as a USD string, e.g. 1487 -> "$14.87".
+export function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export const MAJOR_TO_INDUSTRIES: Record<string, string[]> = {
   'Accounting': ['Finance', 'Government'],
   'Actuarial Science': ['Finance', 'Technology'],

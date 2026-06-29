@@ -64,6 +64,13 @@ create table internship_listings (
   status text default 'active' check (status in ('active', 'paused', 'closed')),
   application_deadline date,
   duration text,
+  -- Billing (see section 18: Employer Payment Plans)
+  pricing_model text check (pricing_model in ('ppj', 'ppa')),
+  applicant_quota int,                 -- PPJ estimate upper bound (informational, no cap)
+  applicant_count int not null default 0,  -- maintained by handle_new_application() trigger
+  cpa_cents int,                       -- group CPA snapshot at posting time
+  expires_at timestamptz,              -- derived from posting duration (does not affect price)
+  payment_status text not null default 'active' check (payment_status in ('pending', 'paid', 'active')),
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
@@ -106,6 +113,7 @@ create table applications (
   student_id uuid references students(id) on delete cascade not null,
   listing_id uuid references internship_listings(id) on delete cascade not null,
   status text default 'applied' check (status in ('applied', 'reviewed', 'interviewing', 'offered', 'rejected')),
+  match_score int check (match_score between 0 and 100),  -- stub; PPA bills only >= 70 (section 18)
   applied_at timestamptz default now() not null,
   updated_at timestamptz default now() not null,
   unique(student_id, listing_id)       -- prevent duplicate applications
@@ -651,3 +659,120 @@ create policy "Admins can view waitlist"
         and profiles.role = 'intern_first_admin'
     )
   );
+
+-- ============================================
+-- 18. EMPLOYER PAYMENT PLANS (PPJ / PPA)
+-- ============================================
+-- CPA (Cost-Per-Application) is a per–occupation-group benchmark anchored to a
+-- listing's industry and snapshotted onto the listing as cpa_cents at posting.
+-- PPJ (Pay Per Job): fixed upfront fee = median(estimated range) × CPA. The
+--   listing goes live only after Stripe payment succeeds. No applicant cap.
+-- PPA (Pay Per Application): no upfront charge; each completed application whose
+--   match_score >= 70 accrues cpa_cents, tallied and invoiced monthly. No cap.
+-- The pricing columns on internship_listings are defined inline above.
+-- NOTE: the match threshold (70) below MUST stay in sync with
+--       PPA_MATCH_THRESHOLD in app/src/lib/constants.ts.
+
+-- Stripe customer per employer
+create table employer_billing (
+  id uuid primary key default gen_random_uuid(),
+  employer_id uuid references employers(id) on delete cascade not null unique,
+  stripe_customer_id text,
+  default_payment_method text,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+create index idx_employer_billing_employer on employer_billing(employer_id);
+
+alter table employer_billing enable row level security;
+
+create policy "Employers read own billing"
+  on employer_billing for select to authenticated
+  using (employer_id in (select id from employers where user_id = auth.uid()));
+
+create trigger set_employer_billing_updated_at
+  before update on employer_billing
+  for each row execute function update_updated_at();
+
+-- Record of every Stripe charge (PPJ upfront receipts + monthly PPA invoices)
+create table listing_payments (
+  id uuid primary key default gen_random_uuid(),
+  employer_id uuid references employers(id) on delete cascade not null,
+  listing_id uuid references internship_listings(id) on delete set null,
+  type text not null check (type in ('ppj_upfront', 'ppa_monthly')),
+  stripe_ref text,
+  amount_cents int not null default 0,
+  status text not null default 'pending' check (status in ('pending', 'paid', 'failed')),
+  applicant_quota int,
+  duration_days int,
+  billing_period date,
+  created_at timestamptz default now() not null
+);
+
+create index idx_listing_payments_employer on listing_payments(employer_id, created_at desc);
+create index idx_listing_payments_listing on listing_payments(listing_id);
+
+alter table listing_payments enable row level security;
+
+create policy "Employers read own payments"
+  on listing_payments for select to authenticated
+  using (employer_id in (select id from employers where user_id = auth.uid()));
+
+-- PPA metering ledger: one row per chargeable applicant
+create table applicant_charges (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  employer_id uuid references employers(id) on delete cascade not null,
+  application_id uuid references applications(id) on delete cascade not null unique,
+  billing_period date not null,
+  amount_cents int not null,
+  invoiced boolean not null default false,
+  listing_payment_id uuid references listing_payments(id) on delete set null,
+  created_at timestamptz default now() not null
+);
+
+create index idx_applicant_charges_employer on applicant_charges(employer_id, billing_period);
+create index idx_applicant_charges_uninvoiced on applicant_charges(employer_id) where invoiced = false;
+
+alter table applicant_charges enable row level security;
+
+create policy "Employers read own charges"
+  on applicant_charges for select to authenticated
+  using (employer_id in (select id from employers where user_id = auth.uid()));
+
+-- Count applicants and meter qualifying PPA applications. Security-definer so it
+-- runs regardless of the inserting client's RLS scope. No cap → no auto-close.
+create or replace function handle_new_application()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_model       text;
+  v_cpa         int;
+  v_employer_id uuid;
+begin
+  select pricing_model, cpa_cents, employer_id
+    into v_model, v_cpa, v_employer_id
+  from internship_listings
+  where id = new.listing_id;
+
+  update internship_listings
+    set applicant_count = applicant_count + 1
+  where id = new.listing_id;
+
+  if v_model = 'ppa' and coalesce(new.match_score, 0) >= 70 then
+    insert into applicant_charges (listing_id, employer_id, application_id, billing_period, amount_cents)
+    values (new.listing_id, v_employer_id, new.id, date_trunc('month', now())::date, coalesce(v_cpa, 1609))
+    on conflict (application_id) do nothing;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger on_application_created
+  after insert on applications
+  for each row execute function handle_new_application();

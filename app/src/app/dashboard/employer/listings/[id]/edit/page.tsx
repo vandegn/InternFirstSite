@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase, getEmployerByUserId, getListingById, updateListing } from '@/lib/supabase';
-import { INDUSTRIES, DURATIONS } from '@/lib/constants';
+import { INDUSTRIES, DURATIONS, formatCents } from '@/lib/constants';
 
 export default function EditListingPage() {
   const router = useRouter();
@@ -26,6 +26,10 @@ export default function EditListingPage() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  // Billing (read-only)
+  const [pricingModel, setPricingModel] = useState<'ppj' | 'ppa' | null>(null);
+  const [applicantCount, setApplicantCount] = useState(0);
+  const [cpaCents, setCpaCents] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchListing() {
@@ -54,6 +58,9 @@ export default function EditListingPage() {
         setDuration(listing.duration || '');
         setStatus(listing.status || 'active');
         setApplicationDeadline(listing.application_deadline || '');
+        setPricingModel(listing.pricing_model ?? null);
+        setApplicantCount(listing.applicant_count ?? 0);
+        setCpaCents(listing.cpa_cents ?? null);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -139,6 +146,19 @@ export default function EditListingPage() {
         </div>
         <h1>Edit Listing</h1>
         <p className="auth-subtitle">Update your internship listing details.</p>
+
+        {pricingModel && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '16px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              {pricingModel === 'ppj' ? 'Pay Per Job' : 'Pay Per Applicant'}
+            </span>
+            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+              {pricingModel === 'ppa' && cpaCents != null
+                ? `${applicantCount} applications · ${formatCents(cpaCents)}/qualifying`
+                : `${applicantCount} applications`}
+            </span>
+          </div>
+        )}
 
         {error && <div className="auth-error" style={{ display: 'block' }}>{error}</div>}
 

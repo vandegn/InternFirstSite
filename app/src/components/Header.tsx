@@ -30,24 +30,25 @@ export default function Header() {
                 <Link
                   href={link.href}
                   className={pathname === link.href ? 'active' : ''}
+                  onClick={() => setMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               </li>
             ))}
           </ul>
+          <div className="header-actions">
+            <Link href="/waitlist" className="btn-waitlist" onClick={() => setMenuOpen(false)}>
+              Join Waitlist
+            </Link>
+            <Link href="/login" className="btn-login" onClick={() => setMenuOpen(false)}>
+              Login
+            </Link>
+            <Link href="/register" className="btn-register" onClick={() => setMenuOpen(false)}>
+              Register
+            </Link>
+          </div>
         </nav>
-        <div className="header-actions">
-          <Link href="/waitlist" className="btn-waitlist">
-            Join Waitlist
-          </Link>
-          <Link href="/login" className="btn-login">
-            Login
-          </Link>
-          <Link href="/register" className="btn-register">
-            Register
-          </Link>
-        </div>
         <button
           className={`mobile-menu-toggle${menuOpen ? ' active' : ''}`}
           aria-label="Toggle menu"

@@ -35,6 +35,18 @@ export default function WaitlistPage() {
       return;
     }
 
+    // Notify the team of the new signup. Best-effort — a failed email
+    // shouldn't block someone who is already on the waitlist.
+    try {
+      await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, email, role }),
+      });
+    } catch (err) {
+      console.error('Failed to send waitlist notification:', err);
+    }
+
     setStatus('success');
     setFullName('');
     setEmail('');

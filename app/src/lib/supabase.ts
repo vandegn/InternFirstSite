@@ -11,6 +11,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
 export const DASHBOARD_ROUTES: Record<string, string> = {
   student: '/dashboard/student',
   employer: '/dashboard/employer',
+  intern_first_admin: '/dashboard/admin',
 };
 
 export async function getProfile(userId: string) {
@@ -1485,6 +1486,29 @@ export async function joinWaitlist(opts: {
     role: opts.role,
   });
   return { error };
+}
+
+export type WaitlistEntry = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: 'student' | 'employer' | 'other' | null;
+  created_at: string;
+};
+
+// Reads every waitlist signup, newest first. RLS restricts this to profiles
+// with role 'intern_first_admin' — non-admins get an empty result.
+export async function getWaitlist(): Promise<WaitlistEntry[]> {
+  const { data, error } = await supabase
+    .from('waitlist')
+    .select('id, email, full_name, role, created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to load waitlist:', error);
+    return [];
+  }
+  return (data as WaitlistEntry[]) || [];
 }
 
 async function employerUserId(employerId: string): Promise<string | undefined> {

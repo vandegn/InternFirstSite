@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase, getProfile, DASHBOARD_ROUTES } from '@/lib/supabase';
 
 const navLinks = [
   { href: '/about', label: 'About' },
@@ -13,11 +14,28 @@ const navLinks = [
 export default function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoHref, setLogoHref] = useState('/');
+
+  useEffect(() => {
+    let active = true;
+    async function resolveLogoHref() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const profile = await getProfile(user.id);
+      if (active && profile?.role) {
+        setLogoHref(DASHBOARD_ROUTES[profile.role] || '/');
+      }
+    }
+    resolveLogoHref();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <header className="header">
       <div className="header-inner">
-        <Link href="/" className="logo">
+        <Link href={logoHref} className="logo">
           <img
             src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png"
             alt="InternFirst"

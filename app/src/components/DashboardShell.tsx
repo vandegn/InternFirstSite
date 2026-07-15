@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase, getProfile, getUnreadCount } from '@/lib/supabase';
+import { supabase, getProfile, getUnreadCount, DASHBOARD_ROUTES } from '@/lib/supabase';
 import NotificationBell from './NotificationBell';
 
 type NavItem = {
@@ -155,7 +155,10 @@ export default function DashboardShell({ children, role }: { children: React.Rea
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    router.replace('/login');
+    // Land on the public home page. A single navigation (no push/replace race)
+    // means the Back button behaves normally instead of bouncing off a
+    // protected /dashboard/* route.
+    router.replace('/');
   }
 
   const navItems = getNavForRole(role);
@@ -167,7 +170,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
       <header className="dash-header">
         <div className="dash-header-inner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
-            <Link href="/" className="logo">
+            <Link href={DASHBOARD_ROUTES[role] || '/'} className="logo">
               <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
             </Link>
             <span className="portal-label">{ROLE_LABELS[role] || 'Dashboard'}</span>

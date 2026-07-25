@@ -80,7 +80,7 @@ export default function RegisterPage() {
         metadata.companyDescription = companyDescription;
       }
 
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -90,6 +90,15 @@ export default function RegisterPage() {
       });
 
       if (authError) throw authError;
+
+      // Supabase does not error on duplicate emails (to prevent email
+      // enumeration). Instead it returns a user with an empty identities
+      // array — that's how we detect an email that's already registered.
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setError('An account with this email already exists. Try logging in instead.');
+        setLoading(false);
+        return;
+      }
 
       // Redirect to verify-email page
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);

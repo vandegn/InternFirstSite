@@ -113,7 +113,7 @@ create table applications (
   student_id uuid references students(id) on delete cascade not null,
   listing_id uuid references internship_listings(id) on delete cascade not null,
   status text default 'applied' check (status in ('applied', 'reviewed', 'interviewing', 'offered', 'rejected')),
-  match_score int check (match_score between 0 and 100),  -- stub; PPA bills only >= 70 (section 18)
+  match_score int check (match_score between 0 and 100),  -- weighted profile match (app/src/lib/matching.ts); null if scoring failed; PPA bills only >= 70 (section 18)
   applied_at timestamptz default now() not null,
   updated_at timestamptz default now() not null,
   unique(student_id, listing_id)       -- prevent duplicate applications

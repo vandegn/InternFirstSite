@@ -15,6 +15,7 @@ type Application = {
   id: string;
   status: string;
   stage_id: string | null;
+  match_score: number | null;
   applied_at: string;
   updated_at: string;
   resume_id: string | null;
@@ -50,6 +51,13 @@ type Application = {
 };
 
 const FALLBACK_PILL = { bg: '#e0e7ff', color: '#3730a3', label: 'Applied' };
+
+// Match score badge colors: strong (>=70, the PPA-qualifying threshold), fair, weak.
+function matchPill(score: number) {
+  if (score >= 70) return { bg: '#dcfce7', color: '#166534' };
+  if (score >= 40) return { bg: '#fef3c7', color: '#92400e' };
+  return { bg: '#f3f4f6', color: '#4b5563' };
+}
 
 export default function EmployerApplications() {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -228,6 +236,18 @@ export default function EmployerApplications() {
                       }}>
                         {pillLabel}
                       </span>
+                      {app.match_score != null && (
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          padding: '2px 10px',
+                          borderRadius: '10px',
+                          background: matchPill(app.match_score).bg,
+                          color: matchPill(app.match_score).color,
+                        }}>
+                          {app.match_score}% match
+                        </span>
+                      )}
                     </div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                       Applied for: {app.listing.title}

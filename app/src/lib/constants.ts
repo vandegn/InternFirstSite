@@ -136,16 +136,6 @@ export function computePpjPriceCents(industry: string | null | undefined, range:
   return Math.round(rangeMedian(range) * cpaForIndustry(industry));
 }
 
-// Stub match scorer. Currently returns 100 so every application qualifies — this
-// is a temporary testing default while real matching doesn't exist yet.
-// NOTE: applications scoring below PPA_MATCH_THRESHOLD do NOT get billed under
-// PPA (the handle_new_application trigger skips them), so a real scorer that
-// returns sub-threshold values will produce uncharged applications by design.
-// TODO: replace with real skill/requirement matching.
-export function computeMatchScoreStub(studentId: string, listingId: string): number {
-  return 100;
-}
-
 // Format cents as a USD string, e.g. 1487 -> "$14.87".
 export function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;

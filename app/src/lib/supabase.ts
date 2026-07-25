@@ -1,6 +1,6 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
-import { computeMatchScoreStub } from '@/lib/constants';
+import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -391,10 +391,49 @@ async function notifyEmployerOfApplication(listingId: string) {
   }
 }
 
+// Fetches the student's profile signal + the listing and runs the weighted
+// scorer in src/lib/matching.ts. Returns null if the listing can't be loaded
+// (a null match_score is never billed under PPA, so failure errs unbilled).
+async function computeMatchScoreForApplication(studentId: string, listingId: string): Promise<number | null> {
+  try {
+    const [listingRes, studentRes, skillsRes, expRes, surveyRes] = await Promise.all([
+      supabase
+        .from('internship_listings')
+        .select('title, description, requirements, key_responsibilities, industry, is_remote, is_hybrid, duration')
+        .eq('id', listingId)
+        .single(),
+      supabase.from('students').select('major, bio').eq('id', studentId).single(),
+      supabase.from('student_skills').select('name').eq('student_id', studentId),
+      supabase.from('student_experiences').select('type, title, description, technologies').eq('student_id', studentId),
+      supabase
+        .from('career_survey_responses')
+        .select('industries, work_environment, preferred_duration, skills')
+        .eq('student_id', studentId)
+        .maybeSingle(),
+    ]);
+    if (listingRes.error || !listingRes.data) return null;
+
+    const survey = surveyRes.data ?? null;
+    const skillNames = (skillsRes.data ?? []).map((s) => s.name);
+    const student: MatchStudentInput = {
+      major: studentRes.data?.major ?? null,
+      bio: studentRes.data?.bio ?? null,
+      skills: [...new Set([...skillNames, ...(survey?.skills ?? [])])],
+      experiences: expRes.data ?? [],
+      survey,
+    };
+    return computeMatchScore(student, listingRes.data);
+  } catch (e) {
+    console.error('[computeMatchScoreForApplication] failed', e);
+    return null;
+  }
+}
+
 export async function applyToListing(studentId: string, listingId: string) {
+  const matchScore = await computeMatchScoreForApplication(studentId, listingId);
   const { data, error } = await supabase
     .from('applications')
-    .insert({ student_id: studentId, listing_id: listingId, match_score: computeMatchScoreStub(studentId, listingId) })
+    .insert({ student_id: studentId, listing_id: listingId, match_score: matchScore })
     .select()
     .single();
   if (error) throw error;
@@ -409,6 +448,7 @@ export async function getEmployerApplications(employerId: string) {
       id,
       status,
       stage_id,
+      match_score,
       applied_at,
       updated_at,
       resume_id,
@@ -821,7 +861,8 @@ export async function getEmployerListingsWithStats(employerId: string) {
 }
 
 export async function applyToListingWithResume(studentId: string, listingId: string, resumeId: string | null) {
-  const row: any = { student_id: studentId, listing_id: listingId, match_score: computeMatchScoreStub(studentId, listingId) };
+  const matchScore = await computeMatchScoreForApplication(studentId, listingId);
+  const row: any = { student_id: studentId, listing_id: listingId, match_score: matchScore };
   if (resumeId) row.resume_id = resumeId;
   const { data, error } = await supabase
     .from('applications')

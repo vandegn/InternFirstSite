@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase, getProfile, getStudentByUserId, getStudentEeo, DASHBOARD_ROUTES } from '@/lib/supabase';
+import { supabase, getProfile, ensureProfileFromMetadata, getStudentByUserId, getStudentEeo, DASHBOARD_ROUTES } from '@/lib/supabase';
 import DashboardShell from '@/components/DashboardShell';
 
 const STUDENT_WELCOME_PATH = '/dashboard/student/welcome';
@@ -22,7 +22,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
 
-      const profile = await getProfile(user.id);
+      let profile = await getProfile(user.id);
+
+      // Self-heal: the profile row is normally created by /auth/callback, but
+      // accounts confirmed via a password-recovery link never hit that route.
+      // Signup stashes everything needed in user_metadata, so rebuild from it.
+      if (!profile) {
+        try {
+          if (await ensureProfileFromMetadata(supabase, user)) {
+            profile = await getProfile(user.id);
+          }
+        } catch (e) {
+          console.error('[DashboardLayout] profile self-heal failed', e);
+        }
+      }
 
       if (!profile) {
         router.replace('/register');

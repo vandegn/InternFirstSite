@@ -83,6 +83,48 @@ export async function createProfileAndRoleData(
   }
 }
 
+// Ensures a profile + role row exists for an authenticated user, rebuilding
+// them from the user_metadata captured at signup. The profile is normally
+// created by /auth/callback when the confirmation link is clicked, but some
+// accounts never hit that route (e.g. the email got confirmed via a
+// password-recovery link instead) — for those, this self-heals on next login.
+// Returns true if a profile now exists, false if metadata has no role to
+// rebuild from. Throws if creation fails.
+export async function ensureProfileFromMetadata(
+  client: SupabaseClient,
+  user: { id: string; email?: string; user_metadata?: Record<string, string> }
+): Promise<boolean> {
+  const metadata = user.user_metadata ?? {};
+  const role = metadata.role;
+  if (!role) return false;
+
+  const { data: existing } = await client
+    .from('profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (existing) return true;
+
+  const roleData: RoleData = {};
+  if (role === 'student') {
+    roleData.major = metadata.major;
+    roleData.graduationYear = metadata.graduationYear;
+  } else if (role === 'employer') {
+    roleData.companyName = metadata.companyName;
+    roleData.website = metadata.website;
+    roleData.companyDescription = metadata.companyDescription;
+  }
+
+  await createProfileAndRoleData(client, user.id, {
+    role,
+    fullName: metadata.fullName || '',
+    email: user.email || '',
+    phone: metadata.phone,
+    roleData,
+  });
+  return true;
+}
+
 export function isEduEmail(email: string): boolean {
   return email.trim().toLowerCase().endsWith('.edu');
 }

@@ -19,6 +19,7 @@ type Listing = {
   requirements: string | null;
   key_responsibilities: string | null;
   industry: string;
+  status: string;
   created_at: string;
   application_deadline: string | null;
   duration: string | null;
@@ -260,6 +261,21 @@ export default function InternshipDetail() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: 'var(--bg-secondary, #f5f5f5)', borderRadius: '10px', flex: 1 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               <span style={{ fontWeight: 600 }}>Status: {statusLabels[applicationStatus] || applicationStatus}</span>
+            </div>
+            <button
+              onClick={handleMessageEmployer}
+              disabled={messageSending}
+              style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '10px', border: '1.5px solid var(--primary)', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Message Employer
+            </button>
+          </div>
+        ) : listing.status !== 'active' || deadlineState(listing.application_deadline) === 'expired' ? (
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: 'var(--bg-secondary, #f5f5f5)', borderRadius: '10px', flex: 1 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span style={{ fontWeight: 600 }}>This listing is no longer accepting applications.</span>
             </div>
             <button
               onClick={handleMessageEmployer}

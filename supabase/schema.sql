@@ -753,9 +753,11 @@ declare
   v_model       text;
   v_cpa         int;
   v_employer_id uuid;
+  v_status      text;
+  v_deadline    date;
 begin
-  select pricing_model, cpa_cents, employer_id
-    into v_model, v_cpa, v_employer_id
+  select pricing_model, cpa_cents, employer_id, status, application_deadline
+    into v_model, v_cpa, v_employer_id, v_status, v_deadline
   from internship_listings
   where id = new.listing_id;
 
@@ -763,7 +765,13 @@ begin
     set applicant_count = applicant_count + 1
   where id = new.listing_id;
 
-  if v_model = 'ppa' and coalesce(new.match_score, 0) >= 70 then
+  -- Only bill live listings: expired/paused/closed listings never charge, even
+  -- if a direct-link application slips in before the daily close-expired cron
+  -- (supabase/migrations/20260726_close_expired_listings.sql) flips them.
+  if v_model = 'ppa'
+     and v_status = 'active'
+     and (v_deadline is null or v_deadline >= current_date)
+     and coalesce(new.match_score, 0) >= 70 then
     insert into applicant_charges (listing_id, employer_id, application_id, billing_period, amount_cents)
     values (new.listing_id, v_employer_id, new.id, date_trunc('month', now())::date, coalesce(v_cpa, 1609))
     on conflict (application_id) do nothing;

@@ -67,7 +67,23 @@ const LISTING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   active: { bg: '#d1fae5', color: '#065f46' },
   paused: { bg: '#fef3c7', color: '#92400e' },
   closed: { bg: '#fee2e2', color: '#991b1b' },
+  expired: { bg: '#ffedd5', color: '#9a3412' },
 };
+
+// Active listings past their application deadline are invisible to students
+// (getActiveListings filters them out) and get closed by the daily
+// close-expired-listings cron; surface them as "Expired" rather than "Active"
+// so employers aren't looking at a green badge on a dead listing.
+function displayStatus(listing: { status: string; application_deadline: string | null }): string {
+  if (
+    listing.status === 'active' &&
+    listing.application_deadline &&
+    new Date(listing.application_deadline).getTime() < Date.now()
+  ) {
+    return 'expired';
+  }
+  return listing.status;
+}
 
 type Interview = {
   id: string;
@@ -237,7 +253,7 @@ export default function PostedJobsPage() {
   }
 
   const filteredListings = filterStatus
-    ? listings.filter(l => l.status === filterStatus)
+    ? listings.filter(l => displayStatus(l) === filterStatus)
     : listings;
 
   const selectedListing = listings.find(l => l.id === selectedId);
@@ -331,7 +347,7 @@ export default function PostedJobsPage() {
             }}>+ New</Link>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
-            {['', 'active', 'paused', 'closed'].map(s => (
+            {['', 'active', 'expired', 'paused', 'closed'].map(s => (
               <button
                 key={s}
                 onClick={() => setFilterStatus(s)}
@@ -357,7 +373,8 @@ export default function PostedJobsPage() {
           ) : (
             filteredListings.map(listing => {
               const isSelected = listing.id === selectedId;
-              const statusColors = LISTING_STATUS_COLORS[listing.status] || LISTING_STATUS_COLORS.active;
+              const shownStatus = displayStatus(listing);
+              const statusColors = LISTING_STATUS_COLORS[shownStatus] || LISTING_STATUS_COLORS.active;
               return (
                 <div
                   key={listing.id}
@@ -377,7 +394,7 @@ export default function PostedJobsPage() {
                       fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
                       background: statusColors.bg, color: statusColors.color, flexShrink: 0,
                     }}>
-                      {listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
+                      {shownStatus.charAt(0).toUpperCase() + shownStatus.slice(1)}
                     </span>
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
@@ -418,6 +435,9 @@ export default function PostedJobsPage() {
                 {selectedListing.application_deadline && (
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
                     Deadline: {new Date(selectedListing.application_deadline).toLocaleDateString()}
+                    {displayStatus(selectedListing) === 'expired' && (
+                      <span style={{ color: '#9a3412', fontWeight: 600 }}> (expired — hidden from students)</span>
+                    )}
                   </p>
                 )}
               </div>

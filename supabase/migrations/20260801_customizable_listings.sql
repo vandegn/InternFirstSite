@@ -19,6 +19,13 @@
 --     an int `position`, RLS scoped through internship_listings -> employers.
 --
 -- Run this in the Supabase SQL Editor.
+--
+-- !! FOLLOW-UP REQUIRED: 20260801_fix_question_table_collision.sql
+-- The `create table if not exists` for listing_questions and
+-- application_answers below was a SILENT NO-OP on the existing database —
+-- both names were already taken by earlier, never-wired-up tables with a
+-- different shape. Run the fix migration after this one. A brand-new database
+-- is unaffected and can skip it.
 
 -- ============================================
 -- 1. NEW COLUMNS ON internship_listings

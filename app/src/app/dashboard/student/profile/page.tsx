@@ -9,7 +9,7 @@ import {
   getStudentExperiences, addStudentExperience, updateStudentExperience, deleteStudentExperience,
   getStudentOrganizations, addStudentOrganization, updateStudentOrganization, deleteStudentOrganization,
 } from '@/lib/supabase';
-import { MAJORS, SKILLS } from '@/lib/constants';
+import { MAJORS } from '@/lib/constants';
 
 interface Resume { id: string; name: string; file_url: string; uploaded_at: string; }
 interface Skill { id: string; name: string; is_custom: boolean; }
@@ -87,9 +87,13 @@ export default function StudentProfile() {
 
   // Skills
   const [skillSearch, setSkillSearch] = useState('');
+  const [debouncedSkillSearch, setDebouncedSkillSearch] = useState('');
   const [showSkillDropdown, setShowSkillDropdown] = useState(false);
   const [customSkillInput, setCustomSkillInput] = useState('');
   const skillDropdownRef = useRef<HTMLDivElement>(null);
+  // Autocomplete catalog (loaded lazily from /skills.json on first edit)
+  const [skillCatalog, setSkillCatalog] = useState<string[]>([]);
+  const skillCatalogLoaded = useRef(false);
 
   // Resume upload
   const [resumeName, setResumeName] = useState('');
@@ -160,6 +164,23 @@ export default function StudentProfile() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Lazy-load the skill autocomplete catalog the first time the user edits skills.
+  // Kept out of the JS bundle (public/skills.json) so it doesn't bloat every page.
+  useEffect(() => {
+    if (!editingSkills || skillCatalogLoaded.current) return;
+    skillCatalogLoaded.current = true;
+    fetch('/skills.json')
+      .then((r) => r.json())
+      .then((data: string[]) => setSkillCatalog(data))
+      .catch(() => { skillCatalogLoaded.current = false; });
+  }, [editingSkills]);
+
+  // Debounce the search input so filtering stays snappy as the catalog grows.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSkillSearch(skillSearch), 120);
+    return () => clearTimeout(t);
+  }, [skillSearch]);
 
   function formatDate(dateStr?: string) {
     if (!dateStr) return '';
@@ -237,9 +258,14 @@ export default function StudentProfile() {
 
   // ---- Skills handlers ----
   const existingSkillNames = skills.map((s) => s.name.toLowerCase());
-  const filteredSkills = SKILLS.filter(
-    (s) => s.toLowerCase().includes(skillSearch.toLowerCase()) && !existingSkillNames.includes(s.toLowerCase())
-  );
+  const skillQuery = debouncedSkillSearch.toLowerCase().trim();
+  const filteredSkills = skillCatalog
+    .filter((s) => {
+      const lower = s.toLowerCase();
+      if (existingSkillNames.includes(lower)) return false;
+      return skillQuery === '' ? true : lower.includes(skillQuery);
+    })
+    .slice(0, 20);
 
   async function handleAddSkill(name: string, isCustom: boolean) {
     try {
@@ -804,7 +830,7 @@ export default function StudentProfile() {
                           overflowY: 'auto', background: '#fff', border: '1px solid var(--border)',
                           borderRadius: '8px', zIndex: 10, boxShadow: 'var(--shadow-md)',
                         }}>
-                          {filteredSkills.slice(0, 20).map((s) => (
+                          {filteredSkills.map((s) => (
                             <div key={s} onClick={() => handleAddSkill(s, false)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem' }}
                               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}

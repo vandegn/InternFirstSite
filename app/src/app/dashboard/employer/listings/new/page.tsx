@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, createListing } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, createListing, setListingQuestions } from '@/lib/supabase';
+import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
 import {
   INDUSTRIES,
   DURATIONS,
@@ -59,6 +60,7 @@ export default function NewListingPage() {
   const [industry, setIndustry] = useState('');
   const [duration, setDuration] = useState('');
   const [applicationDeadline, setApplicationDeadline] = useState('');
+  const [questions, setQuestions] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [companyName, setCompanyName] = useState('');
@@ -151,6 +153,8 @@ export default function NewListingPage() {
           payment_status: 'pending',
         });
 
+        await setListingQuestions(listing.id, questions);
+
         const res = await fetch('/api/billing/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -166,7 +170,7 @@ export default function NewListingPage() {
 
       // PPA — active immediately, billed monthly per qualifying application.
       const expiresAt = new Date(Date.now() + postingDays * 86400_000).toISOString();
-      await createListing({
+      const ppaListing = await createListing({
         ...base,
         pricing_model: 'ppa',
         cpa_cents: cpaCents,
@@ -174,6 +178,8 @@ export default function NewListingPage() {
         status: 'active',
         payment_status: 'active',
       });
+
+      await setListingQuestions(ppaListing.id, questions);
 
       router.push('/dashboard/employer/posted-jobs');
     } catch (err: any) {
@@ -363,6 +369,8 @@ export default function NewListingPage() {
                 style={{ width: '100%', resize: 'vertical' }}
               />
             </div>
+
+            <ListingQuestionsEditor questions={questions} onChange={setQuestions} />
 
             {/* ── Posting Plan ── */}
             <div className="form-group" style={{ marginTop: '8px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
@@ -590,6 +598,18 @@ export default function NewListingPage() {
               <div style={{ marginBottom: '32px' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Company Website</h3>
                 <span style={{ color: 'var(--primary)' }}>{companyWebsite}</span>
+              </div>
+            )}
+
+            {/* Application Questions */}
+            {questions.some((q) => q.trim()) && (
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Application Questions</h3>
+                <ol style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {questions.filter((q) => q.trim()).map((q, i) => (
+                    <li key={i}>{q}</li>
+                  ))}
+                </ol>
               </div>
             )}
 

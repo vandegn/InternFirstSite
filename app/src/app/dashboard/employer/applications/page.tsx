@@ -24,6 +24,11 @@ type Application = {
     name: string;
     file_url: string;
   } | null;
+  answers: {
+    id: string;
+    question_text: string;
+    answer: string;
+  }[];
   listing: {
     id: string;
     title: string;
@@ -79,6 +84,7 @@ export default function EmployerApplications() {
         ...app,
         listing: Array.isArray(app.listing) ? app.listing[0] : app.listing,
         resume: Array.isArray(app.resume) ? app.resume[0] || null : app.resume,
+        answers: app.answers ?? [],
         stage: Array.isArray(app.stage) ? app.stage[0] || null : (app.stage ?? null),
         student: (() => {
           const s = Array.isArray(app.student) ? app.student[0] : app.student;
@@ -308,6 +314,19 @@ export default function EmployerApplications() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             {app.resume.name}
                           </a>
+                        </div>
+                      </div>
+                    )}
+                    {app.answers.length > 0 && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Application Questions</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                          {app.answers.map((ans) => (
+                            <div key={ans.id}>
+                              <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>{ans.question_text}</p>
+                              <p style={{ fontSize: '0.9rem', margin: '4px 0 0', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ans.answer}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}

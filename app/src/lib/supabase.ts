@@ -195,6 +195,49 @@ export async function createListing(listing: {
   return data;
 }
 
+// ---- Custom Application Questions ----
+
+export type ListingQuestion = {
+  id: string;
+  listing_id: string;
+  question: string;
+  position: number;
+};
+
+// Questions an employer attached to a listing, in display order.
+export async function getListingQuestions(listingId: string): Promise<ListingQuestion[]> {
+  const { data, error } = await supabase
+    .from('listing_questions')
+    .select('id, listing_id, question, position')
+    .eq('listing_id', listingId)
+    .order('position', { ascending: true });
+  if (error) return [];
+  return (data ?? []) as ListingQuestion[];
+}
+
+// Replaces the full set of questions on a listing. Blank questions are dropped.
+// Called on both listing creation and edit. Deleting a question cascades any
+// stored answers' question_id to null (answers keep their text snapshot).
+export async function setListingQuestions(listingId: string, questions: string[]) {
+  const cleaned = questions.map((q) => q.trim()).filter((q) => q.length > 0);
+
+  const { error: delError } = await supabase
+    .from('listing_questions')
+    .delete()
+    .eq('listing_id', listingId);
+  if (delError) throw delError;
+
+  if (cleaned.length === 0) return;
+
+  const rows = cleaned.map((question, position) => ({
+    listing_id: listingId,
+    question,
+    position,
+  }));
+  const { error } = await supabase.from('listing_questions').insert(rows);
+  if (error) throw error;
+}
+
 export async function getEmployerListings(employerId: string, page = 1, pageSize = 10) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -495,6 +538,7 @@ export async function getEmployerApplications(employerId: string) {
       updated_at,
       resume_id,
       resume:student_resumes(id, name, file_url),
+      answers:application_answers(id, question_text, answer),
       listing:internship_listings!inner(id, title, employer_id),
       stage:pipeline_stages(id, label, color_bg, color_text, position, stage_type),
       student:students!inner(
@@ -902,7 +946,18 @@ export async function getEmployerListingsWithStats(employerId: string) {
   }));
 }
 
-export async function applyToListingWithResume(studentId: string, listingId: string, resumeId: string | null) {
+export type ApplicationAnswerInput = {
+  question_id: string;
+  question_text: string;
+  answer: string;
+};
+
+export async function applyToListingWithResume(
+  studentId: string,
+  listingId: string,
+  resumeId: string | null,
+  answers: ApplicationAnswerInput[] = []
+) {
   const matchScore = await computeMatchScoreForApplication(studentId, listingId);
   const row: any = { student_id: studentId, listing_id: listingId, match_score: matchScore };
   if (resumeId) row.resume_id = resumeId;
@@ -912,6 +967,22 @@ export async function applyToListingWithResume(studentId: string, listingId: str
     .select()
     .single();
   if (error) throw error;
+
+  // Persist answers to the listing's custom questions. The DB CHECK constraint
+  // rejects blank answers, so callers must validate before submitting.
+  if (answers.length > 0) {
+    const answerRows = answers.map((a) => ({
+      application_id: data.id,
+      question_id: a.question_id,
+      question_text: a.question_text,
+      answer: a.answer.trim(),
+    }));
+    const { error: answerError } = await supabase
+      .from('application_answers')
+      .insert(answerRows);
+    if (answerError) throw answerError;
+  }
+
   await notifyEmployerOfApplication(listingId);
   return data;
 }

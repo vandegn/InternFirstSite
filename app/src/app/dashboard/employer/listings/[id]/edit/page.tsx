@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, getListingById, updateListing } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, getListingById, updateListing, getListingQuestions, setListingQuestions } from '@/lib/supabase';
 import { INDUSTRIES, DURATIONS, formatCents } from '@/lib/constants';
+import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
 
 export default function EditListingPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function EditListingPage() {
   const [duration, setDuration] = useState('');
   const [status, setStatus] = useState('active');
   const [applicationDeadline, setApplicationDeadline] = useState('');
+  const [questions, setQuestions] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -46,6 +48,9 @@ export default function EditListingPage() {
         if (listing.employer_id !== employer.id) {
           throw new Error('You do not have permission to edit this listing.');
         }
+
+        const existingQuestions = await getListingQuestions(id);
+        setQuestions(existingQuestions.map((q) => q.question));
 
         setTitle(listing.title || '');
         setDescription(listing.description || '');
@@ -90,6 +95,8 @@ export default function EditListingPage() {
         duration: duration || null,
         application_deadline: applicationDeadline || null,
       });
+
+      await setListingQuestions(id, questions);
 
       router.push('/dashboard/employer');
     } catch (err: any) {
@@ -326,7 +333,9 @@ export default function EditListingPage() {
             />
           </div>
 
-          <button type="submit" className="btn-auth" disabled={loading}>
+          <ListingQuestionsEditor questions={questions} onChange={setQuestions} />
+
+          <button type="submit" className="btn-auth" disabled={loading} style={{ marginTop: '16px' }}>
             {loading ? 'Saving...' : 'Save Changes'}
           </button>
         </form>

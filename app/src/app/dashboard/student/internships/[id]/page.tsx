@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes, trackListingView } from '@/lib/supabase';
+import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes, trackListingView, getListingQuestions, type ListingQuestion } from '@/lib/supabase';
 import TestPostingBadge from '@/components/TestPostingBadge';
 import ReactMarkdown from 'react-markdown';
 
@@ -59,6 +59,8 @@ export default function InternshipDetail() {
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [messageSending, setMessageSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<ListingQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function fetchData() {
@@ -69,12 +71,14 @@ export default function InternshipDetail() {
       // Fire-and-forget view tracking on page load
       trackListingView(id, user.id).catch(() => {});
 
-      const [listingData, student] = await Promise.all([
+      const [listingData, student, listingQuestions] = await Promise.all([
         getListingById(id),
         getStudentByUserId(user.id),
+        getListingQuestions(id),
       ]);
 
       if (listingData) setListing(listingData as Listing);
+      setQuestions(listingQuestions);
       if (student) {
         setStudentId(student.id);
         const [status, studentResumes] = await Promise.all([
@@ -107,10 +111,27 @@ export default function InternshipDetail() {
 
   async function handleApply() {
     if (!studentId) return;
+
+    // Every custom question must be answered — blank answers are not allowed.
+    const unanswered = questions.filter((q) => !(answers[q.id] ?? '').trim());
+    if (unanswered.length > 0) {
+      setError(
+        questions.length === 1
+          ? 'Please answer the question before submitting.'
+          : 'Please answer all questions before submitting.'
+      );
+      return;
+    }
+
     setApplying(true);
     setError(null);
     try {
-      await applyToListingWithResume(studentId, id, selectedResumeId);
+      const answerInputs = questions.map((q) => ({
+        question_id: q.id,
+        question_text: q.question,
+        answer: answers[q.id].trim(),
+      }));
+      await applyToListingWithResume(studentId, id, selectedResumeId, answerInputs);
       setApplicationStatus('applied');
       setShowApplyForm(false);
     } catch (err: unknown) {
@@ -313,6 +334,45 @@ export default function InternshipDetail() {
               <div style={{ background: 'var(--bg-secondary, #f9fafb)', borderRadius: 'var(--radius, 12px)', padding: '20px', border: '1px solid var(--border)' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Submit Application</h4>
 
+                {questions.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 500, display: 'block', marginBottom: '8px' }}>
+                      Questions from the employer
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {questions.map((q, i) => {
+                        const val = answers[q.id] ?? '';
+                        const isBlank = !val.trim();
+                        return (
+                          <div key={q.id}>
+                            <label
+                              htmlFor={`q-${q.id}`}
+                              style={{ fontSize: '0.88rem', fontWeight: 500, display: 'block', marginBottom: '6px' }}
+                            >
+                              {i + 1}. {q.question} <span style={{ color: '#e53e3e' }}>*</span>
+                            </label>
+                            <textarea
+                              id={`q-${q.id}`}
+                              required
+                              rows={3}
+                              value={val}
+                              onChange={(e) =>
+                                setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                              }
+                              placeholder="Your answer..."
+                              style={{
+                                width: '100%',
+                                resize: 'vertical',
+                                border: error && isBlank ? '1.5px solid #e53e3e' : undefined,
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {resumes.length > 0 ? (
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ fontSize: '0.85rem', fontWeight: 500, display: 'block', marginBottom: '8px' }}>Select a Resume</label>
@@ -400,7 +460,7 @@ export default function InternshipDetail() {
                     {applying ? 'Submitting...' : 'Submit Application'}
                   </button>
                   <button
-                    onClick={() => setShowApplyForm(false)}
+                    onClick={() => { setShowApplyForm(false); setError(null); }}
                     style={{ padding: '10px 20px', fontSize: '0.9rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                   >
                     Cancel

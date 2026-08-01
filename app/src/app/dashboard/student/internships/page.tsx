@@ -345,7 +345,7 @@ export default function BrowseInternships() {
                   top: 'calc(100% + 6px)',
                   left: 0,
                   minWidth: '140px',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: '1.5px solid var(--border)',
                   borderRadius: '10px',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
@@ -403,7 +403,7 @@ export default function BrowseInternships() {
                   top: 'calc(100% + 6px)',
                   left: 0,
                   minWidth: '140px',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: '1.5px solid var(--border)',
                   borderRadius: '10px',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
@@ -464,7 +464,7 @@ export default function BrowseInternships() {
                   top: 'calc(100% + 6px)',
                   left: 0,
                   minWidth: '160px',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: '1.5px solid var(--border)',
                   borderRadius: '10px',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
@@ -546,7 +546,7 @@ export default function BrowseInternships() {
                   top: 'calc(100% + 6px)',
                   right: 0,
                   width: '220px',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: '1.5px solid var(--border)',
                   borderRadius: '10px',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
@@ -765,7 +765,7 @@ export default function BrowseInternships() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 700,
-                        color: selectedId === listing.id ? '#fff' : 'var(--primary)',
+                        color: selectedId === listing.id ? 'var(--on-primary)' : 'var(--primary)',
                         fontSize: '1rem',
                         flexShrink: 0,
                       }}
@@ -805,8 +805,8 @@ export default function BrowseInternships() {
                         const state = deadlineState(listing.application_deadline);
                         if (state !== 'soon' && state !== 'expired') return null;
                         const styles = state === 'expired'
-                          ? { bg: '#fef2f2', color: '#b91c1c' }
-                          : { bg: '#fffbeb', color: '#b45309' };
+                          ? { bg: 'var(--danger-bg)', color: 'var(--danger-fg)' }
+                          : { bg: 'var(--warning-bg)', color: 'var(--chip-amber-ink)' };
                         return (
                           <span style={{
                             fontSize: '0.7rem', fontWeight: 600,
@@ -956,9 +956,9 @@ export default function BrowseInternships() {
                     const state = deadlineState(selectedListing.application_deadline);
                     const styles =
                       state === 'expired'
-                        ? { bg: '#fef2f2', color: '#b91c1c' }
+                        ? { bg: 'var(--danger-bg)', color: 'var(--danger-fg)' }
                         : state === 'soon'
-                        ? { bg: '#fffbeb', color: '#b45309' }
+                        ? { bg: 'var(--warning-bg)', color: 'var(--chip-amber-ink)' }
                         : { bg: 'var(--bg-secondary, #f5f5f5)', color: 'var(--text-secondary)' };
                     return (
                       <span style={{
@@ -987,7 +987,7 @@ export default function BrowseInternships() {
                       padding: '11px 28px',
                       borderRadius: '10px',
                       background: 'var(--primary)',
-                      color: '#fff',
+                      color: 'var(--on-primary)',
                       fontWeight: 600,
                       fontSize: '0.92rem',
                       textDecoration: 'none',
@@ -1049,7 +1049,7 @@ export default function BrowseInternships() {
                     gap: '12px',
                     padding: '16px',
                     borderRadius: '10px',
-                    background: 'var(--bg-secondary, #f9fafb)',
+                    background: 'var(--bg-secondary, var(--chip-neutral-bg))',
                     border: '1px solid var(--border)',
                   }}>
                     {selectedListing.employers?.logo_url ? (
@@ -1091,7 +1091,7 @@ export default function BrowseInternships() {
                       padding: '11px 28px',
                       borderRadius: '10px',
                       background: 'var(--primary)',
-                      color: '#fff',
+                      color: 'var(--on-primary)',
                       fontWeight: 600,
                       fontSize: '0.92rem',
                       textDecoration: 'none',

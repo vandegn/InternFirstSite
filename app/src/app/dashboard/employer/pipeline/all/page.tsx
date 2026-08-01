@@ -149,7 +149,7 @@ function PipelineAllInner() {
                 key={app.id}
                 onClick={() => setExpandedId(isExpanded ? null : app.id)}
                 style={{
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-sm)',
                   padding: 14,
@@ -183,7 +183,7 @@ function PipelineAllInner() {
                     onChange={(e) => moveApplication(app.id, e.target.value)}
                     style={{
                       padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)',
-                      fontSize: '0.82rem', background: '#fff',
+                      fontSize: '0.82rem', background: 'var(--surface)',
                     }}
                   >
                     {stages.map(s => (

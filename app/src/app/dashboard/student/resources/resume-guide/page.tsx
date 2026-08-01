@@ -63,12 +63,12 @@ export default function ResumeGuide() {
           <p style={pStyle}>Every bullet point should follow this formula: <strong>Action Verb + Task + Result/Impact</strong>. Quantify your impact whenever possible.</p>
 
           <div style={{ display: 'grid', gap: '12px', marginBottom: '16px' }}>
-            <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #fca5a5', background: 'rgba(220, 38, 38, 0.04)' }}>
-              <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '0.85rem' }}>Weak</span>
+            <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--danger-border)', background: 'rgba(220, 38, 38, 0.04)' }}>
+              <span style={{ color: 'var(--danger-accent)', fontWeight: 600, fontSize: '0.85rem' }}>Weak</span>
               <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Helped with social media for the marketing team</p>
             </div>
-            <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #bbf7d0', background: 'rgba(22, 101, 52, 0.04)' }}>
-              <span style={{ color: '#166534', fontWeight: 600, fontSize: '0.85rem' }}>Strong</span>
+            <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--success-border)', background: 'rgba(22, 101, 52, 0.04)' }}>
+              <span style={{ color: 'var(--success-fg)', fontWeight: 600, fontSize: '0.85rem' }}>Strong</span>
               <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Managed 3 social media accounts, increasing follower engagement by 45% over 8 weeks through data-driven content scheduling</p>
             </div>
           </div>

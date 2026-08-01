@@ -170,7 +170,7 @@ export default function LocationPicker({ value, onChange, required, disabled }: 
             style={{
               width: '100%',
               paddingRight: selected ? 30 : undefined,
-              borderColor: unverified ? '#d97706' : undefined,
+              borderColor: unverified ? 'var(--chip-amber-ink)' : undefined,
             }}
           />
           {selected && (
@@ -252,7 +252,7 @@ export default function LocationPicker({ value, onChange, required, disabled }: 
       )}
 
       {unverified ? (
-        <small style={{ color: '#b45309', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
+        <small style={{ color: 'var(--chip-amber-ink)', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
           This location predates city search. Pick it from the list to confirm it.
         </small>
       ) : (

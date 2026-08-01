@@ -219,7 +219,7 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
                     </a>
                   )}
                   {uploadError[question.id] && (
-                    <p style={{ color: '#b91c1c', fontSize: '0.78rem', margin: '6px 0 0' }}>{uploadError[question.id]}</p>
+                    <p style={{ color: 'var(--danger-fg)', fontSize: '0.78rem', margin: '6px 0 0' }}>{uploadError[question.id]}</p>
                   )}
                 </div>
               )}

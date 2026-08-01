@@ -129,7 +129,7 @@ export default function InterviewRoom({
         <div style={{ fontSize: '3rem' }}>{icon}</div>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{heading}</h2>
         <p style={{ color: 'var(--text-secondary)', maxWidth: 420 }}>{body}</p>
-        <Link href={leaveUrl} style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
+        <Link href={leaveUrl} style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
           Back to dashboard
         </Link>
       </div>

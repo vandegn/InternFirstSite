@@ -291,7 +291,7 @@ export default function StudentDashboard() {
             style={{
               padding: '7px 16px',
               background: 'var(--accent, #9FC63C)',
-              color: '#fff',
+              color: 'var(--on-accent)',
               borderRadius: '8px',
               fontSize: '0.8rem',
               fontWeight: 600,
@@ -360,7 +360,7 @@ export default function StudentDashboard() {
 
       {/* Upcoming Confirmed Interviews */}
       {studentInterviews.filter(i => i.status === 'accepted').length > 0 && (
-        <div style={{ marginTop: '24px', background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '20px' }}>
+        <div style={{ marginTop: '24px', background: 'var(--surface)', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '20px' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '12px' }}>Upcoming Interviews</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {studentInterviews.filter(i => i.status === 'accepted').map(interview => {
@@ -380,7 +380,7 @@ export default function StudentDashboard() {
                     style={{
                       padding: '6px 16px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none',
                       background: canJoin ? 'var(--primary)' : 'var(--border)',
-                      color: canJoin ? '#fff' : 'var(--text-secondary)',
+                      color: canJoin ? 'var(--on-primary)' : 'var(--text-secondary)',
                       cursor: canJoin ? 'pointer' : 'not-allowed',
                       whiteSpace: 'nowrap',
                     }}
@@ -399,7 +399,7 @@ export default function StudentDashboard() {
       {recommended.length > 0 && (
         <div style={{
           marginTop: '24px',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 'var(--radius, 12px)',
           border: '1px solid var(--border, #e5e7eb)',
           padding: '20px',
@@ -528,7 +528,7 @@ export default function StudentDashboard() {
         {/* ── Main Column: Applications + Calendar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
           {/* My Applications Overview */}
-          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '20px' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>My Applications</h3>
               <Link href="/dashboard/student/applications" style={{
@@ -542,14 +542,14 @@ export default function StudentDashboard() {
             </div>
             {studentApplications.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>No applications yet. Start exploring internships!</p>
                 <Link href="/dashboard/student/internships" style={{
                   display: 'inline-block',
                   marginTop: '12px',
                   padding: '8px 20px',
                   background: 'var(--primary)',
-                  color: '#fff',
+                  color: 'var(--on-primary)',
                   borderRadius: '8px',
                   fontSize: '0.8rem',
                   fontWeight: 600,
@@ -562,15 +562,15 @@ export default function StudentDashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                 {studentApplications.slice(0, 5).map((app) => {
                   const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-                    applied: { label: 'Applied', color: '#2563eb', bg: '#eff6ff' },
-                    under_review: { label: 'Under Review', color: '#d97706', bg: '#fffbeb' },
-                    reviewing: { label: 'Under Review', color: '#d97706', bg: '#fffbeb' },
-                    interviewing: { label: 'Interview Requested', color: '#7c3aed', bg: '#f5f3ff' },
-                    interview_scheduled: { label: 'Interview Scheduled', color: '#059669', bg: '#ecfdf5' },
-                    offered: { label: 'Offer Extended', color: '#059669', bg: '#ecfdf5' },
-                    rejected: { label: 'Not Selected', color: '#dc2626', bg: '#fef2f2' },
+                    applied: { label: 'Applied', color: 'var(--chip-blue-ink)', bg: 'var(--chip-blue-bg)' },
+                    under_review: { label: 'Under Review', color: 'var(--chip-amber-ink)', bg: 'var(--warning-bg)' },
+                    reviewing: { label: 'Under Review', color: 'var(--chip-amber-ink)', bg: 'var(--warning-bg)' },
+                    interviewing: { label: 'Interview Requested', color: 'var(--chip-violet-ink)', bg: 'var(--chip-violet-bg)' },
+                    interview_scheduled: { label: 'Interview Scheduled', color: 'var(--chip-green-ink)', bg: 'var(--chip-green-bg)' },
+                    offered: { label: 'Offer Extended', color: 'var(--chip-green-ink)', bg: 'var(--chip-green-bg)' },
+                    rejected: { label: 'Not Selected', color: 'var(--danger-accent)', bg: 'var(--danger-bg)' },
                     closed: { label: 'Closed', color: '#6b7280', bg: '#f3f4f6' },
-                    not_selected: { label: 'Not Selected', color: '#dc2626', bg: '#fef2f2' },
+                    not_selected: { label: 'Not Selected', color: 'var(--danger-accent)', bg: 'var(--danger-bg)' },
                   };
                   const status = statusConfig[app.status] || { label: app.status, color: '#6b7280', bg: '#f3f4f6' };
                   const listing = app.listing;
@@ -593,7 +593,7 @@ export default function StudentDashboard() {
                         transition: 'background 0.15s',
                         borderRadius: '6px',
                       }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg, #f9fafb)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg, var(--chip-neutral-bg))'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -634,7 +634,7 @@ export default function StudentDashboard() {
                             const isCompleted = !isRejected && si <= stageIdx;
                             const isCurrent = !isRejected && si === stageIdx;
                             const filledColor = isRejected ? '#f87171' : 'var(--accent, #9FC63C)';
-                            const emptyColor = isRejected ? '#fecaca' : '#e5e7eb';
+                            const emptyColor = isRejected ? 'var(--danger-border)' : '#e5e7eb';
                             return (
                               <div key={stage} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>

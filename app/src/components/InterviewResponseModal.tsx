@@ -112,7 +112,7 @@ export default function InterviewResponseModal({
     >
       <div
         style={{
-          width: '100%', maxWidth: 480, background: '#fff', borderRadius: 16,
+          width: '100%', maxWidth: 480, background: 'var(--surface)', borderRadius: 16,
           boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.15)',
           border: '1px solid var(--border, #e5e7eb)',
           transform: animating ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.97)',
@@ -194,8 +194,8 @@ export default function InterviewResponseModal({
           {error && (
             <div style={{
               padding: '8px 12px', borderRadius: 8,
-              background: '#fef2f2', color: '#991b1b',
-              fontSize: '0.78rem', border: '1px solid #fecaca',
+              background: 'var(--danger-bg)', color: 'var(--danger-fg)',
+              fontSize: '0.78rem', border: '1px solid var(--danger-border)',
             }}>
               {error}
             </div>
@@ -210,8 +210,8 @@ export default function InterviewResponseModal({
             onClick={() => handleAction('decline')}
             disabled={submitting !== null}
             style={{
-              padding: '9px 14px', borderRadius: 8, border: '1px solid #fca5a5',
-              background: '#fff', color: '#dc2626', fontSize: '0.82rem', fontWeight: 600,
+              padding: '9px 14px', borderRadius: 8, border: '1px solid var(--danger-border)',
+              background: 'var(--surface)', color: 'var(--danger-accent)', fontSize: '0.82rem', fontWeight: 600,
               cursor: submitting !== null ? 'not-allowed' : 'pointer', flex: 1,
             }}
           >
@@ -222,7 +222,7 @@ export default function InterviewResponseModal({
             disabled={submitting !== null}
             style={{
               padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)',
-              background: '#fff', color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600,
+              background: 'var(--surface)', color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600,
               cursor: submitting !== null ? 'not-allowed' : 'pointer', flex: 1,
             }}
           >
@@ -235,7 +235,7 @@ export default function InterviewResponseModal({
             disabled={submitting !== null}
             style={{
               padding: '9px 14px', borderRadius: 8, border: 'none',
-              background: 'var(--accent, #9FC63C)', color: '#fff',
+              background: 'var(--accent, #9FC63C)', color: 'var(--on-accent)',
               fontSize: '0.82rem', fontWeight: 600,
               cursor: submitting !== null ? 'not-allowed' : 'pointer', flex: 1,
             }}

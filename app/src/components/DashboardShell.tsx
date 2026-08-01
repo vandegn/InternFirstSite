@@ -287,7 +287,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
                     transition: 'all 0.15s',
                     whiteSpace: 'nowrap',
                   }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#f8f9fb'; }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface-hover)'; }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

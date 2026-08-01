@@ -36,14 +36,14 @@ type Application = {
 const APPLIED_DISPLAY_LIMIT = 10;
 
 const COLOR_PRESETS: { bg: string; text: string }[] = [
-  { bg: '#e0e7ff', text: '#3730a3' },
-  { bg: '#fef3c7', text: '#92400e' },
-  { bg: '#dbeafe', text: '#1e40af' },
-  { bg: '#d1fae5', text: '#065f46' },
-  { bg: '#fee2e2', text: '#991b1b' },
-  { bg: '#f3e8ff', text: '#6b21a8' },
-  { bg: '#ffedd5', text: '#9a3412' },
-  { bg: '#e0f2fe', text: '#075985' },
+  { bg: 'var(--chip-indigo-bg)', text: 'var(--chip-indigo-ink)' },
+  { bg: 'var(--chip-amber-bg)', text: 'var(--chip-amber-ink)' },
+  { bg: 'var(--chip-blue-bg)', text: 'var(--chip-blue-ink)' },
+  { bg: 'var(--chip-green-bg)', text: 'var(--chip-green-ink)' },
+  { bg: 'var(--danger-bg-strong)', text: 'var(--danger-fg)' },
+  { bg: 'var(--chip-violet-bg)', text: 'var(--chip-violet-ink)' },
+  { bg: 'var(--chip-orange-bg)', text: 'var(--chip-orange-ink)' },
+  { bg: 'var(--info-bg)', text: 'var(--chip-blue-ink)' },
 ];
 
 export default function EmployerPipelinePage() {
@@ -364,7 +364,7 @@ export default function EmployerPipelinePage() {
   return (
     <div className="dash-main" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', background: '#fff' }}>
+      <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Candidate Pipeline</h2>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -377,7 +377,7 @@ export default function EmployerPipelinePage() {
             onChange={(e) => setSelectedListing(e.target.value)}
             style={{
               padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-              fontSize: '0.85rem', background: '#fff', minWidth: '220px',
+              fontSize: '0.85rem', background: 'var(--surface)', minWidth: '220px',
             }}
           >
             <option value="" disabled>Select a listing…</option>
@@ -456,7 +456,7 @@ export default function EmployerPipelinePage() {
                   padding: '12px 16px',
                   borderBottom: '2px solid ' + col.color_bg,
                   display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'center', background: '#fff',
+                  alignItems: 'center', background: 'var(--surface)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{
@@ -494,7 +494,7 @@ export default function EmployerPipelinePage() {
                         onDragStart={(e) => handleDragStart(e, app.id)}
                         onClick={() => setExpandedId(isExpanded ? null : app.id)}
                         style={{
-                          background: '#fff',
+                          background: 'var(--surface)',
                           borderRadius: 'var(--radius-sm)',
                           border: '1px solid var(--border)',
                           padding: '12px',
@@ -615,7 +615,7 @@ export default function EmployerPipelinePage() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#fff', borderRadius: 'var(--radius)', width: 'min(560px, 92vw)',
+              background: 'var(--surface)', borderRadius: 'var(--radius)', width: 'min(560px, 92vw)',
               maxHeight: '85vh', overflowY: 'auto', overflowX: 'hidden', padding: '24px',
               boxSizing: 'border-box',
             }}
@@ -677,7 +677,7 @@ export default function EmployerPipelinePage() {
                       display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
                       border: `1px solid ${isDragOver ? 'var(--primary)' : 'var(--border)'}`,
                       borderRadius: 'var(--radius-sm)',
-                      background: isDragOver ? 'var(--primary-light)' : (s.locked ? '#f8fafc' : '#fff'),
+                      background: isDragOver ? 'var(--primary-light)' : (s.locked ? 'var(--surface-hover)' : 'var(--surface)'),
                       opacity: isDragging ? 0.4 : 1,
                       transition: 'opacity 0.15s, background 0.15s, border-color 0.15s',
                     }}
@@ -719,13 +719,13 @@ export default function EmployerPipelinePage() {
                         style={{
                           flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 6,
                           border: '1px solid var(--border)', fontSize: '0.85rem',
-                          background: '#fff',
+                          background: 'var(--surface)',
                         }}
                       />
                       {isNew && (
                         <span style={{
                           fontSize: '0.65rem', fontWeight: 600, padding: '2px 6px',
-                          borderRadius: 4, background: '#dcfce7', color: '#166534',
+                          borderRadius: 4, background: '#dcfce7', color: 'var(--success-fg)',
                           flexShrink: 0,
                         }}>NEW</span>
                       )}
@@ -733,7 +733,7 @@ export default function EmployerPipelinePage() {
                         <button
                           onClick={() => startDelete(s)}
                           style={{
-                            border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c',
+                            border: '1px solid var(--danger-border)', background: 'var(--danger-bg)', color: 'var(--danger-fg)',
                             borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', cursor: 'pointer',
                             flexShrink: 0,
                           }}
@@ -869,7 +869,7 @@ export default function EmployerPipelinePage() {
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                background: '#fff', borderRadius: 'var(--radius)', width: 'min(440px, 92vw)', padding: '24px',
+                background: 'var(--surface)', borderRadius: 'var(--radius)', width: 'min(440px, 92vw)', padding: '24px',
               }}
             >
               <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 10 }}>
@@ -916,7 +916,7 @@ export default function EmployerPipelinePage() {
                       onClick={() => draftConfirmDelete('delete-with-candidates')}
                       style={{
                         fontSize: '0.85rem', padding: '7px 14px', borderRadius: 6,
-                        border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', cursor: 'pointer',
+                        border: '1px solid var(--danger-border)', background: 'var(--danger-bg)', color: 'var(--danger-fg)', cursor: 'pointer',
                       }}
                     >
                       Delete candidates too

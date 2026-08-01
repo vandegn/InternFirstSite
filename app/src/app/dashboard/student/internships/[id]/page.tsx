@@ -232,8 +232,8 @@ export default function InternshipDetail() {
           {listing.application_deadline && (() => {
             const state = deadlineState(listing.application_deadline);
             const color =
-              state === 'expired' ? '#b91c1c'
-              : state === 'soon' ? '#b45309'
+              state === 'expired' ? 'var(--danger-fg)'
+              : state === 'soon' ? 'var(--chip-amber-ink)'
               : 'var(--text-secondary)';
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color, fontSize: '0.9rem', fontWeight: state === 'expired' || state === 'soon' ? 600 : 400 }}>
@@ -303,7 +303,7 @@ export default function InternshipDetail() {
         ) : listing.status !== 'active' || deadlineState(listing.application_deadline) === 'expired' ? (
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', background: 'var(--bg-secondary, #f5f5f5)', borderRadius: '10px', flex: 1 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger-fg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
               <span style={{ fontWeight: 600 }}>This listing is no longer accepting applications.</span>
             </div>
             <button
@@ -339,7 +339,7 @@ export default function InternshipDetail() {
                 </button>
               </div>
             ) : (
-              <div style={{ background: 'var(--bg-secondary, #f9fafb)', borderRadius: 'var(--radius, 12px)', padding: '20px', border: '1px solid var(--border)' }}>
+              <div style={{ background: 'var(--bg-secondary, var(--chip-neutral-bg))', borderRadius: 'var(--radius, 12px)', padding: '20px', border: '1px solid var(--border)' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Submit Application</h4>
 
                 {studentId && (

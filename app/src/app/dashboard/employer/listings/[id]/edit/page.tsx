@@ -382,7 +382,7 @@ export default function EditListingPage() {
                 disabled={togglingStatus}
                 style={{
                   flex: 1, padding: '12px 24px', borderRadius: 8,
-                  border: '2px solid #d97706', background: 'transparent', color: '#d97706',
+                  border: '2px solid var(--chip-amber-ink)', background: 'transparent', color: 'var(--chip-amber-ink)',
                   fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
                   opacity: togglingStatus ? 0.6 : 1,
                 }}

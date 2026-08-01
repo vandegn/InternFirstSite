@@ -125,7 +125,7 @@ export default function ContactPage() {
               {status === 'success' && (
                 <div
                   style={{
-                    background: '#f0fdf4',
+                    background: 'var(--success-bg)',
                     color: '#15803d',
                     fontSize: '13px',
                     padding: '10px 14px',
@@ -140,8 +140,8 @@ export default function ContactPage() {
               {status === 'error' && (
                 <div
                   style={{
-                    background: '#fef2f2',
-                    color: '#dc2626',
+                    background: 'var(--danger-bg)',
+                    color: 'var(--danger-accent)',
                     fontSize: '13px',
                     padding: '10px 14px',
                     borderRadius: '10px',

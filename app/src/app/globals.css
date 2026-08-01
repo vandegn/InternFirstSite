@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 /* ========================================
    RESET & BASE
@@ -36,6 +36,55 @@
 
     --auth-green: #9FC63C;
     --auth-green-dark: #8ab32e;
+
+    /* Elevated fills — remapped wholesale by the dark theme */
+    --surface: #ffffff;
+    --surface-muted: #f4f5f7;
+    --surface-hover: #f8f9fb;
+
+    /* Foreground for text sitting on a --primary / --accent fill */
+    --on-primary: #ffffff;
+    --on-accent: #ffffff;
+
+    /* Always-navy panels (dark CTA blocks) — never flips with the theme */
+    --panel-dark: #1A2D49;
+    --panel-dark-2: #0f1d33;
+
+    /* Semantic status tints (success / danger / warning / info) */
+    --success-bg: #f0fdf4;
+    --success-fg: #166534;
+    --success-border: #bbf7d0;
+    --danger-bg: #fef2f2;
+    --danger-bg-strong: #fee2e2;
+    --danger-fg: #991b1b;
+    --danger-border: #fecaca;
+    --danger-accent: #dc2626;
+
+    /* Stronger tints for status icon chips + their ink */
+    --success-chip: #d1fae5;
+    --success-ink: #065f46;
+    --warning-chip: #fef3c7;
+    --warning-ink: #92400e;
+    --info-chip: #e0e7ff;
+    --info-ink: #3730a3;
+    --danger-chip: #fee2e2;
+    --danger-ink: #991b1b;
+
+    /* Status pill vocabulary used across dashboards (pale tint + saturated ink) */
+    --chip-green-bg: #d1fae5;   --chip-green-ink: #065f46;
+    --chip-amber-bg: #fef3c7;   --chip-amber-ink: #92400e;
+    --chip-orange-bg: #ffedd5;  --chip-orange-ink: #9a3412;
+    --chip-indigo-bg: #e0e7ff;  --chip-indigo-ink: #3730a3;
+    --chip-blue-bg: #dbeafe;    --chip-blue-ink: #1e40af;
+    --chip-violet-bg: #f5f3ff;  --chip-violet-ink: #7c3aed;
+    --chip-neutral-bg: #f3f4f6; --chip-neutral-ink: #4b5563;
+    --warning-bg: #fffbeb;
+    --warning-fg: #92400e;
+    --warning-border: #fde68a;
+    --info-bg: #e0f2fe;
+    --info-bg-alt: #eef2ff;
+    --info-fg: #0369a1;
+    --info-border: #bae6fd;
 }
 
 html { scroll-behavior: smooth; }
@@ -482,7 +531,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .internship-card {
-    background: #fff;
+    background: var(--surface);
     border-radius: var(--radius);
     overflow: hidden;
     border: 1px solid var(--border);
@@ -497,7 +546,7 @@ img { max-width: 100%; height: auto; display: block; }
 .internship-img {
     aspect-ratio: 1;
     overflow: hidden;
-    background: #f3f4f6;
+    background: var(--surface-muted);
 }
 
 .internship-img img {
@@ -702,7 +751,7 @@ img { max-width: 100%; height: auto; display: block; }
 .btn-white {
     display: inline-block;
     padding: 14px 36px;
-    background: #fff;
+    background: var(--surface);
     color: var(--primary);
     font-weight: 600;
     border-radius: var(--radius-sm);
@@ -729,7 +778,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .testimonial-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 28px;
@@ -943,7 +992,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .blog-card {
-    background: #fff;
+    background: var(--surface);
     border-radius: var(--radius);
     overflow: hidden;
     border: 1px solid var(--border);
@@ -1101,7 +1150,7 @@ img { max-width: 100%; height: auto; display: block; }
     max-width: 480px;
     margin: 0 auto;
     gap: 0;
-    background: #fff;
+    background: var(--surface);
     border-radius: var(--radius-sm);
     overflow: hidden;
 }
@@ -1145,7 +1194,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .emp-header {
-    background: #fff;
+    background: var(--surface);
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
@@ -1257,7 +1306,7 @@ img { max-width: 100%; height: auto; display: block; }
 .emp-empty-state {
     text-align: center;
     padding: 60px 20px;
-    background: #fff;
+    background: var(--surface);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
 }
@@ -1282,7 +1331,7 @@ img { max-width: 100%; height: auto; display: block; }
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #fff;
+    background: var(--surface);
     padding: 20px 24px;
     border-radius: var(--radius);
     border: 1px solid var(--border);
@@ -1355,7 +1404,7 @@ img { max-width: 100%; height: auto; display: block; }
     display: flex;
     align-items: center;
     gap: 24px;
-    background: #fff;
+    background: var(--surface);
     padding: 32px;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
@@ -1398,7 +1447,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .emp-stat {
-    background: #fff;
+    background: var(--surface);
     padding: 24px;
     border-radius: var(--radius);
     border: 1px solid var(--border);
@@ -1473,7 +1522,7 @@ img { max-width: 100%; height: auto; display: block; }
     height: 72px;
     display: flex;
     align-items: center;
-    background: #fff;
+    background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
 
@@ -1741,7 +1790,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .serve-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 32px;
@@ -1881,7 +1930,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .contact-form-wrap {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 36px;
@@ -1977,7 +2026,7 @@ img { max-width: 100%; height: auto; display: block; }
         top: 72px;
         left: 0;
         right: 0;
-        background: #fff;
+        background: var(--surface);
         border-bottom: 1px solid var(--border);
         padding: 20px 24px;
         box-shadow: var(--shadow-lg);
@@ -2159,14 +2208,14 @@ img { max-width: 100%; height: auto; display: block; }
    DASHBOARD LAYOUT
    ======================================== */
 .dashboard-body {
-    background: #f4f5f7;
+    background: var(--bg);
 }
 
 .dash-header {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: #fff;
+    background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
 
@@ -2217,7 +2266,7 @@ img { max-width: 100%; height: auto; display: block; }
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #f4f5f7;
+    background: var(--surface-muted);
     padding: 8px 16px;
     border-radius: 8px;
 }
@@ -2248,7 +2297,7 @@ img { max-width: 100%; height: auto; display: block; }
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.10);
@@ -2279,7 +2328,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* ========================================
-   SETTINGS — SIDEBAR NAV + PANEL
+   SETTINGS â€” SIDEBAR NAV + PANEL
    ======================================== */
 .settings-layout {
     display: flex;
@@ -2320,7 +2369,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .settings-nav-item:hover {
-    background: #f4f5f7;
+    background: var(--surface-muted);
     color: var(--text, #1A2D49);
 }
 
@@ -2389,7 +2438,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .notif-bell-btn:hover {
-    background: #f4f5f7;
+    background: var(--surface-muted);
     color: var(--text-primary, #1A2D49);
 }
 
@@ -2416,7 +2465,7 @@ img { max-width: 100%; height: auto; display: block; }
     right: 0;
     width: 360px;
     max-width: calc(100vw - 32px);
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
@@ -2468,7 +2517,7 @@ img { max-width: 100%; height: auto; display: block; }
     width: 100%;
     padding: 12px 16px;
     border: none;
-    border-bottom: 1px solid #f0f1f3;
+    border-bottom: 1px solid var(--border);
     background: none;
     text-align: left;
     cursor: pointer;
@@ -2476,7 +2525,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .notif-item:hover {
-    background: #f8f9fb;
+    background: var(--surface-hover);
 }
 
 .notif-item-unread {
@@ -2491,7 +2540,7 @@ img { max-width: 100%; height: auto; display: block; }
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #f0f1f3;
+    background: var(--surface-muted);
     color: var(--primary, #1A2D49);
     margin-top: 2px;
 }
@@ -2545,7 +2594,7 @@ img { max-width: 100%; height: auto; display: block; }
    SIDEBAR
    ======================================== */
 .dash-sidebar {
-    background: #fff;
+    background: var(--surface);
     border-right: 1px solid var(--border);
     padding: 20px 0;
 }
@@ -2569,7 +2618,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .sidebar-link:hover {
-    background: #f8f9fb;
+    background: var(--surface-hover);
     color: var(--text);
 }
 
@@ -2634,7 +2683,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .stat-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
@@ -2706,7 +2755,7 @@ img { max-width: 100%; height: auto; display: block; }
     display: flex;
     flex-direction: column;
     gap: 12px;
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
@@ -2762,7 +2811,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .listing-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
@@ -2785,7 +2834,7 @@ img { max-width: 100%; height: auto; display: block; }
     height: 40px;
     border-radius: 8px;
     object-fit: contain;
-    background: #f8f9fb;
+    background: var(--surface-hover);
     padding: 4px;
 }
 
@@ -2831,7 +2880,7 @@ img { max-width: 100%; height: auto; display: block; }
 .listing-tags span {
     font-size: 11px;
     padding: 3px 10px;
-    background: #f8f9fb;
+    background: var(--surface-hover);
     border: 1px solid var(--border);
     border-radius: 50px;
     color: var(--text-secondary);
@@ -2887,7 +2936,7 @@ img { max-width: 100%; height: auto; display: block; }
     padding: 0 8px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: #fff;
+    background: var(--surface);
     color: var(--text-secondary);
     font-size: 14px;
     font-weight: 500;
@@ -2933,7 +2982,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .candidate-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
@@ -2985,7 +3034,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .resource-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 24px;
@@ -3048,7 +3097,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .news-card {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
@@ -3099,7 +3148,7 @@ img { max-width: 100%; height: auto; display: block; }
    BAR CHART
    ======================================== */
 .chart-container {
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 24px;
@@ -3128,7 +3177,7 @@ img { max-width: 100%; height: auto; display: block; }
 
 .bar-track {
     flex: 1;
-    background: #f3f4f6;
+    background: var(--surface-muted);
     border-radius: 8px;
     height: 32px;
     overflow: hidden;
@@ -3154,7 +3203,7 @@ img { max-width: 100%; height: auto; display: block; }
    PROFILE SIDEBAR
    ======================================== */
 .dash-profile {
-    background: #fff;
+    background: var(--surface);
     border-left: 1px solid var(--border);
     padding: 24px;
 }
@@ -3191,7 +3240,7 @@ img { max-width: 100%; height: auto; display: block; }
 .progress-bar {
     width: 100%;
     height: 8px;
-    background: #f3f4f6;
+    background: var(--surface-muted);
     border-radius: 50px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -3322,7 +3371,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .auth-container {
-    background: #fff;
+    background: var(--surface);
     border-radius: 20px;
     padding: 48px 40px;
     width: 100%;
@@ -3655,7 +3704,7 @@ img { max-width: 100%; height: auto; display: block; }
     gap: 10px;
     width: 100%;
     padding: 13px 18px;
-    background: #fff;
+    background: var(--surface);
     color: #0f172a;
     font-size: 14px;
     font-weight: 600;
@@ -3691,7 +3740,7 @@ img { max-width: 100%; height: auto; display: block; }
     .role-selector { grid-template-columns: 1fr; }
 }
 
-/* ── Calendar split layout (grid left, event detail right) ── */
+/* â”€â”€ Calendar split layout (grid left, event detail right) â”€â”€ */
 .cal-layout {
     display: flex;
     align-items: stretch;
@@ -3727,7 +3776,7 @@ img { max-width: 100%; height: auto; display: block; }
     }
 }
 
-/* ── Interview room (LiveKit) ───────────────────────────────────────── */
+/* â”€â”€ Interview room (LiveKit) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .interview-room {
     display: flex;
@@ -3742,7 +3791,7 @@ img { max-width: 100%; height: auto; display: block; }
     gap: 12px;
     padding: 12px 24px;
     border-bottom: 1px solid var(--border);
-    background: #fff;
+    background: var(--surface);
     flex-shrink: 0;
 }
 
@@ -3773,7 +3822,7 @@ img { max-width: 100%; height: auto; display: block; }
     flex-direction: column;
 }
 
-/* LiveKit theme overrides — bind brand color into the prebuilt components */
+/* LiveKit theme overrides â€” bind brand color into the prebuilt components */
 .interview-room[data-lk-theme="default"] {
     --lk-accent-bg: var(--primary);
     --lk-accent-fg: #ffffff;
@@ -3807,4 +3856,271 @@ img { max-width: 100%; height: auto; display: block; }
 .interview-room .lk-video-conference {
     flex: 1;
     min-height: 0;
+}
+
+/* ========================================
+   DARK THEME
+   Activated by data-theme="dark" on <html> (see src/lib/theme.ts).
+   Palette is the InternFirst navy pushed down into deep-space territory,
+   with the brand green promoted to the primary call-to-action color.
+   ======================================== */
+[data-theme="dark"] {
+    --on-primary: #0A121F;
+    --on-accent: #0A121F;
+    --panel-dark: #17253C;
+    --panel-dark-2: #0E1929;
+    --success-bg: rgba(159, 198, 60, 0.14);
+    --success-fg: #B2D653;
+    --success-border: rgba(159, 198, 60, 0.34);
+    --danger-bg: rgba(229, 72, 77, 0.14);
+    --danger-bg-strong: rgba(229, 72, 77, 0.22);
+    --danger-fg: #FF8A8F;
+    --danger-border: rgba(229, 72, 77, 0.38);
+    --danger-accent: #FF8A8F;
+    --success-chip: rgba(159, 198, 60, 0.24);
+    --success-ink: #C6E06B;
+    --warning-chip: rgba(234, 179, 8, 0.24);
+    --warning-ink: #F5C551;
+    --info-chip: rgba(129, 140, 248, 0.26);
+    --info-ink: #A5B4FC;
+    --danger-chip: rgba(229, 72, 77, 0.26);
+    --danger-ink: #FF8A8F;
+    --chip-green-bg: rgba(159, 198, 60, 0.18);   --chip-green-ink: #C6E06B;
+    --chip-amber-bg: rgba(234, 179, 8, 0.18);    --chip-amber-ink: #F5C551;
+    --chip-orange-bg: rgba(234, 138, 45, 0.18);  --chip-orange-ink: #F0A868;
+    --chip-indigo-bg: rgba(129, 140, 248, 0.20); --chip-indigo-ink: #A5B4FC;
+    --chip-blue-bg: rgba(56, 139, 253, 0.18);    --chip-blue-ink: #79B8FF;
+    --chip-violet-bg: rgba(167, 139, 250, 0.20); --chip-violet-ink: #C4B5FD;
+    --chip-neutral-bg: rgba(148, 163, 184, 0.16);--chip-neutral-ink: #B6C2D4;
+    --warning-bg: rgba(234, 179, 8, 0.14);
+    --warning-fg: #F5C551;
+    --warning-border: rgba(234, 179, 8, 0.34);
+    --info-bg: rgba(56, 139, 253, 0.14);
+    --info-bg-alt: rgba(99, 102, 241, 0.18);
+    --info-fg: #79B8FF;
+    --info-border: rgba(56, 139, 253, 0.34);
+    /* Brand. --primary is a lifted navy so it stays legible as text/icon/border
+       on dark; the green accent takes over as the button fill. */
+    --primary: #7BA7E8;
+    --primary-dark: #9CBEF0;
+    --primary-light: #1E3252;
+    --accent: #9FC63C;
+    --accent-dark: #B2D653;
+    --accent-light: rgba(159, 198, 60, 0.16);
+    --grey-light: #2A3B57;
+
+    /* --dark / --dark-2 are heading text in ~24 rules; the four places they
+       back a surface are re-pinned to literal navy further down. */
+    --dark: #EAF0F8;
+    --dark-2: #CBD8EA;
+
+    --text: #E3EAF4;
+    --text-secondary: #9BAAC1;
+    --text-light: #7C8CA5;
+
+    --bg: #0A121F;
+    --bg-light: #0A121F;
+    --bg-section: #0E1929;
+    --surface: #141F33;
+    --surface-muted: #1C2B44;
+    --surface-hover: #1F3050;
+    --border: #26385A;
+
+    --shadow: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.55), 0 2px 6px -2px rgba(0,0,0,0.4);
+    --shadow-lg: 0 18px 40px -10px rgba(0,0,0,0.7), 0 6px 14px -6px rgba(0,0,0,0.5);
+
+    --auth-green: #9FC63C;
+    --auth-green-dark: #B2D653;
+
+    color-scheme: dark;
+}
+
+/* --- Primary CTAs become brand green with navy type --- */
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn-register,
+[data-theme="dark"] .main-nav .header-actions .btn-register,
+[data-theme="dark"] .main-nav .header-actions .btn-register:hover,
+[data-theme="dark"] .btn-apply,
+[data-theme="dark"] .newsletter-form button,
+[data-theme="dark"] .video-badge,
+[data-theme="dark"] .page-btn.active,
+[data-theme="dark"] .btn-outline:hover,
+[data-theme="dark"] .btn-secondary:hover,
+[data-theme="dark"] .btn-white {
+    background: var(--accent);
+    color: #0A121F;
+}
+
+[data-theme="dark"] .btn-primary:hover,
+[data-theme="dark"] .btn-register:hover,
+[data-theme="dark"] .btn-apply:hover,
+[data-theme="dark"] .newsletter-form button:hover,
+[data-theme="dark"] .btn-white:hover {
+    background: var(--accent-dark);
+    color: #0A121F;
+}
+
+/* Decorative primary fills read better in green on dark */
+[data-theme="dark"] .progress-fill,
+[data-theme="dark"] .serve-card li::before,
+[data-theme="dark"] .profile-checklist li.checked::before {
+    background: var(--accent);
+}
+
+/* Avatar: white-on-lifted-navy is too low contrast, so tint it instead */
+[data-theme="dark"] .emp-profile-avatar {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+[data-theme="dark"] .contact-socials a:hover {
+    background: var(--accent);
+    color: #0A121F;
+}
+
+/* --- Chrome: header, hero, footers, CTA panels --- */
+[data-theme="dark"] .header {
+    background: rgba(10, 18, 31, 0.92);
+    border-bottom-color: var(--border);
+}
+
+[data-theme="dark"] .hero,
+[data-theme="dark"] .lp-hero {
+    background: linear-gradient(180deg, #101C2E 0%, var(--bg) 100%);
+}
+
+/* The four surfaces that were painted with var(--dark) */
+[data-theme="dark"] .footer,
+[data-theme="dark"] .lp-footer {
+    background: #0E1929;
+    border-top: 1px solid var(--border);
+}
+
+[data-theme="dark"] .cta-content,
+[data-theme="dark"] .newsletter-inner {
+    background: linear-gradient(135deg, #17253C 0%, #0E1929 100%);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .matched-inner {
+    background: linear-gradient(135deg, #121F33 0%, #1B3054 50%, #274371 100%);
+    border: 1px solid var(--border);
+}
+
+/* Logo art is dark-on-transparent — knock it out to white, same trick the
+   footer already uses on its dark background. */
+[data-theme="dark"] .logo img,
+[data-theme="dark"] .partner-logo {
+    filter: brightness(0) invert(1);
+}
+
+[data-theme="dark"] .partners-track img {
+    filter: grayscale(100%) brightness(0) invert(1);
+    opacity: 0.5;
+}
+
+[data-theme="dark"] .partners-track img:hover {
+    filter: none;
+    opacity: 1;
+}
+
+/* --- Active/selected states: green tint instead of pale navy --- */
+[data-theme="dark"] .sidebar-link.active,
+[data-theme="dark"] .settings-nav-item.active,
+[data-theme="dark"] .emp-tab.active,
+[data-theme="dark"] .emp-badge,
+[data-theme="dark"] .hero-badge {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+[data-theme="dark"] .notif-item-unread {
+    background: rgba(159, 198, 60, 0.10);
+}
+
+[data-theme="dark"] .notif-badge {
+    box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* --- Status chips: pastel fills don't survive on dark --- */
+[data-theme="dark"] .badge-type,
+[data-theme="dark"] .stat-icon.blue {
+    background: rgba(56, 139, 253, 0.16);
+    color: #79B8FF;
+}
+
+[data-theme="dark"] .badge-salary,
+[data-theme="dark"] .emp-status.active,
+[data-theme="dark"] .stat-icon.green {
+    background: rgba(159, 198, 60, 0.16);
+    color: #B2D653;
+}
+
+[data-theme="dark"] .emp-status.closed {
+    background: rgba(229, 72, 77, 0.16);
+    color: #FF8A8F;
+}
+
+[data-theme="dark"] .stat-icon.orange {
+    background: rgba(234, 138, 45, 0.16);
+    color: #F0A868;
+}
+
+[data-theme="dark"] .settings-nav-item.danger:hover,
+[data-theme="dark"] .settings-nav-item.danger.active {
+    background: rgba(229, 72, 77, 0.14);
+    color: #FF8A8F;
+}
+
+/* --- Form controls --- */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background: var(--surface-muted);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .form-group textarea,
+[data-theme="dark"] .form-group input {
+    color: var(--text);
+    caret-color: var(--accent);
+    border-bottom-color: var(--border);
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+    color: var(--text-light);
+}
+
+[data-theme="dark"] .dash-search input,
+[data-theme="dark"] .newsletter-form input {
+    background: transparent;
+}
+
+[data-theme="dark"] .newsletter-form {
+    background: var(--surface-muted);
+}
+
+[data-theme="dark"] .btn-google:hover {
+    background: var(--surface-hover);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .role-option input[type="radio"]:checked + label {
+    background: var(--accent-light);
+}
+
+[data-theme="dark"] .role-option input[type="radio"]:checked + label .role-icon svg {
+    color: var(--accent);
+}
+
+/* --- Misc translucent fills tuned for light backgrounds --- */
+[data-theme="dark"] .lp-placeholder {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .internship-img {
+    background: var(--surface-muted);
 }

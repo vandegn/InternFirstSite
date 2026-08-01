@@ -35,7 +35,7 @@ function EditBtn({ onClick, editing }: { onClick: () => void; editing: boolean }
         flexShrink: 0,
       }}
     >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={editing ? '#fff' : 'var(--text-secondary)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={editing ? 'var(--on-primary)' : 'var(--text-secondary)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
@@ -413,7 +413,7 @@ export default function StudentProfile() {
 
   // ---- Shared styles ----
   const cardStyle: React.CSSProperties = {
-    background: '#fff',
+    background: 'var(--surface)',
     border: '1px solid var(--border)',
     borderRadius: '12px',
     padding: '20px 24px',
@@ -472,7 +472,7 @@ export default function StudentProfile() {
     fontSize: '0.78rem',
     border: '1px solid var(--border)',
     borderRadius: '6px',
-    background: '#fff',
+    background: 'var(--surface)',
     cursor: 'pointer',
     color: 'var(--primary)',
     fontWeight: 500,
@@ -558,7 +558,7 @@ export default function StudentProfile() {
           <textarea rows={2} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' as const }} />
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" onClick={() => handleSaveExperience(type)} disabled={!expForm.title?.trim()} style={{ ...addBtnStyle, background: 'var(--primary)', color: '#fff', border: '1px solid var(--primary)', opacity: expForm.title?.trim() ? 1 : 0.5 }}>
+          <button type="button" onClick={() => handleSaveExperience(type)} disabled={!expForm.title?.trim()} style={{ ...addBtnStyle, background: 'var(--primary)', color: 'var(--on-primary)', border: '1px solid var(--primary)', opacity: expForm.title?.trim() ? 1 : 0.5 }}>
             {editingExpId ? 'Update' : 'Save'}
           </button>
           <button type="button" onClick={() => closeExpForm(type)} style={smallBtnStyle}>Cancel</button>
@@ -598,7 +598,7 @@ export default function StudentProfile() {
           )}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" onClick={() => handleSaveOrganization(type)} disabled={!orgForm.name?.trim()} style={{ ...addBtnStyle, background: 'var(--primary)', color: '#fff', border: '1px solid var(--primary)', opacity: orgForm.name?.trim() ? 1 : 0.5 }}>
+          <button type="button" onClick={() => handleSaveOrganization(type)} disabled={!orgForm.name?.trim()} style={{ ...addBtnStyle, background: 'var(--primary)', color: 'var(--on-primary)', border: '1px solid var(--primary)', opacity: orgForm.name?.trim() ? 1 : 0.5 }}>
             {editingOrgId ? 'Update' : 'Save'}
           </button>
           <button type="button" onClick={() => closeOrgForm(type)} style={smallBtnStyle}>Cancel</button>
@@ -651,7 +651,7 @@ export default function StudentProfile() {
                 <div style={{
                   width: 88, height: 88, borderRadius: '50%', background: 'var(--primary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontSize: '1.8rem', fontWeight: 700,
+                  color: 'var(--on-primary)', fontSize: '1.8rem', fontWeight: 700,
                 }}>
                   {fullName ? fullName.charAt(0).toUpperCase() : '?'}
                 </div>
@@ -664,12 +664,12 @@ export default function StudentProfile() {
                     onClick={() => avatarInputRef.current?.click()}
                     style={{
                       position: 'absolute', bottom: -2, right: -2,
-                      background: 'var(--primary)', border: '2px solid #fff', borderRadius: '50%',
+                      background: 'var(--primary)', border: '2px solid var(--surface)', borderRadius: '50%',
                       width: 28, height: 28, cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--on-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
                     </svg>
                   </button>
@@ -697,7 +697,7 @@ export default function StudentProfile() {
                         type="button"
                         onClick={saveHero}
                         disabled={savingHero}
-                        style={{ ...addBtnStyle, background: 'var(--primary)', color: '#fff', border: '1px solid var(--primary)' }}
+                        style={{ ...addBtnStyle, background: 'var(--primary)', color: 'var(--on-primary)', border: '1px solid var(--primary)' }}
                       >
                         {savingHero ? 'Saving...' : 'Save'}
                       </button>
@@ -727,7 +727,7 @@ export default function StudentProfile() {
                       {showMajorDropdown && filteredMajors.length > 0 && (
                         <div style={{
                           position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '180px',
-                          overflowY: 'auto', background: '#fff', border: '1px solid var(--border)',
+                          overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)',
                           borderRadius: '8px', zIndex: 10, boxShadow: 'var(--shadow-md)',
                         }}>
                           {filteredMajors.slice(0, 20).map((m) => (
@@ -844,7 +844,7 @@ export default function StudentProfile() {
                       {showSkillDropdown && filteredSkills.length > 0 && (
                         <div style={{
                           position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '160px',
-                          overflowY: 'auto', background: '#fff', border: '1px solid var(--border)',
+                          overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)',
                           borderRadius: '8px', zIndex: 10, boxShadow: 'var(--shadow-md)',
                         }}>
                           {filteredSkills.map((s) => (
@@ -858,7 +858,7 @@ export default function StudentProfile() {
                       {showSkillDropdown && skillQuery !== '' && filteredSkills.length === 0 && (
                         <div style={{
                           position: 'absolute', top: '100%', left: 0, right: 0,
-                          background: '#fff', border: '1px solid var(--border)', borderRadius: '8px',
+                          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px',
                           zIndex: 10, boxShadow: 'var(--shadow-md)', padding: '8px 12px',
                           fontSize: '0.78rem', color: 'var(--text-secondary)',
                         }}>No matching skill in our list.</div>
@@ -888,7 +888,7 @@ export default function StudentProfile() {
                           {new Date(r.uploaded_at).toLocaleDateString()}
                         </span>
                         {editingResume && (
-                          <button onClick={() => handleDeleteResume(r.id)} style={{ ...smallBtnStyle, border: '1px solid #fca5a5', color: '#dc2626', padding: '3px 8px' }}>
+                          <button onClick={() => handleDeleteResume(r.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)', padding: '3px 8px' }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                           </button>
                         )}
@@ -915,7 +915,7 @@ export default function StudentProfile() {
                           padding: '8px 16px',
                           borderRadius: '8px',
                           border: resumeFile ? '1.5px solid var(--accent)' : '1.5px dashed var(--border)',
-                          background: resumeFile ? 'var(--accent-light)' : '#fff',
+                          background: resumeFile ? 'var(--accent-light)' : 'var(--surface)',
                           color: resumeFile ? 'var(--accent-dark)' : 'var(--text-secondary)',
                           fontSize: '0.82rem',
                           fontWeight: 500,
@@ -933,7 +933,7 @@ export default function StudentProfile() {
                         {resumeFile ? resumeFile.name : 'Choose a PDF, DOC, or DOCX file'}
                       </button>
                     </div>
-                    <button type="submit" disabled={uploadingResume || !resumeFile || !resumeName.trim()} style={{ ...addBtnStyle, background: resumeFile && resumeName.trim() ? 'var(--primary)' : 'var(--border)', color: resumeFile && resumeName.trim() ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (resumeFile && resumeName.trim() ? 'var(--primary)' : 'var(--border)'), cursor: resumeFile && resumeName.trim() ? 'pointer' : 'not-allowed' }}>
+                    <button type="submit" disabled={uploadingResume || !resumeFile || !resumeName.trim()} style={{ ...addBtnStyle, background: resumeFile && resumeName.trim() ? 'var(--primary)' : 'var(--border)', color: resumeFile && resumeName.trim() ? 'var(--on-primary)' : 'var(--text-secondary)', border: '1px solid ' + (resumeFile && resumeName.trim() ? 'var(--primary)' : 'var(--border)'), cursor: resumeFile && resumeName.trim() ? 'pointer' : 'not-allowed' }}>
                       {uploadingResume ? 'Uploading...' : 'Upload Resume'}
                     </button>
                   </form>
@@ -968,7 +968,7 @@ export default function StudentProfile() {
                           {editingOrgs && (
                             <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                               <button type="button" onClick={() => openOrgForm('greek_life', org)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteOrganization('greek_life', org.id)} style={{ ...smallBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' }}>Del</button>
+                              <button type="button" onClick={() => handleDeleteOrganization('greek_life', org.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
                             </div>
                           )}
                         </div>
@@ -996,7 +996,7 @@ export default function StudentProfile() {
                           {editingOrgs && (
                             <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                               <button type="button" onClick={() => openOrgForm('club', org)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteOrganization('club', org.id)} style={{ ...smallBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' }}>Del</button>
+                              <button type="button" onClick={() => handleDeleteOrganization('club', org.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
                             </div>
                           )}
                         </div>
@@ -1044,7 +1044,7 @@ export default function StudentProfile() {
                           {editingExp && (
                             <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginTop: '2px' }}>
                               <button type="button" onClick={() => openExpForm('internship', exp)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteExperience('internship', exp.id)} style={{ ...smallBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' }}>Del</button>
+                              <button type="button" onClick={() => handleDeleteExperience('internship', exp.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
                             </div>
                           )}
                         </div>
@@ -1081,7 +1081,7 @@ export default function StudentProfile() {
                           {editingExp && (
                             <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginTop: '2px' }}>
                               <button type="button" onClick={() => openExpForm('project', exp)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteExperience('project', exp.id)} style={{ ...smallBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' }}>Del</button>
+                              <button type="button" onClick={() => handleDeleteExperience('project', exp.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
                             </div>
                           )}
                         </div>
@@ -1113,7 +1113,7 @@ export default function StudentProfile() {
                           {editingExp && (
                             <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginTop: '2px' }}>
                               <button type="button" onClick={() => openExpForm('campus_involvement', exp)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteExperience('campus_involvement', exp.id)} style={{ ...smallBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' }}>Del</button>
+                              <button type="button" onClick={() => handleDeleteExperience('campus_involvement', exp.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
                             </div>
                           )}
                         </div>

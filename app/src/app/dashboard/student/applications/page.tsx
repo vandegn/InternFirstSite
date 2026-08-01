@@ -37,11 +37,11 @@ type Application = {
 // Fallback styling when an application has no stage joined (e.g., legacy
 // rows). Keyed by stage_type — used by the filter buckets too.
 const STAGE_TYPE_FALLBACK: Record<StageType, { bg: string; color: string; label: string }> = {
-  applied:      { bg: '#eff6ff', color: '#2563eb', label: 'Application Submitted' },
-  reviewing:    { bg: '#fef3c7', color: '#92400e', label: 'Under Review' },
-  interviewing: { bg: '#f5f3ff', color: '#7c3aed', label: 'Interview Requested' },
-  offered:      { bg: '#ecfdf5', color: '#059669', label: 'Offer Extended' },
-  rejected:     { bg: '#fef2f2', color: '#dc2626', label: 'Rejected/Closed' },
+  applied:      { bg: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)', label: 'Application Submitted' },
+  reviewing:    { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)', label: 'Under Review' },
+  interviewing: { bg: 'var(--chip-violet-bg)', color: 'var(--chip-violet-ink)', label: 'Interview Requested' },
+  offered:      { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)', label: 'Offer Extended' },
+  rejected:     { bg: 'var(--danger-bg)', color: 'var(--danger-accent)', label: 'Rejected/Closed' },
 };
 
 const FILTER_OPTIONS: { value: '' | StageType; label: string }[] = [
@@ -168,7 +168,7 @@ export default function MyApplications() {
               top: 'calc(100% + 6px)',
               left: 0,
               minWidth: '160px',
-              background: '#fff',
+              background: 'var(--surface)',
               border: '1.5px solid var(--border)',
               borderRadius: '10px',
               boxShadow: '0 8px 24px rgba(0,0,0,0.08)',

@@ -100,7 +100,7 @@ export default function ListingBrandingFields({
             style={{ display: 'none' }}
           />
         </label>
-        {uploadError && <p style={{ color: '#b91c1c', fontSize: '0.78rem', margin: '6px 0 0' }}>{uploadError}</p>}
+        {uploadError && <p style={{ color: 'var(--danger-fg)', fontSize: '0.78rem', margin: '6px 0 0' }}>{uploadError}</p>}
       </div>
 
       {/* Accent color */}

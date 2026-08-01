@@ -61,13 +61,13 @@ type Application = {
   };
 };
 
-const FALLBACK_PILL = { bg: '#e0e7ff', color: '#3730a3', label: 'Applied' };
+const FALLBACK_PILL = { bg: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-ink)', label: 'Applied' };
 
 const LISTING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  active: { bg: '#d1fae5', color: '#065f46' },
-  paused: { bg: '#fef3c7', color: '#92400e' },
-  closed: { bg: '#fee2e2', color: '#991b1b' },
-  expired: { bg: '#ffedd5', color: '#9a3412' },
+  active: { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)' },
+  paused: { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' },
+  closed: { bg: 'var(--danger-bg-strong)', color: 'var(--danger-fg)' },
+  expired: { bg: 'var(--chip-orange-bg)', color: 'var(--chip-orange-ink)' },
 };
 
 // Active listings past their application deadline are invisible to students
@@ -113,12 +113,12 @@ const INTERVIEW_STATUS_LABELS: Record<string, string> = {
 };
 
 const INTERVIEW_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  pending: { bg: '#fef3c7', color: '#92400e' },
-  accepted: { bg: '#d1fae5', color: '#065f46' },
-  declined: { bg: '#fee2e2', color: '#991b1b' },
-  reschedule_requested: { bg: '#fef3c7', color: '#92400e' },
-  cancelled: { bg: '#f3f4f6', color: '#4b5563' },
-  completed: { bg: '#e0e7ff', color: '#3730a3' },
+  pending: { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' },
+  accepted: { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)' },
+  declined: { bg: 'var(--danger-bg-strong)', color: 'var(--danger-fg)' },
+  reschedule_requested: { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' },
+  cancelled: { bg: '#f3f4f6', color: 'var(--chip-neutral-ink)' },
+  completed: { bg: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-ink)' },
 };
 
 function formatInterviewWhen(iso: string) {
@@ -335,14 +335,14 @@ export default function PostedJobsPage() {
         borderRight: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
-        background: '#fff',
+        background: 'var(--surface)',
       }}>
         {/* Header */}
         <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Posted Jobs</h2>
             <Link href="/dashboard/employer/listings/new" style={{
-              background: 'var(--primary)', color: '#fff', padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--primary)', color: 'var(--on-primary)', padding: '6px 14px', borderRadius: 'var(--radius-sm)',
               fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none',
             }}>+ New</Link>
           </div>
@@ -354,8 +354,8 @@ export default function PostedJobsPage() {
                 style={{
                   padding: '4px 12px', borderRadius: '16px', border: '1px solid var(--border)',
                   fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
-                  background: filterStatus === s ? 'var(--primary)' : '#fff',
-                  color: filterStatus === s ? '#fff' : 'var(--text-secondary)',
+                  background: filterStatus === s ? 'var(--primary)' : 'var(--surface)',
+                  color: filterStatus === s ? 'var(--on-primary)' : 'var(--text-secondary)',
                 }}
               >
                 {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -383,7 +383,7 @@ export default function PostedJobsPage() {
                     padding: '16px 20px',
                     borderBottom: '1px solid var(--border)',
                     cursor: 'pointer',
-                    background: isSelected ? 'var(--primary-light)' : '#fff',
+                    background: isSelected ? 'var(--primary-light)' : 'var(--surface)',
                     borderLeft: isSelected ? '3px solid var(--primary)' : '3px solid transparent',
                     transition: 'all 0.15s',
                   }}
@@ -436,7 +436,7 @@ export default function PostedJobsPage() {
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
                     Deadline: {new Date(selectedListing.application_deadline).toLocaleDateString()}
                     {displayStatus(selectedListing) === 'expired' && (
-                      <span style={{ color: '#9a3412', fontWeight: 600 }}> (expired — hidden from students)</span>
+                      <span style={{ color: 'var(--chip-orange-ink)', fontWeight: 600 }}> (expired — hidden from students)</span>
                     )}
                   </p>
                 )}
@@ -445,7 +445,7 @@ export default function PostedJobsPage() {
                 <Link href={`/dashboard/employer/listings/${selectedListing.id}/edit`} style={{
                   padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
                   fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none', color: 'var(--text)',
-                  background: '#fff',
+                  background: 'var(--surface)',
                 }}>Edit</Link>
                 {selectedListing.status !== 'closed' && (
                   <button
@@ -453,7 +453,7 @@ export default function PostedJobsPage() {
                     disabled={updatingStatus === selectedListing.id}
                     style={{
                       padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: '#fff', color: 'var(--text)',
+                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)', color: 'var(--text)',
                     }}
                   >
                     {selectedListing.status === 'active' ? 'Pause' : 'Resume'}
@@ -464,8 +464,8 @@ export default function PostedJobsPage() {
                     onClick={() => handleCloseListing(selectedListing.id)}
                     disabled={updatingStatus === selectedListing.id}
                     style={{
-                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid #fca5a5',
-                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: '#fff', color: '#dc2626',
+                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--danger-border)',
+                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)', color: 'var(--danger-accent)',
                     }}
                   >Close</button>
                 ) : (
@@ -473,8 +473,8 @@ export default function PostedJobsPage() {
                     onClick={() => handleToggleStatus(selectedListing.id, selectedListing.status)}
                     disabled={updatingStatus === selectedListing.id}
                     style={{
-                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid #86efac',
-                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: '#fff', color: '#16a34a',
+                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--chip-green-bg)',
+                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)', color: '#16a34a',
                     }}
                   >Reopen</button>
                 )}
@@ -589,7 +589,7 @@ export default function PostedJobsPage() {
                                 style={{
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   width: 32, height: 32, borderRadius: 'var(--radius-sm)',
-                                  border: '1px solid var(--border)', background: '#fff', color: 'var(--primary)',
+                                  border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--primary)',
                                 }}
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -601,7 +601,7 @@ export default function PostedJobsPage() {
                               disabled={updatingAppStatus === app.id || selectedListingStages.length === 0}
                               style={{
                                 padding: '4px 8px', borderRadius: 'var(--radius-sm)',
-                                border: '1px solid var(--border)', fontSize: '0.78rem', background: '#fff',
+                                border: '1px solid var(--border)', fontSize: '0.78rem', background: 'var(--surface)',
                               }}
                             >
                               {selectedListingStages.map(s => (
@@ -614,7 +614,7 @@ export default function PostedJobsPage() {
                               style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: 32, height: 32, borderRadius: 'var(--radius-sm)',
-                                border: '1px solid var(--border)', background: '#fff', color: 'var(--primary)',
+                                border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--primary)',
                                 cursor: 'pointer',
                               }}
                             >
@@ -629,7 +629,7 @@ export default function PostedJobsPage() {
                               style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: 32, height: 32, borderRadius: 'var(--radius-sm)',
-                                border: '1px solid var(--border)', background: '#fff', color: 'var(--primary)',
+                                border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--primary)',
                               }}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -643,7 +643,7 @@ export default function PostedJobsPage() {
                             <div style={{
                               display: 'flex', alignItems: 'center', gap: 10,
                               padding: '8px 12px', borderRadius: 8,
-                              background: '#fff', border: '1px solid var(--border)',
+                              background: 'var(--surface)', border: '1px solid var(--border)',
                             }}>
                               <span style={{
                                 fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
@@ -663,7 +663,7 @@ export default function PostedJobsPage() {
                                   style={{
                                     fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
                                     background: canJoin ? 'var(--primary)' : 'var(--border)',
-                                    color: canJoin ? '#fff' : 'var(--text-secondary)',
+                                    color: canJoin ? 'var(--on-primary)' : 'var(--text-secondary)',
                                     textDecoration: 'none', whiteSpace: 'nowrap',
                                     cursor: canJoin ? 'pointer' : 'not-allowed',
                                   }}
@@ -675,7 +675,7 @@ export default function PostedJobsPage() {
                                 onClick={() => openScheduleModal(app)}
                                 style={{
                                   fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
-                                  border: '1px solid var(--border)', background: '#fff', color: 'var(--text)',
+                                  border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
                                   cursor: 'pointer',
                                 }}
                               >
@@ -685,7 +685,7 @@ export default function PostedJobsPage() {
                                 onClick={() => handleCancelInterview(interview.id)}
                                 style={{
                                   fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
-                                  border: '1px solid #fca5a5', background: '#fff', color: '#dc2626',
+                                  border: '1px solid var(--danger-border)', background: 'var(--surface)', color: 'var(--danger-accent)',
                                   cursor: 'pointer',
                                 }}
                               >

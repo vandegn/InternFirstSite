@@ -143,7 +143,7 @@ export default function ScheduleInterviewModal({
     >
       <div
         style={{
-          width: '100%', maxWidth: 480, background: '#fff', borderRadius: 16,
+          width: '100%', maxWidth: 480, background: 'var(--surface)', borderRadius: 16,
           boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.15)',
           border: '1px solid var(--border, #e5e7eb)',
           transform: animating ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.97)',
@@ -222,8 +222,8 @@ export default function ScheduleInterviewModal({
                   style={{
                     flex: 1, padding: '8px 0', borderRadius: 8,
                     border: `1px solid ${duration === d ? 'var(--primary)' : 'var(--border)'}`,
-                    background: duration === d ? 'var(--primary)' : '#fff',
-                    color: duration === d ? '#fff' : 'var(--text)',
+                    background: duration === d ? 'var(--primary)' : 'var(--surface)',
+                    color: duration === d ? 'var(--on-primary)' : 'var(--text)',
                     fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
@@ -255,8 +255,8 @@ export default function ScheduleInterviewModal({
           {error && (
             <div style={{
               padding: '8px 12px', borderRadius: 8,
-              background: '#fef2f2', color: '#991b1b',
-              fontSize: '0.78rem', border: '1px solid #fecaca',
+              background: 'var(--danger-bg)', color: 'var(--danger-fg)',
+              fontSize: '0.78rem', border: '1px solid var(--danger-border)',
             }}>
               {error}
             </div>
@@ -273,7 +273,7 @@ export default function ScheduleInterviewModal({
             disabled={submitting}
             style={{
               padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)',
-              background: '#fff', color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600,
+              background: 'var(--surface)', color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600,
               cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >
@@ -285,7 +285,7 @@ export default function ScheduleInterviewModal({
             style={{
               padding: '8px 18px', borderRadius: 8, border: 'none',
               background: canSubmit ? 'var(--primary)' : 'var(--border)',
-              color: '#fff', fontSize: '0.82rem', fontWeight: 600,
+              color: 'var(--on-primary)', fontSize: '0.82rem', fontWeight: 600,
               cursor: canSubmit ? 'pointer' : 'not-allowed',
             }}
           >

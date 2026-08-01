@@ -156,7 +156,7 @@ export default function EmployerAccountPage() {
 
       {error && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{error}</div>}
       {success && (
-        <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
+        <div style={{ padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: '10px', color: 'var(--success-fg)', fontSize: '0.9rem', marginBottom: '16px' }}>
           Account updated successfully.
         </div>
       )}

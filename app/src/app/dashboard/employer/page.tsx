@@ -43,9 +43,9 @@ function joinWindowOpen(scheduledAt: string, durationMinutes: number): boolean {
 const PAGE_SIZE = 10;
 
 const INTERVIEW_BADGE_COLORS: Record<string, { bg: string; color: string; label: string }> = {
-  pending: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
-  accepted: { bg: '#d1fae5', color: '#065f46', label: 'Confirmed' },
-  reschedule_requested: { bg: '#fef3c7', color: '#92400e', label: 'Reschedule Requested' },
+  pending: { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)', label: 'Pending' },
+  accepted: { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)', label: 'Confirmed' },
+  reschedule_requested: { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)', label: 'Reschedule Requested' },
 };
 
 function formatInterviewWhen(iso: string) {
@@ -176,7 +176,7 @@ export default function EmployerDashboard() {
                 <div key={iv.id} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 14px', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border)', background: '#fff',
+                  border: '1px solid var(--border)', background: 'var(--surface)',
                 }}>
                   <img
                     src={iv.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
@@ -202,7 +202,7 @@ export default function EmployerDashboard() {
                   {iv.status === 'accepted' && joinWindowOpen(iv.scheduled_at, iv.duration_minutes) && (
                     <Link href={`/dashboard/employer/interviews/${iv.id}`} style={{
                       fontSize: '0.75rem', fontWeight: 700, padding: '5px 14px', borderRadius: 8,
-                      background: 'var(--primary)', color: '#fff', textDecoration: 'none', flexShrink: 0,
+                      background: 'var(--primary)', color: 'var(--on-primary)', textDecoration: 'none', flexShrink: 0,
                     }}>
                       Join
                     </Link>
@@ -244,7 +244,7 @@ export default function EmployerDashboard() {
                     <p className="listing-location">{listing.location || 'Not specified'}</p>
                     <div className="listing-tags">
                       <span>{listing.industry}</span>
-                      <span style={listing.status === 'closed' ? { background: '#fee2e2', color: '#991b1b' } : undefined}>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
+                      <span style={listing.status === 'closed' ? { background: 'var(--danger-bg-strong)', color: 'var(--danger-fg)' } : undefined}>{listing.status === 'active' ? 'Active' : 'Closed'}</span>
                       {listing.is_remote && <span>Remote</span>}
                       {!listing.is_remote && listing.is_hybrid && <span>Hybrid</span>}
                     </div>
@@ -324,8 +324,8 @@ export default function EmployerDashboard() {
                   <h4>{app.student?.profile?.full_name || 'Unknown'}</h4>
                   <p>Applied for: {app.listing?.title || 'Unknown'}</p>
                   <div className="match-badge" style={{
-                    background: app.status === 'offered' ? '#d1fae5' : app.status === 'interviewing' ? '#dbeafe' : app.status === 'rejected' ? '#fee2e2' : undefined,
-                    color: app.status === 'offered' ? '#065f46' : app.status === 'interviewing' ? '#1e40af' : app.status === 'rejected' ? '#991b1b' : undefined,
+                    background: app.status === 'offered' ? 'var(--chip-green-bg)' : app.status === 'interviewing' ? 'var(--chip-blue-bg)' : app.status === 'rejected' ? 'var(--danger-bg-strong)' : undefined,
+                    color: app.status === 'offered' ? 'var(--chip-green-ink)' : app.status === 'interviewing' ? 'var(--chip-blue-ink)' : app.status === 'rejected' ? 'var(--danger-fg)' : undefined,
                   }}>
                     {app.status === 'applied' ? 'New' : app.status === 'reviewed' ? 'Under Review' : app.status === 'interviewing' ? 'Interviewing' : app.status === 'offered' ? 'Offered' : 'Not Selected'}
                   </div>

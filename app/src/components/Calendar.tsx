@@ -23,12 +23,12 @@ export type CalendarProps = {
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
-  interview: '#2563eb',
+  interview: 'var(--chip-blue-ink)',
   career_fair: '#9FC63C',
   info_session: '#f59e0b',
   deadline: '#ef4444',
-  appointment: '#1A2D49',
-  event: '#1A2D49',
+  appointment: 'var(--primary)',
+  event: 'var(--primary)',
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -157,7 +157,7 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
   return (
     <div style={{
       width: '100%',
-      background: '#fff',
+      background: 'var(--surface)',
       borderRadius: 'var(--radius)',
       border: '1px solid var(--border)',
       boxShadow: 'var(--shadow)',
@@ -257,7 +257,7 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
                   ? 'var(--primary-light)'
                   : isToday
                     ? 'rgba(159,198,60,0.08)'
-                    : '#fff',
+                    : 'var(--surface)',
                 cursor: 'pointer',
                 transition: 'var(--transition)',
                 outline: 'none',
@@ -267,7 +267,7 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
               }}
               onMouseLeave={e => {
                 if (!isSelected) (e.currentTarget as HTMLElement).style.background =
-                  isToday ? 'rgba(159,198,60,0.08)' : '#fff';
+                  isToday ? 'rgba(159,198,60,0.08)' : 'var(--surface)';
               }}
             >
               <span style={{
@@ -361,7 +361,7 @@ export default function Calendar({ events, onDateSelect, onEventClick }: Calenda
                   alignItems: 'flex-start',
                   gap: 12,
                   padding: '12px 14px',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border)',
                   cursor: onEventClick ? 'pointer' : 'default',
@@ -461,7 +461,7 @@ const navBtnStyle: React.CSSProperties = {
   height: 34,
   borderRadius: 'var(--radius-sm)',
   border: '1px solid var(--border)',
-  background: '#fff',
+  background: 'var(--surface)',
   color: 'var(--text-secondary)',
   cursor: 'pointer',
   transition: 'var(--transition)',

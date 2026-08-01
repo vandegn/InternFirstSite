@@ -129,7 +129,7 @@ export default function StudentResources() {
 
       {/* ── Free Resources ── */}
       <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ background: '#f0fdf4', color: '#166534', fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: '999px', border: '1px solid #bbf7d0' }}>Free</span>
+        <span style={{ background: 'var(--success-bg)', color: 'var(--success-fg)', fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: '999px', border: '1px solid var(--success-border)' }}>Free</span>
         Resources
       </h3>
 
@@ -182,7 +182,7 @@ export default function StudentResources() {
       {/* ── Premium Services ── */}
       <div style={{ marginTop: '40px', padding: '32px', borderRadius: 'var(--radius)', background: 'linear-gradient(135deg, rgba(26, 45, 73, 0.04) 0%, rgba(26, 45, 73, 0.10) 100%)', border: '1px solid rgba(26, 45, 73, 0.15)' }}>
         <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ background: 'var(--primary)', color: '#fff', fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: '999px' }}>Premium</span>
+          <span style={{ background: 'var(--primary)', color: 'var(--on-primary)', fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: '999px' }}>Premium</span>
           Services
         </h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>

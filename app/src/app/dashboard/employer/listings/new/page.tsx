@@ -601,7 +601,7 @@ export default function NewListingPage() {
                   {questions.filter((q) => q.prompt.trim()).map((q, i) => (
                     <li key={i} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                       {q.prompt}
-                      {q.required && <span style={{ color: '#b91c1c', marginLeft: 4 }}>*</span>}
+                      {q.required && <span style={{ color: 'var(--danger-fg)', marginLeft: 4 }}>*</span>}
                       <span style={{ color: 'var(--text-light)', marginLeft: 6, fontSize: '0.78rem' }}>
                         ({QUESTION_TYPES.find((t) => t.value === q.question_type)?.label})
                       </span>

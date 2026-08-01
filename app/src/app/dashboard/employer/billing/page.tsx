@@ -99,7 +99,7 @@ export default function BillingPage() {
           </button>
         </div>
         {cardError && (
-          <p style={{ color: 'var(--danger, #dc2626)', fontSize: '0.85rem', margin: '12px 0 0' }}>{cardError}</p>
+          <p style={{ color: 'var(--danger, var(--danger-accent))', fontSize: '0.85rem', margin: '12px 0 0' }}>{cardError}</p>
         )}
       </div>
 
@@ -153,7 +153,7 @@ export default function BillingPage() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700 }}>{formatCents(p.amount_cents)}</div>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'capitalize', color: p.status === 'paid' ? 'var(--success, #16a34a)' : p.status === 'failed' ? 'var(--danger, #dc2626)' : 'var(--text-secondary)' }}>{p.status}</div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'capitalize', color: p.status === 'paid' ? 'var(--success, #16a34a)' : p.status === 'failed' ? 'var(--danger, var(--danger-accent))' : 'var(--text-secondary)' }}>{p.status}</div>
                 </div>
               </div>
             ))}

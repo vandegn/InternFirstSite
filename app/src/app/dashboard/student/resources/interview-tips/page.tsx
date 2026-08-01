@@ -58,7 +58,7 @@ export default function InterviewTips() {
               { letter: 'R', label: 'Result', desc: 'Share the outcome. Quantify if possible.' },
             ].map((item) => (
               <div key={item.letter} style={{ padding: '16px', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, margin: '0 auto 10px' }}>{item.letter}</div>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, margin: '0 auto 10px' }}>{item.letter}</div>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' }}>{item.label}</div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{item.desc}</div>
               </div>

@@ -13,6 +13,7 @@ import {
 } from '@/lib/supabase';
 import type { CareerSurveyData } from '@/lib/supabase';
 import CareerSurveyModal from '@/components/CareerSurveyModal';
+import ThemePicker from '@/components/ThemePicker';
 import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 
 const SECTIONS: { id: string; label: string; danger?: boolean; icon: React.ReactNode }[] = [
@@ -44,9 +45,6 @@ export default function StudentSettings() {
   const [notifyApplicationStatus, setNotifyApplicationStatus] = useState(true);
   const [notifyWeeklyDigest, setNotifyWeeklyDigest] = useState(false);
 
-  // Appearance
-  const [darkMode, setDarkMode] = useState(false);
-
   // Privacy
   const [showProfileToEmployers, setShowProfileToEmployers] = useState(true);
   const [showEmailOnProfile, setShowEmailOnProfile] = useState(false);
@@ -74,10 +72,6 @@ export default function StudentSettings() {
       if (!user) return;
       setEmail(user.email || '');
 
-      // Load dark mode preference from localStorage
-      const savedDarkMode = localStorage.getItem('internfirst-dark-mode');
-      if (savedDarkMode === 'true') setDarkMode(true);
-
       const student = await getStudentByUserId(user.id);
       if (student) {
         setStudentId(student.id);
@@ -94,9 +88,6 @@ export default function StudentSettings() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('internfirst-dark-mode', darkMode.toString());
-  }, [darkMode]);
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
@@ -205,7 +196,7 @@ export default function StudentSettings() {
     width: '44px',
     height: '24px',
     borderRadius: '12px',
-    background: checked ? 'var(--primary)' : '#d1d5db',
+    background: checked ? 'var(--primary)' : 'var(--grey-light)',
     cursor: 'pointer',
     transition: 'background 0.2s',
     flexShrink: 0,
@@ -220,7 +211,7 @@ export default function StudentSettings() {
     width: '20px',
     height: '20px',
     borderRadius: '50%',
-    background: '#fff',
+    background: 'var(--surface)',
     boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
     transition: 'left 0.2s',
   });
@@ -300,7 +291,7 @@ export default function StudentSettings() {
 
         {passwordError && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{passwordError}</div>}
         {passwordSuccess && (
-          <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
+          <div style={{ padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: '10px', color: 'var(--success-fg)', fontSize: '0.9rem', marginBottom: '16px' }}>
             Password updated successfully.
           </div>
         )}
@@ -378,7 +369,7 @@ export default function StudentSettings() {
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Skills to Develop</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
                   {careerSurvey.skills.map(skill => (
-                    <span key={skill} style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, background: '#e0f2fe', color: '#0369a1', border: '1px solid rgba(3, 105, 161, 0.15)' }}>{skill}</span>
+                    <span key={skill} style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, background: 'var(--info-bg)', color: 'var(--info-fg)', border: '1px solid rgba(3, 105, 161, 0.15)' }}>{skill}</span>
                   ))}
                 </div>
               </div>
@@ -399,7 +390,7 @@ export default function StudentSettings() {
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 border: '1px solid var(--border)',
-                background: '#fff',
+                background: 'var(--surface)',
                 color: 'var(--text)',
                 cursor: 'pointer',
                 transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -410,7 +401,7 @@ export default function StudentSettings() {
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }}>
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
               <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
             </svg>
@@ -425,7 +416,7 @@ export default function StudentSettings() {
                 fontWeight: 600,
                 border: 'none',
                 background: 'var(--accent, #9FC63C)',
-                color: '#fff',
+                color: 'var(--on-accent)',
                 cursor: 'pointer',
                 transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
@@ -457,7 +448,7 @@ export default function StudentSettings() {
             fontSize: '0.85rem',
             fontWeight: 600,
             border: '1px solid var(--border)',
-            background: '#fff',
+            background: 'var(--surface)',
             color: 'var(--text)',
             textDecoration: 'none',
             transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -517,7 +508,7 @@ export default function StudentSettings() {
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                   <button type="button" onClick={() => openEditExperience(exp)} style={miniBtnStyle}>Edit</button>
-                  <button type="button" onClick={() => removeExperience(exp.id)} style={{ ...miniBtnStyle, border: '1px solid #fca5a5', color: '#dc2626' }}>Delete</button>
+                  <button type="button" onClick={() => removeExperience(exp.id)} style={{ ...miniBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Delete</button>
                 </div>
               </div>
             ))}
@@ -599,7 +590,7 @@ export default function StudentSettings() {
                 type="button"
                 onClick={saveExperience}
                 disabled={!expFormDraft.title.trim() || expSaving}
-                style={{ ...miniBtnStyle, background: 'var(--primary)', color: '#fff', border: '1px solid var(--primary)', opacity: !expFormDraft.title.trim() || expSaving ? 0.5 : 1 }}
+                style={{ ...miniBtnStyle, background: 'var(--primary)', color: 'var(--on-primary)', border: '1px solid var(--primary)', opacity: !expFormDraft.title.trim() || expSaving ? 0.5 : 1 }}
               >
                 {expSaving ? 'Saving...' : editingExpId ? 'Save changes' : 'Add experience'}
               </button>
@@ -661,14 +652,12 @@ export default function StudentSettings() {
       {/* Appearance */}
       {activeSection === 'appearance' && (
       <div className="profile-card" style={{ padding: '28px' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '12px' }}>Appearance</h3>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>Appearance</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '18px' }}>
+          Choose how InternFirst looks to you. Applies instantly across the whole platform.
+        </p>
 
-        <SettingRow
-          label="Dark mode"
-          description="Switch to a darker color scheme."
-          checked={darkMode}
-          onChange={setDarkMode}
-        />
+        <ThemePicker />
       </div>
 
       )}
@@ -696,8 +685,8 @@ export default function StudentSettings() {
 
       {/* Danger Zone */}
       {activeSection === 'danger' && (
-      <div className="profile-card" style={{ padding: '28px', border: '1px solid #fca5a5' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px', color: '#dc2626' }}>Danger Zone</h3>
+      <div className="profile-card" style={{ padding: '28px', border: '1px solid var(--danger-border)' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px', color: 'var(--danger-accent)' }}>Danger Zone</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
           Permanently delete your account and all associated data.
         </p>
@@ -706,17 +695,17 @@ export default function StudentSettings() {
           onClick={() => setShowDeleteDialog(true)}
           style={{
             padding: '10px 24px',
-            background: '#fff',
-            color: '#dc2626',
-            border: '1px solid #fca5a5',
+            background: 'var(--surface)',
+            color: 'var(--danger-accent)',
+            border: '1px solid var(--danger-border)',
             borderRadius: 'var(--radius-sm)',
             fontWeight: 600,
             fontSize: '0.9rem',
             cursor: 'pointer',
             transition: 'background 0.15s',
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
-          onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
         >
           Delete Account
         </button>
@@ -732,7 +721,7 @@ export default function StudentSettings() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
         }}>
           <div style={{
-            background: '#fff', borderRadius: 'var(--radius)', padding: '32px',
+            background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px',
             maxWidth: '440px', width: '90%', boxShadow: 'var(--shadow-lg)',
           }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Delete Account</h3>
@@ -839,7 +828,7 @@ const miniBtnStyle: React.CSSProperties = {
   fontWeight: 600,
   borderRadius: 6,
   border: '1px solid var(--border)',
-  background: '#fff',
+  background: 'var(--surface)',
   color: 'var(--text)',
   cursor: 'pointer',
 };

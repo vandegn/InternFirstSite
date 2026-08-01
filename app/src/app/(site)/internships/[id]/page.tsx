@@ -150,7 +150,7 @@ export default function PublicListingDetailPage() {
           {/* Header card */}
           <div
             style={{
-              background: '#fff',
+              background: 'var(--surface)',
               border: '1px solid var(--border)',
               borderRadius: 16,
               padding: 32,
@@ -266,7 +266,7 @@ export default function PublicListingDetailPage() {
           {/* Bottom CTA */}
           <div
             style={{
-              background: 'linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 100%)',
+              background: 'linear-gradient(135deg, var(--panel-dark) 0%, var(--panel-dark-2) 100%)',
               borderRadius: 16,
               padding: 36,
               textAlign: 'center',
@@ -301,7 +301,7 @@ function Section({ title, children, accentColor }: { title: string; children: Re
   return (
     <div
       style={{
-        background: '#fff',
+        background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 16,
         padding: 28,

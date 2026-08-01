@@ -73,13 +73,13 @@ type Application = {
   };
 };
 
-const FALLBACK_PILL = { bg: '#e0e7ff', color: '#3730a3', label: 'Applied' };
+const FALLBACK_PILL = { bg: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-ink)', label: 'Applied' };
 
 // Match score badge colors: strong (>=70, the PPA-qualifying threshold), fair, weak.
 function matchPill(score: number) {
-  if (score >= 70) return { bg: '#dcfce7', color: '#166534' };
-  if (score >= 40) return { bg: '#fef3c7', color: '#92400e' };
-  return { bg: '#f3f4f6', color: '#4b5563' };
+  if (score >= 70) return { bg: '#dcfce7', color: 'var(--success-fg)' };
+  if (score >= 40) return { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' };
+  return { bg: '#f3f4f6', color: 'var(--chip-neutral-ink)' };
 }
 
 export default function EmployerApplications() {
@@ -311,8 +311,8 @@ export default function EmployerApplications() {
                             fontWeight: 600,
                             padding: '2px 10px',
                             borderRadius: '10px',
-                            background: '#fee2e2',
-                            color: '#b91c1c',
+                            background: 'var(--danger-bg-strong)',
+                            color: 'var(--danger-fg)',
                           }}
                         >
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>

@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { getWaitlist, type WaitlistEntry } from '@/lib/supabase';
 
 const ROLE_PILL: Record<string, { bg: string; color: string; label: string }> = {
-  student: { bg: '#e0e7ff', color: '#3730a3', label: 'Student' },
-  employer: { bg: '#d1fae5', color: '#065f46', label: 'Employer' },
-  other: { bg: '#f1f5f9', color: '#475569', label: 'Other' },
+  student: { bg: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-ink)', label: 'Student' },
+  employer: { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)', label: 'Employer' },
+  other: { bg: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)', label: 'Other' },
 };
 
 function formatDate(iso: string): string {
@@ -84,7 +84,7 @@ export default function AdminWaitlistPage() {
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
             {entries.length} {entries.length === 1 ? 'person' : 'people'} on the waitlist
           </p>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', background: '#fff' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', background: 'var(--surface)' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>

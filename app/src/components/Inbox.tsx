@@ -151,7 +151,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                         <span style={{
                           position: 'absolute', top: -2, right: -2,
                           width: 18, height: 18, borderRadius: '50%',
-                          background: 'var(--primary)', color: '#fff',
+                          background: 'var(--primary)', color: 'var(--on-primary)',
                           fontSize: '0.65rem', fontWeight: 700,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
@@ -221,7 +221,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                           padding: '10px 14px',
                           borderRadius: '16px',
                           background: isMine ? 'var(--primary)' : 'var(--bg-light)',
-                          color: isMine ? '#fff' : 'var(--text)',
+                          color: isMine ? 'var(--on-primary)' : 'var(--text)',
                           fontSize: '0.9rem',
                           lineHeight: 1.5,
                         }}>
@@ -259,7 +259,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                       borderRadius: '24px',
                       border: 'none',
                       background: 'var(--primary)',
-                      color: '#fff',
+                      color: 'var(--on-primary)',
                       fontSize: '0.9rem',
                       fontWeight: 500,
                       cursor: sending || !newMessage.trim() ? 'not-allowed' : 'pointer',

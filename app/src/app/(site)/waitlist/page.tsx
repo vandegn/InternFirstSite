@@ -89,7 +89,7 @@ export default function WaitlistPage() {
                 style={{
                   padding: 32,
                   textAlign: 'center',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius)',
                 }}
@@ -105,7 +105,7 @@ export default function WaitlistPage() {
                 onSubmit={handleSubmit}
                 style={{
                   padding: 32,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius)',
                 }}

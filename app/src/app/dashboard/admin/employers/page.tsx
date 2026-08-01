@@ -12,9 +12,9 @@ import { triageLevel, type TriageLevel } from '@/lib/domain-signals';
 import { VERIFICATION_CHIP } from '@/components/VerificationBanner';
 
 const TRIAGE: Record<TriageLevel, { label: string; bg: string; color: string }> = {
-  clear: { label: 'Looks clear', bg: '#d1fae5', color: '#065f46' },
-  review: { label: 'Needs a look', bg: '#fef3c7', color: '#92400e' },
-  suspect: { label: 'Check carefully', bg: '#fee2e2', color: '#991b1b' },
+  clear: { label: 'Looks clear', bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)' },
+  review: { label: 'Needs a look', bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' },
+  suspect: { label: 'Check carefully', bg: 'var(--danger-bg-strong)', color: 'var(--danger-fg)' },
 };
 
 const FILTERS: { key: VerificationStatus | 'all'; label: string }[] = [
@@ -34,7 +34,7 @@ function formatAge(days: number | null | undefined): string {
 }
 
 function Signal({ label, value, tone }: { label: string; value: string; tone: 'good' | 'bad' | 'neutral' }) {
-  const color = tone === 'good' ? '#065f46' : tone === 'bad' ? '#991b1b' : 'var(--text)';
+  const color = tone === 'good' ? 'var(--chip-green-ink)' : tone === 'bad' ? 'var(--danger-fg)' : 'var(--text)';
   return (
     <div>
       <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', fontWeight: 600 }}>
@@ -144,7 +144,7 @@ export default function AdminEmployerReviewPage() {
       </div>
 
       {error && (
-        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', marginBottom: '16px' }}>
+        <div style={{ background: 'var(--danger-bg-strong)', color: 'var(--danger-fg)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', marginBottom: '16px' }}>
           {error}
         </div>
       )}
@@ -238,7 +238,7 @@ export default function AdminEmployerReviewPage() {
                 </div>
 
                 {e.signals_error && (
-                  <p style={{ fontSize: '0.78rem', color: '#92400e', marginBottom: '12px' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--chip-amber-ink)', marginBottom: '12px' }}>
                     Automated check incomplete: {e.signals_error}. Verify this one by hand.
                   </p>
                 )}
@@ -284,7 +284,7 @@ export default function AdminEmployerReviewPage() {
                       disabled={isBusy}
                       style={{
                         fontSize: '0.82rem', padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-                        border: '1px solid #fecaca', background: 'var(--surface)', color: '#991b1b',
+                        border: '1px solid var(--danger-border)', background: 'var(--surface)', color: 'var(--danger-fg)',
                         cursor: isBusy ? 'default' : 'pointer', fontWeight: 500,
                       }}
                     >

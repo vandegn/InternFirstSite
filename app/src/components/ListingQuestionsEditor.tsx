@@ -74,7 +74,7 @@ export default function ListingQuestionsEditor({ questions, onChange }: {
               <button type="button" onClick={() => move(i, 1)} disabled={i === questions.length - 1} aria-label="Move question down" style={iconButtonStyle(i === questions.length - 1)}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
               </button>
-              <button type="button" onClick={() => remove(i)} aria-label="Remove question" style={{ ...iconButtonStyle(false), color: '#b91c1c', borderColor: '#fecaca' }}>
+              <button type="button" onClick={() => remove(i)} aria-label="Remove question" style={{ ...iconButtonStyle(false), color: 'var(--danger-fg)', borderColor: 'var(--danger-border)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
@@ -124,7 +124,7 @@ export default function ListingQuestionsEditor({ questions, onChange }: {
                       type="button"
                       onClick={() => update(i, { options: options.filter((_, x) => x !== oi) })}
                       aria-label="Remove option"
-                      style={{ ...iconButtonStyle(false), color: '#b91c1c', borderColor: '#fecaca' }}
+                      style={{ ...iconButtonStyle(false), color: 'var(--danger-fg)', borderColor: 'var(--danger-border)' }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                     </button>

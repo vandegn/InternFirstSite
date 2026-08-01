@@ -14,10 +14,10 @@ const ICONS: Record<VerificationStatus, React.ReactNode> = {
 };
 
 const TONE: Record<VerificationStatus, { bg: string; border: string; chip: string; ink: string }> = {
-  approved: { bg: '#f0fdf4', border: '#bbf7d0', chip: '#d1fae5', ink: '#065f46' },
-  pending: { bg: '#fffbeb', border: '#fde68a', chip: '#fef3c7', ink: '#92400e' },
-  needs_info: { bg: '#eef2ff', border: '#c7d2fe', chip: '#e0e7ff', ink: '#3730a3' },
-  rejected: { bg: '#fef2f2', border: '#fecaca', chip: '#fee2e2', ink: '#991b1b' },
+  approved: { bg: 'var(--success-bg)', border: 'var(--success-border)', chip: 'var(--success-chip)', ink: 'var(--success-ink)' },
+  pending: { bg: 'var(--warning-bg)', border: 'var(--warning-border)', chip: 'var(--warning-chip)', ink: 'var(--warning-ink)' },
+  needs_info: { bg: 'var(--info-bg-alt)', border: 'var(--info-chip)', chip: 'var(--info-chip)', ink: 'var(--info-ink)' },
+  rejected: { bg: 'var(--danger-bg)', border: 'var(--danger-border)', chip: 'var(--danger-chip)', ink: 'var(--danger-ink)' },
 };
 
 // Pill colours for the compact status chip, shared with the admin review queue.

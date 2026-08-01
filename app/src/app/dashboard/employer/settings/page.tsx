@@ -103,7 +103,7 @@ export default function EmployerSettings() {
     width: '44px',
     height: '24px',
     borderRadius: '12px',
-    background: checked ? 'var(--primary)' : '#d1d5db',
+    background: checked ? 'var(--primary)' : 'var(--grey-light)',
     cursor: 'pointer',
     transition: 'background 0.2s',
     flexShrink: 0,
@@ -205,7 +205,7 @@ export default function EmployerSettings() {
 
         {passwordError && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{passwordError}</div>}
         {passwordSuccess && (
-          <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#166534', fontSize: '0.9rem', marginBottom: '16px' }}>
+          <div style={{ padding: '12px 16px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: '10px', color: 'var(--success-fg)', fontSize: '0.9rem', marginBottom: '16px' }}>
             Password updated successfully.
           </div>
         )}
@@ -325,8 +325,8 @@ export default function EmployerSettings() {
 
       {/* Danger Zone */}
       {activeSection === 'danger' && (
-      <div className="profile-card" style={{ padding: '28px', border: '1px solid #fca5a5' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px', color: '#dc2626' }}>Danger Zone</h3>
+      <div className="profile-card" style={{ padding: '28px', border: '1px solid var(--danger-border)' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px', color: 'var(--danger-accent)' }}>Danger Zone</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
           Permanently delete your account and all associated data.
         </p>
@@ -336,15 +336,15 @@ export default function EmployerSettings() {
           style={{
             padding: '10px 24px',
             background: 'var(--surface)',
-            color: '#dc2626',
-            border: '1px solid #fca5a5',
+            color: 'var(--danger-accent)',
+            border: '1px solid var(--danger-border)',
             borderRadius: 'var(--radius-sm)',
             fontWeight: 600,
             fontSize: '0.9rem',
             cursor: 'pointer',
             transition: 'background 0.15s',
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-bg)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
         >
           Delete Account

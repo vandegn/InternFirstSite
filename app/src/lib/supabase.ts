@@ -1187,6 +1187,15 @@ export async function getStudentExperiences(studentId: string, type?: string) {
   return data ?? [];
 }
 
+// Postgres `date` columns reject empty strings ('') — normalize blank dates to null.
+function normalizeDates<T extends Record<string, unknown>>(fields: T, keys: string[]): T {
+  const out = { ...fields };
+  for (const key of keys) {
+    if (out[key] === '') (out as Record<string, unknown>)[key] = null;
+  }
+  return out;
+}
+
 export async function addStudentExperience(studentId: string, experience: {
   type: string;
   title: string;
@@ -1201,7 +1210,7 @@ export async function addStudentExperience(studentId: string, experience: {
 }) {
   const { data, error } = await supabase
     .from('student_experiences')
-    .insert({ student_id: studentId, ...experience })
+    .insert({ student_id: studentId, ...normalizeDates(experience, ['start_date', 'end_date']) })
     .select()
     .single();
   if (error) throw error;
@@ -1221,7 +1230,7 @@ export async function updateStudentExperience(experienceId: string, fields: {
 }) {
   const { data, error } = await supabase
     .from('student_experiences')
-    .update(fields)
+    .update(normalizeDates(fields, ['start_date', 'end_date']))
     .eq('id', experienceId)
     .select()
     .single();
@@ -1260,7 +1269,7 @@ export async function addStudentOrganization(studentId: string, org: {
 }) {
   const { data, error } = await supabase
     .from('student_organizations')
-    .insert({ student_id: studentId, ...org })
+    .insert({ student_id: studentId, ...normalizeDates(org, ['join_date', 'end_date']) })
     .select()
     .single();
   if (error) throw error;
@@ -1276,7 +1285,7 @@ export async function updateStudentOrganization(orgId: string, fields: {
 }) {
   const { data, error } = await supabase
     .from('student_organizations')
-    .update(fields)
+    .update(normalizeDates(fields, ['join_date', 'end_date']))
     .eq('id', orgId)
     .select()
     .single();

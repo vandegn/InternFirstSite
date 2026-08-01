@@ -54,16 +54,28 @@ create table internship_listings (
   employer_id uuid references employers(id) on delete cascade not null,
   title text not null,
   description text not null,
-  location text,
+  location text,                       -- canonical "Raleigh, NC" display string (see section 20)
+  city text,                           -- structured parts, set by the location picker
+  state text check (state is null or state ~ '^[A-Z]{2}$'),
+  lat double precision,
+  lng double precision,
   is_remote boolean default false,
   is_hybrid boolean default false,
-  compensation text,
+  compensation text,                   -- display string derived from the comp_* columns (see section 19)
   requirements text,
   key_responsibilities text,
   industry text not null default 'Other' check (industry in ('Technology', 'Finance', 'Healthcare', 'Marketing', 'Legal', 'Engineering', 'Education', 'Media', 'Nonprofit', 'Government', 'Retail', 'Other')),
   status text default 'active' check (status in ('active', 'paused', 'closed')),
   application_deadline date,
   duration text,
+  -- Customization (see section 19: Customizable Job Postings)
+  comp_type text check (comp_type in ('hourly', 'salary', 'stipend', 'unpaid', 'other')),
+  comp_min_cents int,
+  comp_max_cents int,
+  comp_note text,
+  role_tags text[] not null default '{}',
+  banner_url text,
+  accent_color text check (accent_color ~ '^#[0-9a-fA-F]{6}$'),
   -- Billing (see section 18: Employer Payment Plans)
   pricing_model text check (pricing_model in ('ppj', 'ppa')),
   applicant_quota int,                 -- PPJ estimate upper bound (informational, no cap)
@@ -114,6 +126,7 @@ create table applications (
   listing_id uuid references internship_listings(id) on delete cascade not null,
   status text default 'applied' check (status in ('applied', 'reviewed', 'interviewing', 'offered', 'rejected')),
   match_score int check (match_score between 0 and 100),  -- weighted profile match (app/src/lib/matching.ts); null if scoring failed; PPA bills only >= 70 (section 18)
+  flagged_knockout boolean not null default false,        -- set by flag_knockout_answer() trigger (section 19)
   applied_at timestamptz default now() not null,
   updated_at timestamptz default now() not null,
   unique(student_id, listing_id)       -- prevent duplicate applications
@@ -784,3 +797,201 @@ $$;
 create trigger on_application_created
   after insert on applications
   for each row execute function handle_new_application();
+
+-- ============================================
+-- 19. CUSTOMIZABLE JOB POSTINGS
+-- ============================================
+-- Employer-controlled extras on a listing. The comp_*, role_tags, banner_url
+-- and accent_color columns are defined inline on internship_listings above.
+--
+-- `industry` deliberately stays a 12-value preset: it drives PPJ/PPA pricing
+-- (cpaForIndustry), the student filter pills, and major-based recommendations.
+-- role_tags is the additive free-form escape hatch.
+--
+-- `compensation` is kept as a display string derived from the comp_* columns by
+-- formatCompensation() in app/src/lib/constants.ts and written on every save.
+-- getActiveListings' paid/unpaid filter matches the literal string 'Unpaid',
+-- so that derivation must keep producing it for comp_type = 'unpaid'.
+
+-- ----- Extra content sections -----
+-- Job Overview / Qualifications / Key Responsibilities stay as columns on
+-- internship_listings — they feed the keyword search in getActiveListings.
+-- These are additional employer-authored markdown blocks rendered after them.
+create table listing_sections (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  heading text not null,
+  body text not null,
+  position int not null default 0,
+  created_at timestamptz default now() not null
+);
+
+create index idx_listing_sections_listing on listing_sections(listing_id, position);
+
+alter table listing_sections enable row level security;
+
+create policy "Employers manage sections on own listings"
+  on listing_sections for all to authenticated
+  using (
+    listing_id in (
+      select il.id from internship_listings il
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  )
+  with check (
+    listing_id in (
+      select il.id from internship_listings il
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  );
+
+create policy "Sections on active listings are viewable"
+  on listing_sections for select to authenticated
+  using (listing_id in (select id from internship_listings where status = 'active'));
+
+create policy "Sections on active listings are publicly viewable"
+  on listing_sections for select to anon
+  using (listing_id in (select id from internship_listings where status = 'active'));
+
+-- ----- Custom screening questions -----
+-- knockout_answer only applies to question_type = 'yes_no'. A matching answer
+-- flags the application for the employer; it never blocks submission.
+create table listing_questions (
+  id uuid primary key default gen_random_uuid(),
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  prompt text not null,
+  help_text text,
+  question_type text not null default 'short_text'
+    check (question_type in ('short_text', 'long_text', 'single_select', 'multi_select', 'yes_no', 'file')),
+  options text[] not null default '{}',
+  required boolean not null default false,
+  knockout_answer text check (knockout_answer in ('yes', 'no')),
+  position int not null default 0,
+  created_at timestamptz default now() not null
+);
+
+create index idx_listing_questions_listing on listing_questions(listing_id, position);
+
+alter table listing_questions enable row level security;
+
+create policy "Employers manage questions on own listings"
+  on listing_questions for all to authenticated
+  using (
+    listing_id in (
+      select il.id from internship_listings il
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  )
+  with check (
+    listing_id in (
+      select il.id from internship_listings il
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  );
+
+create policy "Questions on active listings are viewable"
+  on listing_questions for select to authenticated
+  using (listing_id in (select id from internship_listings where status = 'active'));
+
+create policy "Questions on active listings are publicly viewable"
+  on listing_questions for select to anon
+  using (listing_id in (select id from internship_listings where status = 'active'));
+
+-- ----- Application answers -----
+-- One row per (application, question). Which column is populated depends on the
+-- question type: answer_text for short/long/yes_no/single_select,
+-- answer_options for multi_select, file_url for file uploads.
+create table application_answers (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid references applications(id) on delete cascade not null,
+  question_id uuid references listing_questions(id) on delete cascade not null,
+  answer_text text,
+  answer_options text[] not null default '{}',
+  file_url text,
+  created_at timestamptz default now() not null,
+  unique(application_id, question_id)
+);
+
+create index idx_application_answers_application on application_answers(application_id);
+create index idx_application_answers_question on application_answers(question_id);
+
+alter table application_answers enable row level security;
+
+-- Deliberately no update/delete policy — answers are immutable once submitted.
+create policy "Students insert answers on own applications"
+  on application_answers for insert to authenticated
+  with check (
+    application_id in (
+      select a.id from applications a
+      join students s on a.student_id = s.id
+      where s.user_id = auth.uid()
+    )
+  );
+
+create policy "Students read answers on own applications"
+  on application_answers for select to authenticated
+  using (
+    application_id in (
+      select a.id from applications a
+      join students s on a.student_id = s.id
+      where s.user_id = auth.uid()
+    )
+  );
+
+create policy "Employers read answers on their listings"
+  on application_answers for select to authenticated
+  using (
+    application_id in (
+      select a.id from applications a
+      join internship_listings il on a.listing_id = il.id
+      join employers e on il.employer_id = e.id
+      where e.user_id = auth.uid()
+    )
+  );
+
+-- ----- Knockout flagging -----
+-- Set server-side rather than by the client, so a student cannot submit a
+-- disqualifying answer with the flag suppressed.
+create or replace function flag_knockout_answer()
+returns trigger as $$
+declare
+  ko text;
+  qtype text;
+begin
+  select knockout_answer, question_type into ko, qtype
+    from listing_questions where id = new.question_id;
+
+  if qtype = 'yes_no' and ko is not null and lower(new.answer_text) = ko then
+    update applications set flagged_knockout = true where id = new.application_id;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger trg_flag_knockout_answer
+  after insert on application_answers
+  for each row execute function flag_knockout_answer();
+
+-- ============================================
+-- 20. STRUCTURED LISTING LOCATION
+-- ============================================
+-- Employers pick a location from a bundled US city autocomplete
+-- (app/src/app/api/locations/route.ts) rather than free-typing it. The city,
+-- state, lat and lng columns are defined inline on internship_listings above.
+--
+-- `location` is kept as the canonical "Raleigh, NC" display string: listing
+-- cards, detail pages, and the student location filter (an ilike over
+-- `location` in getActiveListings) all read it. Rows created before the picker
+-- keep their free-text location with null city/state; the edit form flags
+-- those and asks the employer to re-pick.
+
+create index idx_listings_city_state on internship_listings(state, city);
+
+-- Supports radius search ("internships near me") via a bounding-box prefilter.
+-- A plain btree is sufficient here; no PostGIS needed.
+create index idx_listings_latlng on internship_listings(lat, lng) where lat is not null;

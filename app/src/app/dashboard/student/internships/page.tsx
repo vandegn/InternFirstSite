@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { supabase, getActiveListings, trackListingView } from '@/lib/supabase';
+import { supabase, getActiveListings, trackListingView, getListingSections, type ListingSection } from '@/lib/supabase';
 import { INDUSTRIES, DURATIONS } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
 import TestPostingBadge from '@/components/TestPostingBadge';
 import ReactMarkdown from 'react-markdown';
+import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
 
 type Listing = {
   id: string;
@@ -22,6 +23,9 @@ type Listing = {
   application_deadline: string | null;
   key_responsibilities: string | null;
   duration: string | null;
+  role_tags: string[] | null;
+  banner_url: string | null;
+  accent_color: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
@@ -52,12 +56,21 @@ export default function BrowseInternships() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIndustry, setSelectedIndustry] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Custom sections for the listing shown in the detail pane, loaded on select.
+  const [selectedSections, setSelectedSections] = useState<ListingSection[]>([]);
+  const sectionsRequestRef = useRef<string | null>(null);
   const detailPanelRef = useRef<HTMLDivElement>(null);
   const viewedListingsRef = useRef<Set<string>>(new Set());
   const userIdRef = useRef<string | null>(null);
 
   const selectListing = (id: string) => {
     setSelectedId(id);
+    setSelectedSections([]);
+    // Ignore a slow response if the user has already picked another listing.
+    sectionsRequestRef.current = id;
+    getListingSections(id).then((sections) => {
+      if (sectionsRequestRef.current === id) setSelectedSections(sections);
+    });
     detailPanelRef.current?.scrollTo({ top: 0 });
     // Fire-and-forget view tracking, once per listing per session
     const uid = userIdRef.current;
@@ -835,6 +848,8 @@ export default function BrowseInternships() {
           >
             {selectedListing ? (
               <div>
+                <ListingBanner bannerUrl={selectedListing.banner_url} accentColor={selectedListing.accent_color} />
+
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
                   {selectedListing.employers?.logo_url ? (
@@ -959,6 +974,8 @@ export default function BrowseInternships() {
                   })()}
                 </div>
 
+                <RoleTagPills tags={selectedListing.role_tags} />
+
                 {/* Apply button */}
                 <div style={{ marginBottom: '24px' }}>
                   <Link
@@ -1018,6 +1035,8 @@ export default function BrowseInternships() {
                     </div>
                   </div>
                 )}
+
+                <ListingCustomBlocks sections={selectedSections} accentColor={selectedListing.accent_color} />
 
                 {/* Company overview */}
                 <div style={{ marginBottom: '24px' }}>

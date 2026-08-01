@@ -3,8 +3,24 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, getListingById, updateListing } from '@/lib/supabase';
+import {
+  supabase,
+  getEmployerByUserId,
+  getListingById,
+  updateListing,
+  getListingSections,
+  getListingQuestions,
+  replaceListingSections,
+  replaceListingQuestions,
+  type ListingSectionInput,
+  type ListingQuestionInput,
+} from '@/lib/supabase';
 import { INDUSTRIES, DURATIONS, formatCents } from '@/lib/constants';
+import CompensationFields, { compFromListing, compToCents, compDisplayString, EMPTY_COMPENSATION, type CompensationValue } from '@/components/CompensationFields';
+import ListingSectionsEditor from '@/components/ListingSectionsEditor';
+import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
+import ListingBrandingFields from '@/components/ListingBrandingFields';
+import LocationPicker, { EMPTY_LOCATION, locationFromListing, type LocationValue } from '@/components/LocationPicker';
 
 export default function EditListingPage() {
   const router = useRouter();
@@ -13,9 +29,9 @@ export default function EditListingPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState<LocationValue>(EMPTY_LOCATION);
   const [workMode, setWorkMode] = useState<'in-person' | 'hybrid' | 'remote'>('in-person');
-  const [compensation, setCompensation] = useState('');
+  const [comp, setComp] = useState<CompensationValue>(EMPTY_COMPENSATION);
   const [requirements, setRequirements] = useState('');
   const [keyResponsibilities, setKeyResponsibilities] = useState('');
   const [industry, setIndustry] = useState('');
@@ -26,6 +42,13 @@ export default function EditListingPage() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [togglingStatus, setTogglingStatus] = useState(false);
+  // Customization
+  const [employerId, setEmployerId] = useState<string | null>(null);
+  const [sections, setSections] = useState<ListingSectionInput[]>([]);
+  const [questions, setQuestions] = useState<ListingQuestionInput[]>([]);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [accentColor, setAccentColor] = useState<string | null>(null);
+  const [roleTags, setRoleTags] = useState<string[]>([]);
   // Billing (read-only)
   const [pricingModel, setPricingModel] = useState<'ppj' | 'ppa' | null>(null);
   const [applicantCount, setApplicantCount] = useState(0);
@@ -47,11 +70,12 @@ export default function EditListingPage() {
           throw new Error('You do not have permission to edit this listing.');
         }
 
+        setEmployerId(employer.id);
         setTitle(listing.title || '');
         setDescription(listing.description || '');
-        setLocation(listing.location || '');
+        setLocation(locationFromListing(listing));
         setWorkMode(listing.is_remote ? 'remote' : listing.is_hybrid ? 'hybrid' : 'in-person');
-        setCompensation(listing.compensation || '');
+        setComp(compFromListing(listing));
         setRequirements(listing.requirements || '');
         setKeyResponsibilities(listing.key_responsibilities || '');
         setIndustry(listing.industry || '');
@@ -61,6 +85,24 @@ export default function EditListingPage() {
         setPricingModel(listing.pricing_model ?? null);
         setApplicantCount(listing.applicant_count ?? 0);
         setCpaCents(listing.cpa_cents ?? null);
+        setBannerUrl(listing.banner_url ?? null);
+        setAccentColor(listing.accent_color ?? null);
+        setRoleTags(listing.role_tags ?? []);
+
+        const [loadedSections, loadedQuestions] = await Promise.all([
+          getListingSections(id),
+          getListingQuestions(id),
+        ]);
+        setSections(loadedSections.map((s) => ({ heading: s.heading, body: s.body })));
+        setQuestions(loadedQuestions.map((q) => ({
+          id: q.id,
+          prompt: q.prompt,
+          help_text: q.help_text,
+          question_type: q.question_type,
+          options: q.options ?? [],
+          required: q.required,
+          knockout_answer: q.knockout_answer,
+        })));
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -80,16 +122,29 @@ export default function EditListingPage() {
       await updateListing(id, {
         title,
         description,
-        location: location || undefined,
+        location: location.label || null,
+        city: location.city,
+        state: location.state,
+        lat: location.lat,
+        lng: location.lng,
         is_remote: workMode === 'remote',
         is_hybrid: workMode === 'hybrid',
-        compensation: compensation || undefined,
+        // Display string + structured columns, written together (see the
+        // paid/unpaid filter in getActiveListings).
+        compensation: compDisplayString(comp) || undefined,
+        ...compToCents(comp),
         requirements: requirements || undefined,
         key_responsibilities: keyResponsibilities || undefined,
         industry,
         duration: duration || null,
         application_deadline: applicationDeadline || null,
+        role_tags: roleTags,
+        banner_url: bannerUrl,
+        accent_color: accentColor,
       });
+
+      await replaceListingSections(id, sections);
+      await replaceListingQuestions(id, questions.filter((q) => q.prompt.trim()));
 
       router.push('/dashboard/employer');
     } catch (err: any) {
@@ -175,26 +230,7 @@ export default function EditListingPage() {
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="compensation">Compensation</label>
-              <select
-                id="compensation"
-                value={compensation}
-                onChange={(e) => setCompensation(e.target.value)}
-                style={{ width: '100%' }}
-              >
-                <option value="">Select compensation...</option>
-                <option value="Unpaid">Unpaid</option>
-                <option value="$10-15/hr">$10-15/hr</option>
-                <option value="$15-20/hr">$15-20/hr</option>
-                <option value="$20-25/hr">$20-25/hr</option>
-                <option value="$25-30/hr">$25-30/hr</option>
-                <option value="$30-35/hr">$30-35/hr</option>
-                <option value="$35-40/hr">$35-40/hr</option>
-                <option value="$40+/hr">$40+/hr</option>
-                <option value="Stipend">Stipend (flat rate)</option>
-              </select>
-            </div>
+            <CompensationFields value={comp} onChange={setComp} />
             <div className="form-group">
               <label htmlFor="industry">Industry</label>
               <select
@@ -210,16 +246,7 @@ export default function EditListingPage() {
                 ))}
               </select>
             </div>
-            <div className="form-group">
-              <label htmlFor="location">Location</label>
-              <input
-                type="text"
-                id="location"
-                placeholder="e.g. Raleigh, NC"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
+            <LocationPicker value={location} onChange={setLocation} />
             <div className="form-group">
               <label htmlFor="applicationDeadline">
                 Application Deadline <span style={{ color: 'var(--text-light)', fontWeight: 400 }}>(optional)</span>
@@ -325,6 +352,22 @@ export default function EditListingPage() {
               style={{ width: '100%', resize: 'vertical' }}
             />
           </div>
+
+          <ListingSectionsEditor sections={sections} onChange={setSections} />
+
+          <ListingQuestionsEditor questions={questions} onChange={setQuestions} />
+
+          <ListingBrandingFields
+            employerId={employerId}
+            bannerUrl={bannerUrl}
+            accentColor={accentColor}
+            roleTags={roleTags}
+            onChange={(patch) => {
+              if (patch.bannerUrl !== undefined) setBannerUrl(patch.bannerUrl);
+              if (patch.accentColor !== undefined) setAccentColor(patch.accentColor);
+              if (patch.roleTags !== undefined) setRoleTags(patch.roleTags);
+            }}
+          />
 
           <button type="submit" className="btn-auth" disabled={loading}>
             {loading ? 'Saving...' : 'Save Changes'}

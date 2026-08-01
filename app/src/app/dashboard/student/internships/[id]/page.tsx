@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes, trackListingView } from '@/lib/supabase';
+import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes, trackListingView, getListingSections, getListingQuestions, type ListingSection, type ListingQuestion } from '@/lib/supabase';
 import TestPostingBadge from '@/components/TestPostingBadge';
 import ReactMarkdown from 'react-markdown';
+import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
+import ApplicationQuestionsForm, { emptyAnswers, missingRequired, toAnswerInputs, type AnswerState } from '@/components/ApplicationQuestionsForm';
 
 type Listing = {
   id: string;
@@ -23,6 +25,9 @@ type Listing = {
   created_at: string;
   application_deadline: string | null;
   duration: string | null;
+  role_tags: string[] | null;
+  banner_url: string | null;
+  accent_color: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
@@ -59,6 +64,10 @@ export default function InternshipDetail() {
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [messageSending, setMessageSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sections, setSections] = useState<ListingSection[]>([]);
+  const [questions, setQuestions] = useState<ListingQuestion[]>([]);
+  const [answers, setAnswers] = useState<AnswerState>({});
+  const [showAnswerErrors, setShowAnswerErrors] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -69,10 +78,16 @@ export default function InternshipDetail() {
       // Fire-and-forget view tracking on page load
       trackListingView(id, user.id).catch(() => {});
 
-      const [listingData, student] = await Promise.all([
+      const [listingData, student, listingSections, listingQuestions] = await Promise.all([
         getListingById(id),
         getStudentByUserId(user.id),
+        getListingSections(id),
+        getListingQuestions(id),
       ]);
+
+      setSections(listingSections);
+      setQuestions(listingQuestions);
+      setAnswers(emptyAnswers(listingQuestions));
 
       if (listingData) setListing(listingData as Listing);
       if (student) {
@@ -107,10 +122,18 @@ export default function InternshipDetail() {
 
   async function handleApply() {
     if (!studentId) return;
+
+    const unanswered = missingRequired(questions, answers);
+    if (unanswered.length > 0) {
+      setShowAnswerErrors(true);
+      setError(`Please answer all required questions (${unanswered.length} remaining).`);
+      return;
+    }
+
     setApplying(true);
     setError(null);
     try {
-      await applyToListingWithResume(studentId, id, selectedResumeId);
+      await applyToListingWithResume(studentId, id, selectedResumeId, toAnswerInputs(questions, answers));
       setApplicationStatus('applied');
       setShowApplyForm(false);
     } catch (err: unknown) {
@@ -154,6 +177,8 @@ export default function InternshipDetail() {
       </Link>
 
       <div className="profile-card" style={{ padding: '32px' }}>
+        <ListingBanner bannerUrl={listing.banner_url} accentColor={listing.accent_color} />
+
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
           {listing.employers?.logo_url ? (
@@ -219,6 +244,8 @@ export default function InternshipDetail() {
           })()}
         </div>
 
+        <RoleTagPills tags={listing.role_tags} />
+
         <div className="sidebar-divider" style={{ margin: '24px 0' }}></div>
 
         {/* Qualifications */}
@@ -242,6 +269,8 @@ export default function InternshipDetail() {
             <div className="markdown-content"><ReactMarkdown>{listing.key_responsibilities || ''}</ReactMarkdown></div>
           </div>
         )}
+
+        <ListingCustomBlocks sections={sections} accentColor={listing.accent_color} />
 
         {/* Employer website */}
         {listing.employers?.website && (
@@ -312,6 +341,16 @@ export default function InternshipDetail() {
             ) : (
               <div style={{ background: 'var(--bg-secondary, #f9fafb)', borderRadius: 'var(--radius, 12px)', padding: '20px', border: '1px solid var(--border)' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Submit Application</h4>
+
+                {studentId && (
+                  <ApplicationQuestionsForm
+                    questions={questions}
+                    answers={answers}
+                    onChange={setAnswers}
+                    studentId={studentId}
+                    showErrors={showAnswerErrors}
+                  />
+                )}
 
                 {resumes.length > 0 ? (
                   <div style={{ marginBottom: '16px' }}>

@@ -1,59 +1,45 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, getEmployerByUserId, createListing } from '@/lib/supabase';
+import {
+  supabase,
+  getEmployerByUserId,
+  createListing,
+  replaceListingSections,
+  replaceListingQuestions,
+  type ListingSectionInput,
+  type ListingQuestionInput,
+} from '@/lib/supabase';
 import {
   INDUSTRIES,
   DURATIONS,
   POSTING_DURATIONS,
   PPJ_APPLICATION_RANGES,
   PPA_MATCH_THRESHOLD,
+  QUESTION_TYPES,
   computePpjPriceCents,
   cpaForIndustry,
   formatCents,
   type PricingModel,
 } from '@/lib/constants';
 import ReactMarkdown from 'react-markdown';
-
-function AutoResizeTextarea({ id, placeholder, required, rows, value, onChange, style }: {
-  id: string;
-  placeholder: string;
-  required?: boolean;
-  rows: number;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  style?: React.CSSProperties;
-}) {
-  const ref = useCallback((node: HTMLTextAreaElement | null) => {
-    if (node) {
-      node.style.height = 'auto';
-      node.style.height = node.scrollHeight + 2 + 'px';
-    }
-  }, [value]);
-
-  return (
-    <textarea
-      ref={ref}
-      id={id}
-      placeholder={placeholder}
-      required={required}
-      rows={rows}
-      value={value}
-      onChange={onChange}
-      style={style}
-    />
-  );
-}
+import AutoResizeTextarea from '@/components/AutoResizeTextarea';
+import CompensationFields, { EMPTY_COMPENSATION, compToCents, compDisplayString, type CompensationValue } from '@/components/CompensationFields';
+import ListingSectionsEditor from '@/components/ListingSectionsEditor';
+import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
+import ListingBrandingFields from '@/components/ListingBrandingFields';
+import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
+import LocationPicker, { EMPTY_LOCATION, type LocationValue } from '@/components/LocationPicker';
 
 export default function NewListingPage() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState<LocationValue>(EMPTY_LOCATION);
   const [workMode, setWorkMode] = useState<'in-person' | 'hybrid' | 'remote'>('in-person');
-  const [compensation, setCompensation] = useState('');
+  const [comp, setComp] = useState<CompensationValue>(EMPTY_COMPENSATION);
   const [requirements, setRequirements] = useState('');
   const [keyResponsibilities, setKeyResponsibilities] = useState('');
   const [industry, setIndustry] = useState('');
@@ -65,6 +51,13 @@ export default function NewListingPage() {
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyWebsite, setCompanyWebsite] = useState<string | null>(null);
   const [employerId, setEmployerId] = useState<string | null>(null);
+
+  // ── Customization ──
+  const [sections, setSections] = useState<ListingSectionInput[]>([]);
+  const [questions, setQuestions] = useState<ListingQuestionInput[]>([]);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [accentColor, setAccentColor] = useState<string | null>(null);
+  const [roleTags, setRoleTags] = useState<string[]>([]);
 
   // ── Plan / billing ──
   const [pricingModel, setPricingModel] = useState<PricingModel>('ppj');
@@ -110,6 +103,13 @@ export default function NewListingPage() {
     else setError(json.error || 'Could not start card setup.');
   }
 
+  // Sections and questions are child rows, so they can only be written once the
+  // listing has an id — for both the PPJ and PPA paths.
+  async function saveCustomization(listingId: string) {
+    await replaceListingSections(listingId, sections);
+    await replaceListingQuestions(listingId, questions.filter((q) => q.prompt.trim()));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -128,15 +128,25 @@ export default function NewListingPage() {
         employer_id: employerId,
         title,
         description,
-        location: location || undefined,
+        location: location.label || undefined,
+        city: location.city,
+        state: location.state,
+        lat: location.lat,
+        lng: location.lng,
         is_remote: workMode === 'remote',
         is_hybrid: workMode === 'hybrid',
-        compensation: compensation || undefined,
+        // Display string + structured columns. The string is what listing cards
+        // and the paid/unpaid filter read, so both must be written together.
+        compensation: compDisplayString(comp) || undefined,
+        ...compToCents(comp),
         requirements: requirements || undefined,
         key_responsibilities: keyResponsibilities || undefined,
         industry,
         duration: duration || undefined,
         application_deadline: applicationDeadline || undefined,
+        role_tags: roleTags,
+        banner_url: bannerUrl,
+        accent_color: accentColor,
       };
 
       if (pricingModel === 'ppj') {
@@ -150,6 +160,8 @@ export default function NewListingPage() {
           status: 'paused',
           payment_status: 'pending',
         });
+
+        await saveCustomization(listing.id);
 
         const res = await fetch('/api/billing/checkout', {
           method: 'POST',
@@ -166,7 +178,7 @@ export default function NewListingPage() {
 
       // PPA — active immediately, billed monthly per qualifying application.
       const expiresAt = new Date(Date.now() + postingDays * 86400_000).toISOString();
-      await createListing({
+      const listing = await createListing({
         ...base,
         pricing_model: 'ppa',
         cpa_cents: cpaCents,
@@ -174,6 +186,8 @@ export default function NewListingPage() {
         status: 'active',
         payment_status: 'active',
       });
+
+      await saveCustomization(listing.id);
 
       router.push('/dashboard/employer/posted-jobs');
     } catch (err: any) {
@@ -213,26 +227,7 @@ export default function NewListingPage() {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
-              <div className="form-group">
-                <label htmlFor="compensation">Compensation</label>
-                <select
-                  id="compensation"
-                  value={compensation}
-                  onChange={(e) => setCompensation(e.target.value)}
-                  style={{ width: '100%' }}
-                >
-                  <option value="">Select compensation...</option>
-                  <option value="Unpaid">Unpaid</option>
-                  <option value="$10-15/hr">$10-15/hr</option>
-                  <option value="$15-20/hr">$15-20/hr</option>
-                  <option value="$20-25/hr">$20-25/hr</option>
-                  <option value="$25-30/hr">$25-30/hr</option>
-                  <option value="$30-35/hr">$30-35/hr</option>
-                  <option value="$35-40/hr">$35-40/hr</option>
-                  <option value="$40+/hr">$40+/hr</option>
-                  <option value="Stipend">Stipend (flat rate)</option>
-                </select>
-              </div>
+              <CompensationFields value={comp} onChange={setComp} />
               <div className="form-group">
                 <label htmlFor="industry">Industry</label>
                 <select
@@ -248,16 +243,7 @@ export default function NewListingPage() {
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label htmlFor="location">Location</label>
-                <input
-                  type="text"
-                  id="location"
-                  placeholder="e.g. Raleigh, NC"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                />
-              </div>
+              <LocationPicker value={location} onChange={setLocation} />
               <div className="form-group">
                 <label htmlFor="applicationDeadline">
                   Application Deadline <span style={{ color: 'var(--text-light)', fontWeight: 400 }}>(optional)</span>
@@ -363,6 +349,22 @@ export default function NewListingPage() {
                 style={{ width: '100%', resize: 'vertical' }}
               />
             </div>
+
+            <ListingSectionsEditor sections={sections} onChange={setSections} />
+
+            <ListingQuestionsEditor questions={questions} onChange={setQuestions} />
+
+            <ListingBrandingFields
+              employerId={employerId}
+              bannerUrl={bannerUrl}
+              accentColor={accentColor}
+              roleTags={roleTags}
+              onChange={(patch) => {
+                if (patch.bannerUrl !== undefined) setBannerUrl(patch.bannerUrl);
+                if (patch.accentColor !== undefined) setAccentColor(patch.accentColor);
+                if (patch.roleTags !== undefined) setRoleTags(patch.roleTags);
+              }}
+            />
 
             {/* ── Posting Plan ── */}
             <div className="form-group" style={{ marginTop: '8px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
@@ -483,6 +485,8 @@ export default function NewListingPage() {
             Student Preview
           </div>
           <div className="profile-card" style={{ padding: '32px' }}>
+            <ListingBanner bannerUrl={bannerUrl} accentColor={accentColor} />
+
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
               {companyLogo ? (
@@ -502,10 +506,10 @@ export default function NewListingPage() {
 
             {/* Meta info */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-              {location && (
+              {location.label && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  {location}
+                  {location.label}
                 </div>
               )}
               {workMode !== 'in-person' && (
@@ -514,10 +518,10 @@ export default function NewListingPage() {
                   {workMode === 'remote' ? 'Remote' : 'Hybrid'}
                 </div>
               )}
-              {compensation && (
+              {compDisplayString(comp) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                  {compensation}
+                  {compDisplayString(comp)}
                 </div>
               )}
               {industry && (
@@ -543,6 +547,8 @@ export default function NewListingPage() {
                 </div>
               )}
             </div>
+
+            <RoleTagPills tags={roleTags} />
 
             <div className="sidebar-divider" style={{ margin: '24px 0' }}></div>
 
@@ -582,6 +588,26 @@ export default function NewListingPage() {
               <div style={{ marginBottom: '24px', padding: '16px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm, 8px)' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '4px', color: 'var(--text-light)' }}>Key Responsibilities</h3>
                 <p style={{ color: 'var(--text-light)', fontSize: '0.85rem', margin: 0 }}>Fill in the Key Responsibilities field to preview...</p>
+              </div>
+            )}
+
+            <ListingCustomBlocks sections={sections} accentColor={accentColor} />
+
+            {/* Screening questions summary */}
+            {questions.filter((q) => q.prompt.trim()).length > 0 && (
+              <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '10px' }}>Application Questions</h3>
+                <ol style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {questions.filter((q) => q.prompt.trim()).map((q, i) => (
+                    <li key={i} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      {q.prompt}
+                      {q.required && <span style={{ color: '#b91c1c', marginLeft: 4 }}>*</span>}
+                      <span style={{ color: 'var(--text-light)', marginLeft: 6, fontSize: '0.78rem' }}>
+                        ({QUESTION_TYPES.find((t) => t.value === q.question_type)?.label})
+                      </span>
+                    </li>
+                  ))}
+                </ol>
               </div>
             )}
 

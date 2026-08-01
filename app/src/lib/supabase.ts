@@ -1,6 +1,7 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
+import { type CompType, type QuestionType } from '@/lib/constants';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -170,6 +171,11 @@ export async function createListing(listing: {
   title: string;
   description: string;
   location?: string;
+  // Structured parts from the location picker; `location` stays the display string.
+  city?: string | null;
+  state?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   is_remote?: boolean;
   is_hybrid?: boolean;
   compensation?: string;
@@ -178,6 +184,15 @@ export async function createListing(listing: {
   industry: string;
   application_deadline?: string;
   duration?: string;
+  // Customization — `compensation` above is the display string derived from
+  // these by formatCompensation(); keep writing both.
+  comp_type?: CompType | null;
+  comp_min_cents?: number | null;
+  comp_max_cents?: number | null;
+  comp_note?: string | null;
+  role_tags?: string[];
+  banner_url?: string | null;
+  accent_color?: string | null;
   // Billing
   pricing_model?: 'ppj' | 'ppa';
   applicant_quota?: number | null;   // PPJ: upper bound of the estimate (informational, no cap)
@@ -309,6 +324,184 @@ export async function getRecommendedListings(industries: string[], limit = 3) {
     .limit(limit);
   if (error) return [];
   return data ?? [];
+}
+
+// ---- Listing Customization (sections + screening questions) ----
+
+export type ListingSection = {
+  id: string;
+  listing_id: string;
+  heading: string;
+  body: string;
+  position: number;
+};
+
+export type ListingSectionInput = { heading: string; body: string };
+
+export async function getListingSections(listingId: string): Promise<ListingSection[]> {
+  const { data, error } = await supabase
+    .from('listing_sections')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('position', { ascending: true });
+  if (error) return [];
+  return data ?? [];
+}
+
+// Nothing references listing_sections, so a full delete-then-insert is the
+// simplest correct way to persist a reordered list.
+export async function replaceListingSections(listingId: string, sections: ListingSectionInput[]) {
+  const { error: deleteError } = await supabase
+    .from('listing_sections')
+    .delete()
+    .eq('listing_id', listingId);
+  if (deleteError) throw deleteError;
+
+  const rows = sections
+    .filter((s) => s.heading.trim() && s.body.trim())
+    .map((s, i) => ({
+      listing_id: listingId,
+      heading: s.heading.trim(),
+      body: s.body.trim(),
+      position: i,
+    }));
+  if (rows.length === 0) return;
+
+  const { error } = await supabase.from('listing_sections').insert(rows);
+  if (error) throw error;
+}
+
+export type ListingQuestion = {
+  id: string;
+  listing_id: string;
+  prompt: string;
+  help_text: string | null;
+  question_type: QuestionType;
+  options: string[];
+  required: boolean;
+  knockout_answer: 'yes' | 'no' | null;
+  position: number;
+};
+
+export type ListingQuestionInput = {
+  id?: string;
+  prompt: string;
+  help_text?: string | null;
+  question_type: QuestionType;
+  options?: string[];
+  required?: boolean;
+  knockout_answer?: 'yes' | 'no' | null;
+};
+
+export async function getListingQuestions(listingId: string): Promise<ListingQuestion[]> {
+  const { data, error } = await supabase
+    .from('listing_questions')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('position', { ascending: true });
+  if (error) return [];
+  return data ?? [];
+}
+
+// Unlike sections, questions are referenced by application_answers with an
+// ON DELETE CASCADE — deleting one would silently destroy submitted answers.
+// So this updates in place and refuses to drop any question that has answers.
+export async function replaceListingQuestions(listingId: string, questions: ListingQuestionInput[]) {
+  const { data: existing } = await supabase
+    .from('listing_questions')
+    .select('id')
+    .eq('listing_id', listingId);
+
+  const existingIds = (existing ?? []).map((q) => q.id as string);
+  const keptIds = questions.map((q) => q.id).filter(Boolean) as string[];
+  const removedIds = existingIds.filter((id) => !keptIds.includes(id));
+
+  if (removedIds.length > 0) {
+    const { data: answered } = await supabase
+      .from('application_answers')
+      .select('question_id')
+      .in('question_id', removedIds);
+
+    // Check before deleting anything, so a rejected save leaves no partial state.
+    if ((answered ?? []).length > 0) {
+      throw new Error(
+        'One or more questions you removed already have applicant answers. ' +
+        'Those answers would be lost, so the question must stay on the listing.'
+      );
+    }
+
+    const { error } = await supabase.from('listing_questions').delete().in('id', removedIds);
+    if (error) throw error;
+  }
+
+  const toRow = (q: ListingQuestionInput, i: number) => ({
+    listing_id: listingId,
+    prompt: q.prompt.trim(),
+    help_text: q.help_text?.trim() || null,
+    question_type: q.question_type,
+    options: q.options ?? [],
+    required: q.required ?? false,
+    // Only meaningful on yes_no; null it out otherwise so a type change clears it.
+    knockout_answer: q.question_type === 'yes_no' ? q.knockout_answer ?? null : null,
+    position: i,
+  });
+
+  const inserts = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => !q.id && q.prompt.trim())
+    .map(({ q, i }) => toRow(q, i));
+
+  if (inserts.length > 0) {
+    const { error } = await supabase.from('listing_questions').insert(inserts);
+    if (error) throw error;
+  }
+
+  const updates = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => q.id && q.prompt.trim());
+
+  for (const { q, i } of updates) {
+    const { error } = await supabase
+      .from('listing_questions')
+      .update(toRow(q, i))
+      .eq('id', q.id!);
+    if (error) throw error;
+  }
+}
+
+export type ApplicationAnswerInput = {
+  question_id: string;
+  answer_text?: string | null;
+  answer_options?: string[];
+  file_url?: string | null;
+};
+
+export async function submitApplicationAnswers(
+  applicationId: string,
+  answers: ApplicationAnswerInput[]
+) {
+  const rows = answers.map((a) => ({
+    application_id: applicationId,
+    question_id: a.question_id,
+    answer_text: a.answer_text ?? null,
+    answer_options: a.answer_options ?? [],
+    file_url: a.file_url ?? null,
+  }));
+  if (rows.length === 0) return;
+
+  const { error } = await supabase.from('application_answers').insert(rows);
+  if (error) throw error;
+}
+
+// Extra files attached to a screening question, alongside the standard resume.
+// Uses the same `images` bucket uploadResume writes to.
+export async function uploadApplicationFile(studentId: string, file: File) {
+  const ext = file.name.split('.').pop();
+  const path = `application-files/${studentId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('images').upload(path, file, { upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from('images').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 // ---- Messages ----
@@ -491,10 +684,18 @@ export async function getEmployerApplications(employerId: string) {
       status,
       stage_id,
       match_score,
+      flagged_knockout,
       applied_at,
       updated_at,
       resume_id,
       resume:student_resumes(id, name, file_url),
+      answers:application_answers(
+        id,
+        answer_text,
+        answer_options,
+        file_url,
+        question:listing_questions(id, prompt, question_type, position)
+      ),
       listing:internship_listings!inner(id, title, employer_id),
       stage:pipeline_stages(id, label, color_bg, color_text, position, stage_type),
       student:students!inner(
@@ -902,7 +1103,12 @@ export async function getEmployerListingsWithStats(employerId: string) {
   }));
 }
 
-export async function applyToListingWithResume(studentId: string, listingId: string, resumeId: string | null) {
+export async function applyToListingWithResume(
+  studentId: string,
+  listingId: string,
+  resumeId: string | null,
+  answers: ApplicationAnswerInput[] = []
+) {
   const matchScore = await computeMatchScoreForApplication(studentId, listingId);
   const row: any = { student_id: studentId, listing_id: listingId, match_score: matchScore };
   if (resumeId) row.resume_id = resumeId;
@@ -912,6 +1118,11 @@ export async function applyToListingWithResume(studentId: string, listingId: str
     .select()
     .single();
   if (error) throw error;
+
+  // Answers go in before the employer is notified so the knockout trigger has
+  // already run by the time they open the application.
+  await submitApplicationAnswers(data.id, answers);
+
   await notifyEmployerOfApplication(listingId);
   return data;
 }
@@ -1253,7 +1464,11 @@ export async function getUniversityPartnerListings(
 export async function updateListing(listingId: string, fields: {
   title?: string;
   description?: string;
-  location?: string;
+  location?: string | null;
+  city?: string | null;
+  state?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   is_remote?: boolean;
   is_hybrid?: boolean;
   compensation?: string;
@@ -1263,6 +1478,13 @@ export async function updateListing(listingId: string, fields: {
   status?: string;
   application_deadline?: string | null;
   duration?: string | null;
+  comp_type?: CompType | null;
+  comp_min_cents?: number | null;
+  comp_max_cents?: number | null;
+  comp_note?: string | null;
+  role_tags?: string[];
+  banner_url?: string | null;
+  accent_color?: string | null;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')

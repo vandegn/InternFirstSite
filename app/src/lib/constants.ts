@@ -28,6 +28,107 @@ export const DURATIONS = [
 export type Duration = (typeof DURATIONS)[number];
 
 // ============================================
+// Listing customization
+// ============================================
+
+// Custom screening questions employers can attach to a listing.
+export const QUESTION_TYPES = [
+  { value: 'short_text', label: 'Short answer', hint: 'One line of text' },
+  { value: 'long_text', label: 'Long answer', hint: 'A paragraph' },
+  { value: 'single_select', label: 'Multiple choice', hint: 'Pick one option' },
+  { value: 'multi_select', label: 'Checkboxes', hint: 'Pick any number of options' },
+  { value: 'yes_no', label: 'Yes / No', hint: 'Can flag a disqualifying answer' },
+  { value: 'file', label: 'File upload', hint: 'Portfolio, writing sample, etc.' },
+] as const;
+
+export type QuestionType = (typeof QUESTION_TYPES)[number]['value'];
+
+// Question types whose answers come from an employer-defined option list.
+export const OPTION_QUESTION_TYPES: QuestionType[] = ['single_select', 'multi_select'];
+
+// Accent colors an employer can brand a listing with. Seeded from the brand
+// palette, plus a custom hex input in the picker.
+export const ACCENT_PRESETS = [
+  '#1A2D49', // brand navy (--primary)
+  '#9FC63C', // brand green (--accent)
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#ea580c',
+  '#0d9488',
+] as const;
+
+// ============================================
+// Structured compensation
+// ============================================
+// Listings store both the structured comp_* columns and a derived display
+// string in `compensation`. The string is what listing cards render and what
+// getActiveListings' paid/unpaid filter matches against, so `unpaid` MUST keep
+// producing exactly 'Unpaid'.
+
+export const COMP_TYPES = [
+  { value: 'hourly', label: 'Hourly', suffix: '/hr', unit: 'per hour' },
+  { value: 'salary', label: 'Salary', suffix: '/yr', unit: 'per year' },
+  { value: 'stipend', label: 'Stipend', suffix: ' stipend', unit: 'total' },
+  { value: 'unpaid', label: 'Unpaid', suffix: '', unit: '' },
+  { value: 'other', label: 'Other', suffix: '', unit: '' },
+] as const;
+
+export type CompType = (typeof COMP_TYPES)[number]['value'];
+
+// Render cents as a whole-dollar amount, dropping trailing '.00' and adding
+// thousands separators: 4500000 -> "$45,000", 1550 -> "$15.50".
+function formatDollars(cents: number): string {
+  const dollars = cents / 100;
+  const hasCents = cents % 100 !== 0;
+  return `$${dollars.toLocaleString('en-US', {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
+  })}`;
+}
+
+export type CompensationInput = {
+  comp_type?: CompType | null;
+  comp_min_cents?: number | null;
+  comp_max_cents?: number | null;
+  comp_note?: string | null;
+};
+
+// Build the display string stored in internship_listings.compensation.
+// Returns null when there's nothing to show, which reads as "not specified"
+// everywhere the column is rendered.
+export function formatCompensation(comp: CompensationInput): string | null {
+  const { comp_type, comp_min_cents, comp_max_cents, comp_note } = comp;
+  if (!comp_type) return null;
+
+  if (comp_type === 'unpaid') return 'Unpaid';
+  if (comp_type === 'other') return comp_note?.trim() || 'Other';
+
+  const type = COMP_TYPES.find((t) => t.value === comp_type)!;
+  const min = comp_min_cents ?? null;
+  const max = comp_max_cents ?? null;
+
+  let amount: string | null = null;
+  if (min != null && max != null && max > min) {
+    // Only repeat the '$' when the range crosses a formatting boundary.
+    amount = `${formatDollars(min)}-${formatDollars(max).replace('$', '')}`;
+  } else if (min != null) {
+    amount = formatDollars(min);
+  } else if (max != null) {
+    amount = formatDollars(max);
+  }
+
+  if (!amount) {
+    // Stipend with no figure is still meaningful on its own; hourly/salary is not.
+    return comp_type === 'stipend' ? 'Stipend' : null;
+  }
+
+  const base = `${amount}${type.suffix}`;
+  const note = comp_note?.trim();
+  return note ? `${base} · ${note}` : base;
+}
+
+// ============================================
 // Employer payment plans (PPJ / PPA)
 // ============================================
 // All prices are in US cents. CPA (Cost-Per-Application) is the per–occupation-

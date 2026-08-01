@@ -11,11 +11,30 @@ import {
   type PipelineStage,
 } from '@/lib/supabase';
 
+type ApplicationAnswer = {
+  id: string;
+  answer_text: string | null;
+  answer_options: string[];
+  file_url: string | null;
+  question: {
+    id: string;
+    prompt: string;
+    question_type: string;
+    position: number;
+  } | null;
+};
+
+// Shape as PostgREST returns it — nested joins arrive as arrays.
+type RawAnswer = Omit<ApplicationAnswer, 'question'> & {
+  question: ApplicationAnswer['question'] | ApplicationAnswer['question'][];
+};
+
 type Application = {
   id: string;
   status: string;
   stage_id: string | null;
   match_score: number | null;
+  flagged_knockout: boolean;
   applied_at: string;
   updated_at: string;
   resume_id: string | null;
@@ -24,6 +43,7 @@ type Application = {
     name: string;
     file_url: string;
   } | null;
+  answers: ApplicationAnswer[];
   listing: {
     id: string;
     title: string;
@@ -80,6 +100,10 @@ export default function EmployerApplications() {
         listing: Array.isArray(app.listing) ? app.listing[0] : app.listing,
         resume: Array.isArray(app.resume) ? app.resume[0] || null : app.resume,
         stage: Array.isArray(app.stage) ? app.stage[0] || null : (app.stage ?? null),
+        answers: ((app.answers ?? []) as RawAnswer[])
+          .map((a) => ({ ...a, question: Array.isArray(a.question) ? a.question[0] || null : a.question }))
+          // Show answers in the order the employer wrote the questions.
+          .sort((a, b) => (a.question?.position ?? 0) - (b.question?.position ?? 0)),
         student: (() => {
           const s = Array.isArray(app.student) ? app.student[0] : app.student;
           return s ? { ...s, profile: Array.isArray(s.profile) ? s.profile[0] : s.profile } : s;
@@ -248,6 +272,25 @@ export default function EmployerApplications() {
                           {app.match_score}% match
                         </span>
                       )}
+                      {app.flagged_knockout && (
+                        <span
+                          title="A screening answer matched a disqualifying response"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            padding: '2px 10px',
+                            borderRadius: '10px',
+                            background: '#fee2e2',
+                            color: '#b91c1c',
+                          }}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                          Screening flag
+                        </span>
+                      )}
                     </div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                       Applied for: {app.listing.title}
@@ -308,6 +351,36 @@ export default function EmployerApplications() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             {app.resume.name}
                           </a>
+                        </div>
+                      </div>
+                    )}
+                    {app.answers.length > 0 && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Screening Answers</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                          {app.answers.map((answer) => (
+                            <div key={answer.id}>
+                              <p style={{ fontSize: '0.82rem', fontWeight: 500, margin: 0 }}>
+                                {answer.question?.prompt ?? 'Question removed'}
+                              </p>
+                              {answer.file_url ? (
+                                <a
+                                  href={answer.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ fontSize: '0.85rem', color: 'var(--primary)' }}
+                                >
+                                  {answer.answer_text || 'View file'}
+                                </a>
+                              ) : (
+                                <p style={{ fontSize: '0.88rem', margin: '2px 0 0', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                                  {answer.answer_options.length > 0
+                                    ? answer.answer_options.join(', ')
+                                    : answer.answer_text || '—'}
+                                </p>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}

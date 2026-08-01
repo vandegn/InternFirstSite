@@ -7,7 +7,8 @@ import ReactMarkdown from 'react-markdown';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import TestPostingBadge from '@/components/TestPostingBadge';
-import { supabase, getListingById, getProfile } from '@/lib/supabase';
+import { supabase, getListingById, getProfile, getListingSections, type ListingSection } from '@/lib/supabase';
+import { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
 
 type Listing = {
   id: string;
@@ -23,6 +24,9 @@ type Listing = {
   application_deadline: string | null;
   key_responsibilities: string | null;
   duration: string | null;
+  role_tags: string[] | null;
+  banner_url: string | null;
+  accent_color: string | null;
   employers: {
     company_name: string;
     logo_url: string | null;
@@ -44,6 +48,7 @@ export default function PublicListingDetailPage() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [listing, setListing] = useState<Listing | null>(null);
+  const [sections, setSections] = useState<ListingSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
 
@@ -51,9 +56,13 @@ export default function PublicListingDetailPage() {
     if (!id) return;
     let cancelled = false;
     async function load() {
-      const data = await getListingById(id!);
+      const [data, listingSections] = await Promise.all([
+        getListingById(id!),
+        getListingSections(id!),
+      ]);
       if (!cancelled) {
         setListing(data as Listing | null);
+        setSections(listingSections);
         setLoading(false);
       }
     }
@@ -148,6 +157,8 @@ export default function PublicListingDetailPage() {
               marginBottom: 24,
             }}
           >
+            <ListingBanner bannerUrl={listing.banner_url} accentColor={listing.accent_color} />
+
             <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', marginBottom: 20 }}>
               {listing.employers?.logo_url ? (
                 <img
@@ -197,6 +208,8 @@ export default function PublicListingDetailPage() {
               )}
             </div>
 
+            <RoleTagPills tags={listing.role_tags} />
+
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <button
                 onClick={handleApply}
@@ -239,6 +252,17 @@ export default function PublicListingDetailPage() {
             </Section>
           )}
 
+          {/* Employer's custom sections. This page uses card-per-section
+              styling, so they're rendered through Section rather than the
+              shared ListingCustomBlocks used on the dashboard pages. */}
+          {sections.map((section) => (
+            <Section key={section.id} title={section.heading} accentColor={listing.accent_color}>
+              <div className="markdown-content">
+                <ReactMarkdown>{section.body}</ReactMarkdown>
+              </div>
+            </Section>
+          ))}
+
           {/* Bottom CTA */}
           <div
             style={{
@@ -273,7 +297,7 @@ export default function PublicListingDetailPage() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, accentColor }: { title: string; children: React.ReactNode; accentColor?: string | null }) {
   return (
     <div
       style={{
@@ -284,9 +308,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         marginBottom: 16,
       }}
     >
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--dark)', marginBottom: 14 }}>
+      <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--dark)', marginBottom: accentColor ? 8 : 14 }}>
         {title}
       </h2>
+      {accentColor && (
+        <div style={{ width: 32, height: 3, borderRadius: 999, background: accentColor, marginBottom: 14 }} />
+      )}
       {children}
     </div>
   );

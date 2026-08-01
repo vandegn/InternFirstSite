@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, getEmployerByUserId } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, type VerificationStatus } from '@/lib/supabase';
+import VerificationBanner from '@/components/VerificationBanner';
+import ThemePicker from '@/components/ThemePicker';
 
 const SECTIONS: { id: string; label: string; danger?: boolean; icon: React.ReactNode }[] = [
   { id: 'account', label: 'Account', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
@@ -14,8 +16,8 @@ const SECTIONS: { id: string; label: string; danger?: boolean; icon: React.React
 export default function EmployerSettings() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
-  const [verified, setVerified] = useState(false);
-  const [businessId, setBusinessId] = useState('');
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('pending');
+  const [verificationNote, setVerificationNote] = useState<string | null>(null);
 
   // Password change
   const [currentPassword, setCurrentPassword] = useState('');
@@ -30,9 +32,6 @@ export default function EmployerSettings() {
   const [notifyStatusChanges, setNotifyStatusChanges] = useState(true);
   const [notifyMessages, setNotifyMessages] = useState(true);
   const [notifyWeeklyDigest, setNotifyWeeklyDigest] = useState(false);
-
-  // Appearance
-  const [darkMode, setDarkMode] = useState(false);
 
   // Privacy
   const [showProfileToEmployers, setShowProfileToEmployers] = useState(true);
@@ -52,22 +51,14 @@ export default function EmployerSettings() {
 
       const employer = await getEmployerByUserId(user.id);
       if (employer) {
-        setVerified(employer.verified || false);
-        setBusinessId(employer.business_id || '');
+        setVerificationStatus((employer.verification_status as VerificationStatus) || 'pending');
+        setVerificationNote(employer.verification_note ?? null);
       }
-
-      // Load dark mode preference from localStorage
-      const savedDarkMode = localStorage.getItem('internfirst-dark-mode');
-      if (savedDarkMode === 'true') setDarkMode(true);
 
       setLoading(false);
     }
     fetchData();
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('internfirst-dark-mode', darkMode.toString());
-  }, [darkMode]);
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
@@ -127,7 +118,7 @@ export default function EmployerSettings() {
     width: '20px',
     height: '20px',
     borderRadius: '50%',
-    background: '#fff',
+    background: 'var(--surface)',
     boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
     transition: 'left 0.2s',
   });
@@ -204,40 +195,11 @@ export default function EmployerSettings() {
         </div>
 
         {/* Verification Status */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '12px',
-          padding: '14px 16px', borderRadius: 'var(--radius-sm)',
-          background: verified ? '#f0fdf4' : '#fffbeb',
-          border: `1px solid ${verified ? '#bbf7d0' : '#fde68a'}`,
-          marginBottom: '16px',
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: '50%', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            background: verified ? '#d1fae5' : '#fef3c7',
-          }}>
-            {verified ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#065f46" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            )}
-          </div>
-          <div>
-            <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-              {verified ? 'Company Verified' : 'Pending Verification'}
-            </p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
-              {verified
-                ? 'Your company has been verified. Full access enabled.'
-                : 'Verification in progress. You can still post listings.'}
-            </p>
-          </div>
-        </div>
-        {businessId && (
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '16px' }}>
-            EIN on file: {businessId}
-          </p>
-        )}
+        <VerificationBanner
+          status={verificationStatus}
+          note={verificationNote}
+          style={{ marginBottom: '16px' }}
+        />
 
         <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '16px', marginTop: '24px' }}>Change Password</h4>
 
@@ -330,14 +292,12 @@ export default function EmployerSettings() {
       {/* Appearance */}
       {activeSection === 'appearance' && (
       <div className="profile-card" style={{ padding: '28px' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '12px' }}>Appearance</h3>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>Appearance</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '18px' }}>
+          Choose how InternFirst looks to you. Applies instantly across the whole platform.
+        </p>
 
-        <SettingRow
-          label="Dark mode"
-          description="Switch to a darker color scheme."
-          checked={darkMode}
-          onChange={setDarkMode}
-        />
+        <ThemePicker />
       </div>
 
       )}
@@ -375,7 +335,7 @@ export default function EmployerSettings() {
           onClick={() => setShowDeleteDialog(true)}
           style={{
             padding: '10px 24px',
-            background: '#fff',
+            background: 'var(--surface)',
             color: '#dc2626',
             border: '1px solid #fca5a5',
             borderRadius: 'var(--radius-sm)',
@@ -385,7 +345,7 @@ export default function EmployerSettings() {
             transition: 'background 0.15s',
           }}
           onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
-          onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
         >
           Delete Account
         </button>
@@ -401,7 +361,7 @@ export default function EmployerSettings() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
         }}>
           <div style={{
-            background: '#fff', borderRadius: 'var(--radius)', padding: '32px',
+            background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px',
             maxWidth: '440px', width: '90%', boxShadow: 'var(--shadow-lg)',
           }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Delete Account</h3>

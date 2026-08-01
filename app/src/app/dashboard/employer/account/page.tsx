@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { supabase, getEmployerByUserId, getProfile, updateEmployer, updateProfile, uploadImage } from '@/lib/supabase';
+import { supabase, getEmployerByUserId, getProfile, updateEmployer, updateProfile, uploadImage, VERIFICATION_LABELS, type VerificationStatus } from '@/lib/supabase';
+import VerificationBanner, { VERIFICATION_CHIP } from '@/components/VerificationBanner';
 
 export default function EmployerAccountPage() {
   const [loading, setLoading] = useState(true);
@@ -28,8 +29,8 @@ export default function EmployerAccountPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const [businessId, setBusinessId] = useState('');
-  const [verified, setVerified] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('pending');
+  const [verificationNote, setVerificationNote] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -54,8 +55,8 @@ export default function EmployerAccountPage() {
         setWebsite(employer.website || '');
         setDescription(employer.description || '');
         setLogoUrl(employer.logo_url || '');
-        setBusinessId(employer.business_id || '');
-        setVerified(employer.verified || false);
+        setVerificationStatus((employer.verification_status as VerificationStatus) || 'pending');
+        setVerificationNote(employer.verification_note ?? null);
       }
       setLoading(false);
     }
@@ -187,7 +188,7 @@ export default function EmployerAccountPage() {
               <input type="file" accept="image/*" ref={avatarInputRef} onChange={handleAvatarChange} style={{ display: 'none' }} />
               <button type="button" onClick={() => avatarInputRef.current?.click()} style={{
                 padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-                fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: '#fff',
+                fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)',
               }}>
                 {avatarUrl || avatarPreview ? 'Change Photo' : 'Upload Photo'}
               </button>
@@ -216,18 +217,26 @@ export default function EmployerAccountPage() {
             <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Company Profile</h3>
             <span style={{
               fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: '12px',
-              background: verified ? '#d1fae5' : '#fef3c7',
-              color: verified ? '#065f46' : '#92400e',
+              background: VERIFICATION_CHIP[verificationStatus].bg,
+              color: VERIFICATION_CHIP[verificationStatus].color,
             }}>
-              {verified ? 'Verified' : 'Pending Verification'}
+              {VERIFICATION_LABELS[verificationStatus]}
             </span>
           </div>
+
+          {verificationStatus !== 'approved' && (
+            <VerificationBanner
+              status={verificationStatus}
+              note={verificationNote}
+              style={{ marginBottom: '20px' }}
+            />
+          )}
 
           {/* Company logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' }}>
             <div style={{
               width: 72, height: 72, borderRadius: 'var(--radius-sm)', overflow: 'hidden',
-              border: '2px solid var(--border)', background: '#fff', flexShrink: 0,
+              border: '2px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {(logoPreview || logoUrl) ? (
@@ -242,7 +251,7 @@ export default function EmployerAccountPage() {
               <input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoChange} style={{ display: 'none' }} />
               <button type="button" onClick={() => logoInputRef.current?.click()} style={{
                 padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-                fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: '#fff',
+                fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)',
               }}>
                 {logoUrl || logoPreview ? 'Change Logo' : 'Upload Logo'}
               </button>
@@ -257,13 +266,6 @@ export default function EmployerAccountPage() {
             <div className="form-group">
               <label htmlFor="website">Website</label>
               <input type="text" id="website" placeholder="example.com" value={website} onChange={(e) => setWebsite(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label htmlFor="businessId">Federal EIN</label>
-              <input type="text" id="businessId" placeholder="XX-XXXXXXX" value={businessId} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }} />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', marginTop: '4px', display: 'block' }}>
-                Contact support to update your EIN
-              </span>
             </div>
           </div>
 

@@ -85,6 +85,11 @@ const ADMIN_NAV: NavItem[] = [
     label: 'View Waitlist',
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   },
+  {
+    href: '/dashboard/admin/employers',
+    label: 'Employer Verification',
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>,
+  },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -101,7 +106,10 @@ function getNavForRole(role: string): NavItem[] {
 }
 
 function isActive(pathname: string, href: string, role: string): boolean {
-  const basePath = `/dashboard/${role}`;
+  // Via DASHBOARD_ROUTES, not `/dashboard/${role}` — the admin role is
+  // `intern_first_admin` but its route is `/dashboard/admin`, so deriving the
+  // base path from the role name left the index link matching every subpage.
+  const basePath = DASHBOARD_ROUTES[role] ?? `/dashboard/${role}`;
   if (href === basePath) return pathname === basePath;
   return pathname.startsWith(href);
 }
@@ -209,7 +217,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
           style={{
             width: sidebarWidth,
             minWidth: sidebarWidth,
-            background: '#fff',
+            background: 'var(--surface)',
             borderRight: '1px solid var(--border)',
             padding: 0,
             transition: 'width 0.2s ease, min-width 0.2s ease',
@@ -230,7 +238,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
               width: '24px',
               height: '24px',
               borderRadius: '50%',
-              background: '#fff',
+              background: 'var(--surface)',
               border: '1px solid var(--border)',
               cursor: 'pointer',
               display: 'flex',
@@ -243,7 +251,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
               padding: 0,
             }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--primary-light)')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
           >
             <svg
               width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -288,7 +296,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
                   </span>
                   {!collapsed && showBadge && (
                     <span style={{
-                      background: 'var(--primary)', color: '#fff', fontSize: '0.65rem',
+                      background: 'var(--primary)', color: 'var(--on-primary)', fontSize: '0.65rem',
                       fontWeight: 700, padding: '2px 7px', borderRadius: '10px',
                       minWidth: '20px', textAlign: 'center',
                     }}>

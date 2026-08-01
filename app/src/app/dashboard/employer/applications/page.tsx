@@ -8,8 +8,11 @@ import {
   getEmployerApplications,
   getListingStages,
   updateApplicationStage,
+  getPendingApplicantCount,
   type PipelineStage,
+  type VerificationStatus,
 } from '@/lib/supabase';
+import VerificationBanner from '@/components/VerificationBanner';
 
 type ApplicationAnswer = {
   id: string;
@@ -86,6 +89,9 @@ export default function EmployerApplications() {
   const [filterListing, setFilterListing] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('approved');
+  const [verificationNote, setVerificationNote] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -93,6 +99,20 @@ export default function EmployerApplications() {
       if (!user) return;
       const employer = await getEmployerByUserId(user.id);
       if (!employer) return;
+
+      const status = (employer.verification_status as VerificationStatus) || 'pending';
+      setVerificationStatus(status);
+      setVerificationNote(employer.verification_note ?? null);
+
+      // RLS hides every application until the employer is approved, so querying
+      // would just return []. Fetch the bare count instead — "3 waiting" is a
+      // far better prompt than an empty page.
+      if (status !== 'approved') {
+        setPendingCount(await getPendingApplicantCount());
+        setLoading(false);
+        return;
+      }
+
       const apps = await getEmployerApplications(employer.id);
       // Supabase returns nested joins as arrays, normalize to single objects
       const normalized = apps.map((app: any) => ({
@@ -183,6 +203,14 @@ export default function EmployerApplications() {
         </Link>
       </div>
 
+      {!loading && verificationStatus !== 'approved' ? (
+        <VerificationBanner
+          status={verificationStatus}
+          note={verificationNote}
+          pendingCount={pendingCount}
+        />
+      ) : (
+      <>
       {/* Filters */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
         <select
@@ -411,6 +439,8 @@ export default function EmployerApplications() {
             );
           })}
         </div>
+      )}
+      </>
       )}
     </div>
   );

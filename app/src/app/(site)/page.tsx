@@ -100,7 +100,7 @@ export default function LandingPage() {
           <div className="hero-badge">#1 platform for early talent</div>
           <h1>The easiest way to find an internship</h1>
           <p className="hero-subtitle">
-            Browse opportunities from verified employers — no account needed. Sign in only when you&apos;re ready to apply.
+            Browse opportunities from reviewed employers — no account needed. Sign in only when you&apos;re ready to apply.
           </p>
           <div className="cta-buttons" style={{ marginTop: 8, marginBottom: 40 }}>
             <Link href="/internships" className="btn-primary">Browse Internships</Link>
@@ -199,7 +199,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="cta-content">
             <h2>Find the one that&apos;s right for you</h2>
-            <p>Verified employers. Verified students. Everything happens on the platform — from first browse to first day.</p>
+            <p>Reviewed employers. Verified students. Everything happens on the platform — from first browse to first day.</p>
             <ul className="cta-features">
               <li>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -241,7 +241,7 @@ export default function LandingPage() {
                 <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Group.png" alt="Browse" />
               </div>
               <h3>1. Browse openly</h3>
-              <p>Explore live internships from verified employers — no signup required.</p>
+              <p>Explore live internships from reviewed employers — no signup required.</p>
             </div>
             <div className="step-connector">
               <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Vector-30.png" alt="" />

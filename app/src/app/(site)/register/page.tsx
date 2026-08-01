@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
 import PasswordInput from '@/components/PasswordInput';
-import { supabase, isEduEmail } from '@/lib/supabase';
+import { supabase, isEduEmail, EMPLOYER_EMAIL_ERROR } from '@/lib/supabase';
+import { isFreeEmailProvider, normalizeDomain } from '@/lib/domain-signals';
 import { MAJORS } from '@/lib/constants';
 
 type Role = 'student' | 'employer';
@@ -57,6 +58,19 @@ export default function RegisterPage() {
 
     if (role === 'employer' && !companyName) {
       setError('Company name is required.');
+      return;
+    }
+
+    // Employers verify against a company domain, so a personal or disposable
+    // mailbox leaves nothing to check. Mirrored server-side in
+    // createProfileAndRoleData — this is only the fast feedback path.
+    if (role === 'employer' && isFreeEmailProvider(email)) {
+      setError(EMPLOYER_EMAIL_ERROR);
+      return;
+    }
+
+    if (role === 'employer' && !normalizeDomain(website)) {
+      setError('Please enter your company website, e.g. example.com.');
       return;
     }
 
@@ -146,8 +160,15 @@ export default function RegisterPage() {
               <input type="tel" id="phone" placeholder="+1 (555) 000-0000" value={phone} onChange={e => setPhone(e.target.value)} />
             </div>
             <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input type="email" id="email" placeholder="john@university.edu" required value={email} onChange={e => setEmail(e.target.value)} />
+              <label htmlFor="email">{role === 'employer' ? 'Work Email Address' : 'Email Address'}</label>
+              <input
+                type="email"
+                id="email"
+                placeholder={role === 'employer' ? 'you@company.com' : 'john@university.edu'}
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
             </div>
             <div className="form-group">
               <label htmlFor="password">Password</label>
@@ -245,7 +266,10 @@ export default function RegisterPage() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="website">Company Website</label>
-                  <input type="text" id="website" placeholder="example.com" value={website} onChange={e => setWebsite(e.target.value)} />
+                  <input type="text" id="website" placeholder="example.com" required value={website} onChange={e => setWebsite(e.target.value)} />
+                  <p style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                    Used to verify your company. Accounts are reviewed before listings go live.
+                  </p>
                 </div>
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label htmlFor="companyDescription">Company Description</label>

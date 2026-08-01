@@ -83,7 +83,7 @@ export default function PublicInternshipsPage() {
           <div className="hero-badge">Browse openly · no signup needed</div>
           <h1 style={{ fontSize: 44, maxWidth: 720 }}>Find your next internship</h1>
           <p className="hero-subtitle" style={{ marginBottom: 32 }}>
-            Verified opportunities from real employers. Create an account only when you&apos;re ready to apply.
+            Reviewed opportunities from real employers. Create an account only when you&apos;re ready to apply.
           </p>
 
           {/* Search + filter */}
@@ -122,7 +122,7 @@ export default function PublicInternshipsPage() {
                   borderRadius: 10,
                   border: '1.5px solid var(--border)',
                   fontSize: 15,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   outline: 'none',
                 }}
               />
@@ -135,7 +135,7 @@ export default function PublicInternshipsPage() {
                 borderRadius: 10,
                 border: '1.5px solid var(--border)',
                 fontSize: 15,
-                background: '#fff',
+                background: 'var(--surface)',
                 minWidth: 200,
                 cursor: 'pointer',
               }}
@@ -189,7 +189,7 @@ export default function PublicInternshipsPage() {
               style={{
                 textAlign: 'center',
                 padding: '60px 20px',
-                background: '#fff',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: 16,
                 maxWidth: 560,
@@ -299,8 +299,8 @@ function chipStyle(active: boolean): React.CSSProperties {
     padding: '6px 14px',
     borderRadius: 999,
     border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-    background: active ? 'var(--primary)' : '#fff',
-    color: active ? '#fff' : 'var(--text)',
+    background: active ? 'var(--primary)' : 'var(--surface)',
+    color: active ? 'var(--on-primary)' : 'var(--text)',
     fontSize: 13,
     fontWeight: 500,
     cursor: 'pointer',

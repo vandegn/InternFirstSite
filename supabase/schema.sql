@@ -37,14 +37,64 @@ create table employers (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references profiles(user_id) on delete cascade not null unique,
   company_name text not null,
-  business_id text,                    -- EIN for manual verification
-  verified boolean default false,
   description text,
   logo_url text,
   website text,
+  -- Verification. Every employer starts 'pending'; until they are 'approved'
+  -- their listings are hidden and applicant data is invisible to them.
+  -- `verified` is a derived mirror maintained by trg_sync_employer_verified --
+  -- never write it directly. See migrations/20260801_employer_verification.sql.
+  verification_status text not null default 'pending'
+    check (verification_status in ('pending', 'needs_info', 'approved', 'rejected')),
+  verified boolean default false,
+  verification_note text,              -- reviewer -> employer
+  reviewed_at timestamptz,
+  reviewed_by uuid references profiles(user_id) on delete set null,
+  -- Automated triage signals, written by /api/employer/verification-signals
+  email_domain text,
+  website_domain text,
+  domain_match boolean,
+  free_email_provider boolean,
+  domain_registered_at timestamptz,
+  domain_age_days int,
+  signals_checked_at timestamptz,
+  signals_error text,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
+
+create index idx_employers_verification_status on employers(verification_status);
+
+create or replace function sync_employer_verified()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.verified := (new.verification_status = 'approved');
+  return new;
+end;
+$$;
+
+create trigger trg_sync_employer_verified
+  before insert or update of verification_status on employers
+  for each row execute function sync_employer_verified();
+
+-- Predicates used by the verification gates below. security definer so
+-- tightening the employers/profiles select policies later cannot silently
+-- turn these into `false` and lock everyone out.
+create or replace function is_approved_employer(uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from employers where user_id = uid and verification_status = 'approved'
+  );
+$$;
+
+create or replace function is_intern_first_admin(uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from profiles where user_id = uid and role = 'intern_first_admin'
+  );
+$$;
 
 -- ============================================
 -- 4. INTERNSHIP LISTINGS
@@ -212,9 +262,23 @@ create policy "Employers are viewable by authenticated users"
 create policy "Employers can manage own record"
   on employers for all to authenticated using (auth.uid() = user_id);
 
--- INTERNSHIP LISTINGS: anyone can view active listings, employers manage their own
+create policy "Admins can view all employers"
+  on employers for select to authenticated
+  using (is_intern_first_admin(auth.uid()));
+
+create policy "Admins can update verification"
+  on employers for update to authenticated
+  using (is_intern_first_admin(auth.uid()))
+  with check (is_intern_first_admin(auth.uid()));
+
+-- INTERNSHIP LISTINGS: listings are visible only while their employer is
+-- approved, so an unreviewed company cannot put a posting in front of students.
+-- Employers still see and edit their own via "Employers can manage own listings".
 create policy "Active listings are viewable by authenticated users"
-  on internship_listings for select to authenticated using (true);
+  on internship_listings for select to authenticated
+  using (
+    employer_id in (select id from employers where verification_status = 'approved')
+  );
 
 create policy "Employers can manage own listings"
   on internship_listings for all to authenticated
@@ -229,10 +293,13 @@ create policy "Students can view own applications"
     student_id in (select id from students where user_id = auth.uid())
   );
 
+-- Gated on approval: applicant data is the thing worth stealing, so it stays
+-- invisible until a human has reviewed the company.
 create policy "Employers can view applications to their listings"
   on applications for select to authenticated
   using (
-    listing_id in (
+    is_approved_employer(auth.uid())
+    and listing_id in (
       select il.id from internship_listings il
       join employers e on il.employer_id = e.id
       where e.user_id = auth.uid()
@@ -248,7 +315,8 @@ create policy "Students can insert own applications"
 create policy "Employers can update application status"
   on applications for update to authenticated
   using (
-    listing_id in (
+    is_approved_employer(auth.uid())
+    and listing_id in (
       select il.id from internship_listings il
       join employers e on il.employer_id = e.id
       where e.user_id = auth.uid()
@@ -313,7 +381,8 @@ create policy "Students can delete own skills"
 create policy "Employers can view skills of applicants"
   on student_skills for select to authenticated
   using (
-    student_id in (
+    is_approved_employer(auth.uid())
+    and student_id in (
       select s.id from students s
       join applications a on a.student_id = s.id
       join internship_listings il on a.listing_id = il.id
@@ -387,7 +456,8 @@ create policy "Students can delete own experiences"
 create policy "Employers can view experiences of applicants"
   on student_experiences for select to authenticated
   using (
-    student_id in (
+    is_approved_employer(auth.uid())
+    and student_id in (
       select s.id from students s
       join applications a on a.student_id = s.id
       join internship_listings il on a.listing_id = il.id
@@ -437,7 +507,8 @@ create policy "Students can delete own organizations"
 create policy "Employers can view organizations of applicants"
   on student_organizations for select to authenticated
   using (
-    student_id in (
+    is_approved_employer(auth.uid())
+    and student_id in (
       select s.id from students s
       join applications a on a.student_id = s.id
       join internship_listings il on a.listing_id = il.id
@@ -976,7 +1047,8 @@ create policy "Students read answers on own applications"
 create policy "Employers read answers on their listings"
   on application_answers for select to authenticated
   using (
-    application_id in (
+    is_approved_employer(auth.uid())
+    and application_id in (
       select a.id from applications a
       join internship_listings il on a.listing_id = il.id
       join employers e on il.employer_id = e.id
@@ -1026,3 +1098,30 @@ create index idx_listings_city_state on internship_listings(state, city);
 -- Supports radius search ("internships near me") via a bounding-box prefilter.
 -- A plain btree is sufficient here; no PostGIS needed.
 create index idx_listings_latlng on internship_listings(lat, lng) where lat is not null;
+
+-- ============================================
+-- 21. VERIFICATION-GATED APPLICANT COUNT
+-- ============================================
+-- Pending employers see no applications at all (see the gate on the
+-- applications select policy), which would leave them staring at an empty
+-- page. This returns the bare count for the caller's own listings so the UI can
+-- say "3 applications are already waiting" -- a far better prompt to finish
+-- verification. security definer deliberately bypasses the gate; it returns a
+-- single integer and leaks nothing about any individual applicant.
+
+create or replace function employer_pending_applicant_count()
+returns int
+language sql
+stable
+security definer
+set search_path = public
+as $fn$
+  select count(a.id)::int
+  from applications a
+  join internship_listings il on a.listing_id = il.id
+  join employers e on il.employer_id = e.id
+  where e.user_id = auth.uid();
+$fn$;
+
+revoke all on function employer_pending_applicant_count() from public;
+grant execute on function employer_pending_applicant_count() to authenticated;

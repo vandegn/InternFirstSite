@@ -2,6 +2,7 @@ import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
 import { MAX_STUDENT_SKILLS, type CompType, type QuestionType } from '@/lib/constants';
+import { isFreeEmailProvider } from '@/lib/domain-signals';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -51,6 +52,10 @@ export async function createProfileAndRoleData(
 
   if (role === 'student' && !isEduEmail(email)) {
     throw new Error('Student accounts require a .edu email address.');
+  }
+
+  if (role === 'employer' && isFreeEmailProvider(email)) {
+    throw new Error(EMPLOYER_EMAIL_ERROR);
   }
 
   const { error: profileError } = await client.from('profiles').insert({
@@ -128,6 +133,96 @@ export async function ensureProfileFromMetadata(
 
 export function isEduEmail(email: string): boolean {
   return email.trim().toLowerCase().endsWith('.edu');
+}
+
+// Shown at signup and re-thrown server-side by createProfileAndRoleData, so the
+// two paths can never disagree about the wording.
+export const EMPLOYER_EMAIL_ERROR =
+  'Please use your company email address. Personal and temporary email providers ' +
+  'cannot be used for employer accounts.';
+
+// ---- Employer Verification ----
+
+export type VerificationStatus = 'pending' | 'needs_info' | 'approved' | 'rejected';
+
+export const VERIFICATION_LABELS: Record<VerificationStatus, string> = {
+  pending: 'Pending Review',
+  needs_info: 'More Info Needed',
+  approved: 'Verified',
+  rejected: 'Not Approved',
+};
+
+// Fires the automated domain checks and stores them on the employer row.
+// Non-blocking by design: signup must not fail because RDAP is slow or down —
+// a missing signal just means the reviewer checks that one by hand.
+export async function refreshVerificationSignals(employerId?: string) {
+  try {
+    const res = await fetch('/api/employer/verification-signals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(employerId ? { employerId } : {}),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+// Admin review queue. Non-admins get an empty result via RLS rather than an error.
+export async function getEmployersForReview() {
+  const { data, error } = await supabase
+    .from('employers')
+    .select(`
+      id, company_name, website, description, logo_url, created_at,
+      verification_status, verification_note, reviewed_at,
+      email_domain, website_domain, domain_match, free_email_provider,
+      domain_registered_at, domain_age_days, signals_checked_at, signals_error,
+      profile:profiles!employers_user_id_fkey(full_name, email),
+      listings:internship_listings(count)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[getEmployersForReview] Error:', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function setEmployerVerification(
+  employerId: string,
+  status: VerificationStatus,
+  note: string | null,
+) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('employers')
+    .update({
+      verification_status: status,
+      verification_note: note?.trim() ? note.trim() : null,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user?.id ?? null,
+    })
+    .eq('id', employerId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Applicant count that deliberately survives the verification gate, so a
+// pending employer sees "3 applicants waiting" instead of an empty page.
+// Backed by a security-definer function scoped to the caller's own listings.
+export async function getPendingApplicantCount(): Promise<number> {
+  const { data, error } = await supabase.rpc('employer_pending_applicant_count');
+  if (error) {
+    console.error('[getPendingApplicantCount] Error:', error.message);
+    return 0;
+  }
+  return (data as number) ?? 0;
 }
 
 export async function getEmployerByUserId(userId: string) {

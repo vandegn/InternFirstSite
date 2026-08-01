@@ -123,7 +123,6 @@ export default function StudentDashboard() {
   const animatedPositions = useCountUp(positionsCount);
   const animatedApplications = useCountUp(applicationCount);
   const animatedOffers = useCountUp(offerCount);
-  const [studentMajor, setStudentMajor] = useState<string | null>(null);
   const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
   const [studentInterviews, setStudentInterviews] = useState<StudentInterview[]>([]);
   const [recommended, setRecommended] = useState<RecommendedListing[]>([]);
@@ -212,9 +211,6 @@ export default function StudentDashboard() {
         setStudentApplications(apps as unknown as StudentApplication[]);
         setStudentInterviews(interviews as unknown as StudentInterview[]);
         setRecommended(recs as unknown as RecommendedListing[]);
-      }
-      if (student?.major) {
-        setStudentMajor(student.major);
       }
     }
     fetchUserData();
@@ -526,8 +522,8 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* 2-Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '24px', marginTop: '24px' }}>
+      {/* Applications + Calendar */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginTop: '24px' }}>
 
         {/* ── Main Column: Applications + Calendar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
@@ -684,43 +680,6 @@ export default function StudentDashboard() {
 
           {/* Calendar */}
           <Calendar events={calendarEvents} />
-        </div>
-
-        {/* ── Right Column: Industry News ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ background: '#fff', borderRadius: 'var(--radius, 12px)', border: '1px solid var(--border, #e5e7eb)', padding: '16px' }}>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '4px', color: 'var(--text, #1a1a1a)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px', marginRight: '6px' }}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              Industry News
-            </h3>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: '0 0 14px 0' }}>
-              {studentMajor ? `Curated for ${studentMajor} majors` : 'Curated for your field'}
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { title: 'Top Skills Employers Are Looking For in 2026', source: 'InternFirst Blog', date: 'Mar 22, 2026' },
-                { title: 'How to Stand Out in Your Internship Application', source: 'Career Insights', date: 'Mar 20, 2026' },
-                { title: 'Remote Internships: What to Expect and How to Succeed', source: 'The Intern Guide', date: 'Mar 18, 2026' },
-                { title: 'Networking Tips for College Students Breaking Into the Industry', source: 'Campus Weekly', date: 'Mar 15, 2026' },
-              ].map((article, i) => (
-                <div
-                  key={i}
-                  style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border, #e5e7eb)', cursor: 'pointer', transition: 'border-color 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e5e7eb)'; }}
-                >
-                  <h4 style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px', lineHeight: 1.4 }}>
-                    {article.title}
-                  </h4>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
-                    <span>{article.source}</span>
-                    <span>{article.date}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
       </div>

@@ -263,51 +263,6 @@ export default function EmployerDashboard() {
         )}
       </div>
 
-      {/* My Events */}
-      <div className="dash-section">
-        <h3 className="dash-section-title">My Events</h3>
-        <div className="listing-grid">
-          <div className="listing-card">
-            <div className="listing-header">
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="Career Fair" className="listing-logo" />
-              <button className="bookmark-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-              </button>
-            </div>
-            <h4>Career Fair - IT</h4>
-            <p className="listing-company">On Campus</p>
-            <p className="listing-location">Raleigh, USA</p>
-            <div className="listing-tags">
-              <span>Networking</span>
-              <span>IT</span>
-            </div>
-            <div className="listing-footer">
-              <span className="listing-salary">Free</span>
-              <span className="listing-time">Mar 7, 2026</span>
-            </div>
-          </div>
-          <div className="listing-card">
-            <div className="listing-header">
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-2.png" alt="Career Fair" className="listing-logo" />
-              <button className="bookmark-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-              </button>
-            </div>
-            <h4>Career Fair - Law</h4>
-            <p className="listing-company">On Campus</p>
-            <p className="listing-location">Raleigh, USA</p>
-            <div className="listing-tags">
-              <span>Networking</span>
-              <span>Law</span>
-            </div>
-            <div className="listing-footer">
-              <span className="listing-salary">Free</span>
-              <span className="listing-time">Mar 14, 2026</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Statistics */}
       <div className="dash-section">
         <h3 className="dash-section-title">Statistics</h3>
@@ -381,45 +336,6 @@ export default function EmployerDashboard() {
         )}
       </div>
 
-      {/* News */}
-      <div className="dash-section">
-        <h3 className="dash-section-title">News</h3>
-        <div className="news-grid">
-          <div className="news-card">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-3.png" alt="News 1" />
-            <div className="news-body">
-              <div className="news-meta">
-                <span>Feb 20, 2026</span>
-                <span>5 min read</span>
-              </div>
-              <h4>How to Attract Top Intern Talent in 2026</h4>
-              <Link href="/blog">Read more</Link>
-            </div>
-          </div>
-          <div className="news-card">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-4.png" alt="News 2" />
-            <div className="news-body">
-              <div className="news-meta">
-                <span>Feb 18, 2026</span>
-                <span>4 min read</span>
-              </div>
-              <h4>The Future of Remote Internships: What Employers Need to Know</h4>
-              <Link href="/blog">Read more</Link>
-            </div>
-          </div>
-          <div className="news-card">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Image-5.png" alt="News 3" />
-            <div className="news-body">
-              <div className="news-meta">
-                <span>Feb 15, 2026</span>
-                <span>6 min read</span>
-              </div>
-              <h4>Building a Pipeline: University Partnerships That Work</h4>
-              <Link href="/blog">Read more</Link>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

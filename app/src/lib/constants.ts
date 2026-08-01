@@ -299,6 +299,7 @@ export const SKILLS = [
   // Other Technical
   'AutoCAD', 'SolidWorks', 'SPSS', 'Stata', 'LabVIEW', 'Revit',
   'GIS/ArcGIS', 'Blender', '3D Modeling', 'Video Editing',
+  'Autodesk Inventor', 'SketchUp',
 ] as const;
 
 export type Skill = (typeof SKILLS)[number];

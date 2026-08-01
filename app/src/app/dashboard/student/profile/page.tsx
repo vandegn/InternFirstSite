@@ -12,7 +12,7 @@ import {
 import { MAJORS } from '@/lib/constants';
 
 interface Resume { id: string; name: string; file_url: string; uploaded_at: string; }
-interface Skill { id: string; name: string; is_custom: boolean; }
+interface Skill { id: string; name: string; }
 interface Experience { id: string; type: string; title: string; organization?: string; location?: string; description?: string; technologies?: string; link?: string; start_date?: string; end_date?: string; is_current?: boolean; }
 interface Org { id: string; type: string; name: string; chapter?: string; role?: string; join_date?: string; end_date?: string; }
 
@@ -89,7 +89,6 @@ export default function StudentProfile() {
   const [skillSearch, setSkillSearch] = useState('');
   const [debouncedSkillSearch, setDebouncedSkillSearch] = useState('');
   const [showSkillDropdown, setShowSkillDropdown] = useState(false);
-  const [customSkillInput, setCustomSkillInput] = useState('');
   const skillDropdownRef = useRef<HTMLDivElement>(null);
   // Autocomplete catalog (loaded lazily from /skills.json on first edit)
   const [skillCatalog, setSkillCatalog] = useState<string[]>([]);
@@ -259,20 +258,28 @@ export default function StudentProfile() {
   // ---- Skills handlers ----
   const existingSkillNames = skills.map((s) => s.name.toLowerCase());
   const skillQuery = debouncedSkillSearch.toLowerCase().trim();
-  const filteredSkills = skillCatalog
-    .filter((s) => {
+  // Rank matches by relevance (prefix > word-start > substring), not alphabetically,
+  // so a broad query like "eng" surfaces "Engineering" instead of the first 20 A–C hits.
+  const filteredSkills = skillQuery === '' ? [] : skillCatalog
+    .reduce<{ name: string; score: number }[]>((acc, s) => {
       const lower = s.toLowerCase();
-      if (existingSkillNames.includes(lower)) return false;
-      return skillQuery === '' ? true : lower.includes(skillQuery);
-    })
-    .slice(0, 20);
+      if (existingSkillNames.includes(lower)) return acc;
+      const idx = lower.indexOf(skillQuery);
+      if (idx === -1) return acc;
+      const score = idx === 0 ? 0 : lower[idx - 1] === ' ' ? 1 : 2;
+      acc.push({ name: s, score });
+      return acc;
+    }, [])
+    .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
+    .slice(0, 20)
+    .map((x) => x.name);
 
-  async function handleAddSkill(name: string, isCustom: boolean) {
+  async function handleAddSkill(name: string) {
+    // Only skills chosen from the catalog can be added — no custom entries, to keep matching consistent.
     try {
-      const newSkill = await addStudentSkill(studentId, name, isCustom);
+      const newSkill = await addStudentSkill(studentId, name);
       setSkills((prev) => [...prev, newSkill].sort((a, b) => a.name.localeCompare(b.name)));
       setSkillSearch('');
-      setCustomSkillInput('');
       setShowSkillDropdown(false);
     } catch { /* ignore */ }
   }
@@ -789,7 +796,7 @@ export default function StudentProfile() {
               <div style={cardStyle}>
                 <div style={cardHeader}>
                   <h3 style={sectionTitle}>Skills</h3>
-                  <EditBtn onClick={() => { setEditingSkills(!editingSkills); setSkillSearch(''); setCustomSkillInput(''); }} editing={editingSkills} />
+                  <EditBtn onClick={() => { setEditingSkills(!editingSkills); setSkillSearch(''); }} editing={editingSkills} />
                 </div>
                 {skills.length > 0 ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -831,29 +838,21 @@ export default function StudentProfile() {
                           borderRadius: '8px', zIndex: 10, boxShadow: 'var(--shadow-md)',
                         }}>
                           {filteredSkills.map((s) => (
-                            <div key={s} onClick={() => handleAddSkill(s, false)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem' }}
+                            <div key={s} onClick={() => handleAddSkill(s)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem' }}
                               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                             >{s}</div>
                           ))}
                         </div>
                       )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <input
-                        style={{ ...inputStyle, flex: 1 }}
-                        type="text"
-                        placeholder="Or type a custom skill..."
-                        value={customSkillInput}
-                        onChange={(e) => setCustomSkillInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && customSkillInput.trim()) { e.preventDefault(); handleAddSkill(customSkillInput.trim(), true); } }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => customSkillInput.trim() && handleAddSkill(customSkillInput.trim(), true)}
-                        disabled={!customSkillInput.trim()}
-                        style={{ ...addBtnStyle, opacity: customSkillInput.trim() ? 1 : 0.5 }}
-                      >Add</button>
+                      {showSkillDropdown && skillQuery !== '' && filteredSkills.length === 0 && (
+                        <div style={{
+                          position: 'absolute', top: '100%', left: 0, right: 0,
+                          background: '#fff', border: '1px solid var(--border)', borderRadius: '8px',
+                          zIndex: 10, boxShadow: 'var(--shadow-md)', padding: '8px 12px',
+                          fontSize: '0.78rem', color: 'var(--text-secondary)',
+                        }}>No matching skill in our list.</div>
+                      )}
                     </div>
                   </div>
                 )}

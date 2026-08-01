@@ -930,10 +930,10 @@ export async function getStudentSkills(studentId: string) {
   return data ?? [];
 }
 
-export async function addStudentSkill(studentId: string, name: string, isCustom: boolean) {
+export async function addStudentSkill(studentId: string, name: string) {
   const { data, error } = await supabase
     .from('student_skills')
-    .insert({ student_id: studentId, name, is_custom: isCustom })
+    .insert({ student_id: studentId, name })
     .select()
     .single();
   if (error) throw error;

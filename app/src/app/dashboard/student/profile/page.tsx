@@ -9,10 +9,10 @@ import {
   getStudentExperiences, addStudentExperience, updateStudentExperience, deleteStudentExperience,
   getStudentOrganizations, addStudentOrganization, updateStudentOrganization, deleteStudentOrganization,
 } from '@/lib/supabase';
-import { MAJORS, SKILLS } from '@/lib/constants';
+import { MAJORS, MAX_STUDENT_SKILLS } from '@/lib/constants';
 
 interface Resume { id: string; name: string; file_url: string; uploaded_at: string; }
-interface Skill { id: string; name: string; is_custom: boolean; }
+interface Skill { id: string; name: string; }
 interface Experience { id: string; type: string; title: string; organization?: string; location?: string; description?: string; technologies?: string; link?: string; start_date?: string; end_date?: string; is_current?: boolean; }
 interface Org { id: string; type: string; name: string; chapter?: string; role?: string; join_date?: string; end_date?: string; }
 
@@ -87,9 +87,12 @@ export default function StudentProfile() {
 
   // Skills
   const [skillSearch, setSkillSearch] = useState('');
+  const [debouncedSkillSearch, setDebouncedSkillSearch] = useState('');
   const [showSkillDropdown, setShowSkillDropdown] = useState(false);
-  const [customSkillInput, setCustomSkillInput] = useState('');
   const skillDropdownRef = useRef<HTMLDivElement>(null);
+  // Autocomplete catalog (loaded lazily from /skills.json on first edit)
+  const [skillCatalog, setSkillCatalog] = useState<string[]>([]);
+  const skillCatalogLoaded = useRef(false);
 
   // Resume upload
   const [resumeName, setResumeName] = useState('');
@@ -160,6 +163,23 @@ export default function StudentProfile() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Lazy-load the skill autocomplete catalog the first time the user edits skills.
+  // Kept out of the JS bundle (public/skills.json) so it doesn't bloat every page.
+  useEffect(() => {
+    if (!editingSkills || skillCatalogLoaded.current) return;
+    skillCatalogLoaded.current = true;
+    fetch('/skills.json')
+      .then((r) => r.json())
+      .then((data: string[]) => setSkillCatalog(data))
+      .catch(() => { skillCatalogLoaded.current = false; });
+  }, [editingSkills]);
+
+  // Debounce the search input so filtering stays snappy as the catalog grows.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSkillSearch(skillSearch), 120);
+    return () => clearTimeout(t);
+  }, [skillSearch]);
 
   function formatDate(dateStr?: string) {
     if (!dateStr) return '';
@@ -237,16 +257,29 @@ export default function StudentProfile() {
 
   // ---- Skills handlers ----
   const existingSkillNames = skills.map((s) => s.name.toLowerCase());
-  const filteredSkills = SKILLS.filter(
-    (s) => s.toLowerCase().includes(skillSearch.toLowerCase()) && !existingSkillNames.includes(s.toLowerCase())
-  );
+  const skillQuery = debouncedSkillSearch.toLowerCase().trim();
+  // Rank matches by relevance (prefix > word-start > substring), not alphabetically,
+  // so a broad query like "eng" surfaces "Engineering" instead of the first 20 A–C hits.
+  const filteredSkills = skillQuery === '' ? [] : skillCatalog
+    .reduce<{ name: string; score: number }[]>((acc, s) => {
+      const lower = s.toLowerCase();
+      if (existingSkillNames.includes(lower)) return acc;
+      const idx = lower.indexOf(skillQuery);
+      if (idx === -1) return acc;
+      const score = idx === 0 ? 0 : lower[idx - 1] === ' ' ? 1 : 2;
+      acc.push({ name: s, score });
+      return acc;
+    }, [])
+    .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
+    .slice(0, 20)
+    .map((x) => x.name);
 
-  async function handleAddSkill(name: string, isCustom: boolean) {
+  async function handleAddSkill(name: string) {
+    // Only skills chosen from the catalog can be added — no custom entries, to keep matching consistent.
     try {
-      const newSkill = await addStudentSkill(studentId, name, isCustom);
+      const newSkill = await addStudentSkill(studentId, name);
       setSkills((prev) => [...prev, newSkill].sort((a, b) => a.name.localeCompare(b.name)));
       setSkillSearch('');
-      setCustomSkillInput('');
       setShowSkillDropdown(false);
     } catch { /* ignore */ }
   }
@@ -762,8 +795,13 @@ export default function StudentProfile() {
               {/* Skills */}
               <div style={cardStyle}>
                 <div style={cardHeader}>
-                  <h3 style={sectionTitle}>Skills</h3>
-                  <EditBtn onClick={() => { setEditingSkills(!editingSkills); setSkillSearch(''); setCustomSkillInput(''); }} editing={editingSkills} />
+                  <h3 style={sectionTitle}>
+                    Skills{' '}
+                    <span style={{ fontWeight: 400, fontSize: '0.8rem', color: skills.length >= MAX_STUDENT_SKILLS ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                      ({skills.length}/{MAX_STUDENT_SKILLS})
+                    </span>
+                  </h3>
+                  <EditBtn onClick={() => { setEditingSkills(!editingSkills); setSkillSearch(''); }} editing={editingSkills} />
                 </div>
                 {skills.length > 0 ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -786,7 +824,12 @@ export default function StudentProfile() {
                     ))}
                   </div>
                 ) : emptyText('No skills added yet.')}
-                {editingSkills && (
+                {editingSkills && skills.length >= MAX_STUDENT_SKILLS && (
+                  <p style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    You&apos;ve reached the {MAX_STUDENT_SKILLS}-skill limit. Remove a skill to add a different one.
+                  </p>
+                )}
+                {editingSkills && skills.length < MAX_STUDENT_SKILLS && (
                   <div style={{ marginTop: '12px' }}>
                     <div style={{ position: 'relative', marginBottom: '8px' }} ref={skillDropdownRef}>
                       <input
@@ -804,30 +847,22 @@ export default function StudentProfile() {
                           overflowY: 'auto', background: '#fff', border: '1px solid var(--border)',
                           borderRadius: '8px', zIndex: 10, boxShadow: 'var(--shadow-md)',
                         }}>
-                          {filteredSkills.slice(0, 20).map((s) => (
-                            <div key={s} onClick={() => handleAddSkill(s, false)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem' }}
+                          {filteredSkills.map((s) => (
+                            <div key={s} onClick={() => handleAddSkill(s)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem' }}
                               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                             >{s}</div>
                           ))}
                         </div>
                       )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <input
-                        style={{ ...inputStyle, flex: 1 }}
-                        type="text"
-                        placeholder="Or type a custom skill..."
-                        value={customSkillInput}
-                        onChange={(e) => setCustomSkillInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && customSkillInput.trim()) { e.preventDefault(); handleAddSkill(customSkillInput.trim(), true); } }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => customSkillInput.trim() && handleAddSkill(customSkillInput.trim(), true)}
-                        disabled={!customSkillInput.trim()}
-                        style={{ ...addBtnStyle, opacity: customSkillInput.trim() ? 1 : 0.5 }}
-                      >Add</button>
+                      {showSkillDropdown && skillQuery !== '' && filteredSkills.length === 0 && (
+                        <div style={{
+                          position: 'absolute', top: '100%', left: 0, right: 0,
+                          background: '#fff', border: '1px solid var(--border)', borderRadius: '8px',
+                          zIndex: 10, boxShadow: 'var(--shadow-md)', padding: '8px 12px',
+                          fontSize: '0.78rem', color: 'var(--text-secondary)',
+                        }}>No matching skill in our list.</div>
+                      )}
                     </div>
                   </div>
                 )}

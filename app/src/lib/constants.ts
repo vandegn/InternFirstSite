@@ -216,6 +216,11 @@ export function cpaForIndustry(industry?: string | null): number {
 // PPA only bills applications scoring at or above this match percentage.
 export const PPA_MATCH_THRESHOLD = 70;
 
+// Max number of skills a student can attach to their profile. Enforced in the
+// UI, in addStudentSkill, and by an enforce_skill_limit DB trigger — keep these
+// in sync (see supabase/migrations/20260731_student_skill_limit.sql).
+export const MAX_STUDENT_SKILLS = 10;
+
 // PPJ application-range bands the employer picks from. The band's median drives
 // the fixed fee (no cap on actual applications).
 export const PPJ_APPLICATION_RANGES = [
@@ -400,6 +405,7 @@ export const SKILLS = [
   // Other Technical
   'AutoCAD', 'SolidWorks', 'SPSS', 'Stata', 'LabVIEW', 'Revit',
   'GIS/ArcGIS', 'Blender', '3D Modeling', 'Video Editing',
+  'Autodesk Inventor', 'SketchUp',
 ] as const;
 
 export type Skill = (typeof SKILLS)[number];

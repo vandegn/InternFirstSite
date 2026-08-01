@@ -1,7 +1,7 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
-import { type CompType, type QuestionType } from '@/lib/constants';
+import { MAX_STUDENT_SKILLS, type CompType, type QuestionType } from '@/lib/constants';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -209,6 +209,11 @@ export async function createListing(listing: {
   if (error) throw error;
   return data;
 }
+
+// Custom application questions live in the "Listing Customization" section
+// below — see getListingQuestions / replaceListingQuestions. An earlier
+// plain-text implementation (setListingQuestions) was superseded by the typed
+// version and removed in the merge of feature/customizable-job-postings.
 
 export async function getEmployerListings(employerId: string, page = 1, pageSize = 10) {
   const from = (page - 1) * pageSize;
@@ -1141,10 +1146,20 @@ export async function getStudentSkills(studentId: string) {
   return data ?? [];
 }
 
-export async function addStudentSkill(studentId: string, name: string, isCustom: boolean) {
+export async function addStudentSkill(studentId: string, name: string) {
+  // Enforce the skill cap client-side for a clear error; the DB trigger
+  // (enforce_skill_limit) is the authoritative guard.
+  const { count } = await supabase
+    .from('student_skills')
+    .select('*', { count: 'exact', head: true })
+    .eq('student_id', studentId);
+  if ((count ?? 0) >= MAX_STUDENT_SKILLS) {
+    throw new Error(`You can add at most ${MAX_STUDENT_SKILLS} skills.`);
+  }
+
   const { data, error } = await supabase
     .from('student_skills')
-    .insert({ student_id: studentId, name, is_custom: isCustom })
+    .insert({ student_id: studentId, name })
     .select()
     .single();
   if (error) throw error;

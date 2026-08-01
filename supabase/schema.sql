@@ -273,11 +273,23 @@ create policy "Receivers can mark messages read"
 -- ============================================
 -- 7. STUDENT SKILLS
 -- ============================================
+-- Fixed catalog of selectable skills (seeded from app/public/skills.json).
+-- student_skills.name is FK-constrained to this table, so only catalog skills
+-- can be attached — no free-text/custom skills. Keeps skill matching consistent.
+create table valid_skills (
+  name text primary key
+);
+
+alter table valid_skills enable row level security;
+
+create policy "Anyone can view valid skills"
+  on valid_skills for select to authenticated
+  using (true);
+
 create table student_skills (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade not null,
-  name text not null,
-  is_custom boolean default false,
+  name text not null references valid_skills(name) on update cascade,
   created_at timestamptz default now() not null,
   unique(student_id, name)
 );
@@ -309,6 +321,25 @@ create policy "Employers can view skills of applicants"
       where e.user_id = auth.uid()
     )
   );
+
+-- Cap each student at 10 skills (mirrors MAX_STUDENT_SKILLS in
+-- app/src/lib/constants.ts — keep the number in sync).
+create or replace function enforce_skill_limit()
+returns trigger
+language plpgsql
+as $$
+begin
+  if (select count(*) from student_skills where student_id = new.student_id) >= 10 then
+    raise exception 'A student can have at most 10 skills.'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger student_skills_limit
+  before insert on student_skills
+  for each row execute function enforce_skill_limit();
 
 -- ============================================
 -- 8. STUDENT EXPERIENCES

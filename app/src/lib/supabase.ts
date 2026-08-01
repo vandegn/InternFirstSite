@@ -1,6 +1,7 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
+import { MAX_STUDENT_SKILLS } from '@/lib/constants';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -1002,6 +1003,16 @@ export async function getStudentSkills(studentId: string) {
 }
 
 export async function addStudentSkill(studentId: string, name: string) {
+  // Enforce the skill cap client-side for a clear error; the DB trigger
+  // (enforce_skill_limit) is the authoritative guard.
+  const { count } = await supabase
+    .from('student_skills')
+    .select('*', { count: 'exact', head: true })
+    .eq('student_id', studentId);
+  if ((count ?? 0) >= MAX_STUDENT_SKILLS) {
+    throw new Error(`You can add at most ${MAX_STUDENT_SKILLS} skills.`);
+  }
+
   const { data, error } = await supabase
     .from('student_skills')
     .insert({ student_id: studentId, name })

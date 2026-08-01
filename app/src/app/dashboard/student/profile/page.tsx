@@ -9,7 +9,7 @@ import {
   getStudentExperiences, addStudentExperience, updateStudentExperience, deleteStudentExperience,
   getStudentOrganizations, addStudentOrganization, updateStudentOrganization, deleteStudentOrganization,
 } from '@/lib/supabase';
-import { MAJORS } from '@/lib/constants';
+import { MAJORS, MAX_STUDENT_SKILLS } from '@/lib/constants';
 
 interface Resume { id: string; name: string; file_url: string; uploaded_at: string; }
 interface Skill { id: string; name: string; }
@@ -795,7 +795,12 @@ export default function StudentProfile() {
               {/* Skills */}
               <div style={cardStyle}>
                 <div style={cardHeader}>
-                  <h3 style={sectionTitle}>Skills</h3>
+                  <h3 style={sectionTitle}>
+                    Skills{' '}
+                    <span style={{ fontWeight: 400, fontSize: '0.8rem', color: skills.length >= MAX_STUDENT_SKILLS ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                      ({skills.length}/{MAX_STUDENT_SKILLS})
+                    </span>
+                  </h3>
                   <EditBtn onClick={() => { setEditingSkills(!editingSkills); setSkillSearch(''); }} editing={editingSkills} />
                 </div>
                 {skills.length > 0 ? (
@@ -819,7 +824,12 @@ export default function StudentProfile() {
                     ))}
                   </div>
                 ) : emptyText('No skills added yet.')}
-                {editingSkills && (
+                {editingSkills && skills.length >= MAX_STUDENT_SKILLS && (
+                  <p style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    You&apos;ve reached the {MAX_STUDENT_SKILLS}-skill limit. Remove a skill to add a different one.
+                  </p>
+                )}
+                {editingSkills && skills.length < MAX_STUDENT_SKILLS && (
                   <div style={{ marginTop: '12px' }}>
                     <div style={{ position: 'relative', marginBottom: '8px' }} ref={skillDropdownRef}>
                       <input

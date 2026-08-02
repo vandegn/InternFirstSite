@@ -16,12 +16,23 @@ import {
   type PipelineStage,
 } from '@/lib/supabase';
 
+type ApplicationAnswer = {
+  id: string;
+  answer_text: string | null;
+  answer_options: string[] | null;
+  file_url: string | null;
+  question: { id: string; prompt: string; question_type: string; position: number } | null;
+};
+
 type Application = {
   id: string;
   status: string;
   stage_id: string | null;
+  match_score: number | null;
+  flagged_knockout: boolean | null;
   applied_at: string;
   resume: { id: string; name: string; file_url: string } | null;
+  answers: ApplicationAnswer[];
   listing: { id: string; title: string };
   student: {
     id: string;
@@ -34,6 +45,38 @@ type Application = {
 };
 
 const APPLIED_DISPLAY_LIMIT = 10;
+
+// Same thresholds as the applications list: >= 70 is the PPA-qualifying band.
+function matchPill(score: number) {
+  if (score >= 70) return { bg: '#dcfce7', color: 'var(--success-fg)' };
+  if (score >= 40) return { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' };
+  return { bg: '#f3f4f6', color: 'var(--chip-neutral-ink)' };
+}
+
+// PostgREST returns embedded rows as arrays or objects depending on the
+// relationship it infers, so flatten every nesting level once here rather than
+// guarding at each read site.
+function normalizeApp(app: Record<string, unknown>): Application {
+  const one = <T,>(v: unknown): T => (Array.isArray(v) ? v[0] : v) as T;
+  const student = one<Record<string, unknown> | null>(app.student);
+  return {
+    ...app,
+    listing: one(app.listing),
+    resume: one(app.resume) ?? null,
+    answers: ((app.answers ?? []) as Record<string, unknown>[]).map((a) => ({
+      ...a,
+      question: one(a.question) ?? null,
+    })),
+    student: student ? { ...student, profile: one(student.profile) } : student,
+  } as unknown as Application;
+}
+
+function answerText(a: ApplicationAnswer): string {
+  if (a.answer_options?.length) return a.answer_options.join(', ');
+  if (a.answer_text) return a.answer_text;
+  if (a.file_url) return 'File attached';
+  return '—';
+}
 
 const COLOR_PRESETS: { bg: string; text: string }[] = [
   { bg: 'var(--chip-indigo-bg)', text: 'var(--chip-indigo-ink)' },
@@ -96,17 +139,7 @@ export default function EmployerPipelinePage() {
         getEmployerListings(employer.id, 1, 100),
       ]);
 
-      const normalizedApps = appsData.map((app: any) => ({
-        ...app,
-        listing: Array.isArray(app.listing) ? app.listing[0] : app.listing,
-        resume: Array.isArray(app.resume) ? app.resume[0] || null : app.resume,
-        student: (() => {
-          const s = Array.isArray(app.student) ? app.student[0] : app.student;
-          return s ? { ...s, profile: Array.isArray(s.profile) ? s.profile[0] : s.profile } : s;
-        })(),
-      }));
-
-      setApplications(normalizedApps as Application[]);
+      setApplications(appsData.map(normalizeApp));
       const ls = listingsData.data.map((l: any) => ({ id: l.id, title: l.title }));
       setListings(ls);
       if (ls.length > 0) setSelectedListing(ls[0].id);
@@ -274,16 +307,7 @@ export default function EmployerPipelinePage() {
     const employer = await getEmployerByUserId(user.id);
     if (!employer) return;
     const appsData = await getEmployerApplications(employer.id);
-    const normalizedApps = appsData.map((app: any) => ({
-      ...app,
-      listing: Array.isArray(app.listing) ? app.listing[0] : app.listing,
-      resume: Array.isArray(app.resume) ? app.resume[0] || null : app.resume,
-      student: (() => {
-        const s = Array.isArray(app.student) ? app.student[0] : app.student;
-        return s ? { ...s, profile: Array.isArray(s.profile) ? s.profile[0] : s.profile } : s;
-      })(),
-    }));
-    setApplications(normalizedApps as Application[]);
+    setApplications(appsData.map(normalizeApp));
   }
 
   async function handleSaveStages() {
@@ -504,7 +528,7 @@ export default function EmployerPipelinePage() {
                           boxShadow: draggingId === app.id ? '0 4px 12px rgba(0,0,0,0.15)' : 'var(--shadow)',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                           <img
                             src={app.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
                             alt={app.student.profile.full_name}
@@ -514,21 +538,65 @@ export default function EmployerPipelinePage() {
                             <p style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {app.student.profile.full_name}
                             </p>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--text-light)' }}>
+                            <p style={{ fontSize: '0.7rem', color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {app.student.major || 'No major'}
+                              {app.student.graduation_year ? ` · '${String(app.student.graduation_year).slice(-2)}` : ''}
                             </p>
                           </div>
+                          {app.match_score != null && (
+                            <span
+                              title={`${app.match_score}% match to this listing`}
+                              style={{
+                                flexShrink: 0, fontSize: '0.68rem', fontWeight: 700,
+                                padding: '3px 7px', borderRadius: 10,
+                                background: matchPill(app.match_score).bg,
+                                color: matchPill(app.match_score).color,
+                              }}
+                            >
+                              {app.match_score}%
+                            </span>
+                          )}
                         </div>
-                        <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                          {app.listing.title}
-                        </p>
+
+                        {/* At-a-glance signals, so the board is usable without
+                            opening every card. */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+                          {app.resume && (
+                            <span style={{
+                              fontSize: '0.63rem', fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                              background: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)',
+                            }}>
+                              Resume
+                            </span>
+                          )}
+                          {app.answers?.length > 0 && (
+                            <span style={{
+                              fontSize: '0.63rem', fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                              background: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-ink)',
+                            }}>
+                              {app.answers.length} answer{app.answers.length === 1 ? '' : 's'}
+                            </span>
+                          )}
+                          {app.flagged_knockout && (
+                            <span
+                              title="Answered a knockout question outside your stated requirements"
+                              style={{
+                                fontSize: '0.63rem', fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                                background: 'var(--danger-bg)', color: 'var(--danger-fg)',
+                              }}
+                            >
+                              Knockout
+                            </span>
+                          )}
+                        </div>
+
                         <p style={{ fontSize: '0.68rem', color: 'var(--text-light)' }}>
-                          Applied {timeAgo(app.applied_at)}
+                          Applied {timeAgo(app.applied_at)} · {isExpanded ? 'click to collapse' : 'click for details'}
                         </p>
 
                         {isExpanded && (
                           <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                            <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>
+                            <div style={{ fontSize: '0.78rem', marginBottom: '6px', wordBreak: 'break-word' }}>
                               <span style={{ color: 'var(--text-light)' }}>Email: </span>
                               <span>{app.student.profile.email}</span>
                             </div>
@@ -538,12 +606,43 @@ export default function EmployerPipelinePage() {
                                 <span>{app.student.graduation_year}</span>
                               </div>
                             )}
+                            <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>
+                              <span style={{ color: 'var(--text-light)' }}>Applied to: </span>
+                              <span>{app.listing.title}</span>
+                            </div>
+                            {app.match_score != null && (
+                              <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>
+                                <span style={{ color: 'var(--text-light)' }}>Match score: </span>
+                                <span style={{ fontWeight: 600, color: matchPill(app.match_score).color }}>
+                                  {app.match_score}%
+                                </span>
+                                <span style={{ color: 'var(--text-light)' }}>
+                                  {' '}— skills, industry, experience, and preference fit
+                                </span>
+                              </div>
+                            )}
                             {app.student.bio && (
-                              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.4 }}>
+                              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0', lineHeight: 1.4 }}>
                                 {app.student.bio}
                               </p>
                             )}
-                            <div style={{ display: 'flex', gap: '6px' }}>
+                            {app.answers?.length > 0 && (
+                              <div style={{ margin: '8px 0' }}>
+                                {[...app.answers]
+                                  .sort((x, y) => (x.question?.position ?? 0) - (y.question?.position ?? 0))
+                                  .map(ans => (
+                                    <div key={ans.id} style={{ marginBottom: 6 }}>
+                                      <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-light)' }}>
+                                        {ans.question?.prompt ?? 'Question'}
+                                      </p>
+                                      <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                                        {answerText(ans)}
+                                      </p>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                               {app.resume && (
                                 <a
                                   href={app.resume.file_url}
@@ -569,6 +668,17 @@ export default function EmployerPipelinePage() {
                               >
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                                 Message
+                              </Link>
+                              <Link
+                                href={`/dashboard/employer/applications?listing=${app.listing.id}`}
+                                style={{
+                                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid var(--border)', color: 'var(--text)',
+                                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                }}
+                              >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                Full application
                               </Link>
                             </div>
                           </div>
@@ -711,6 +821,12 @@ export default function EmployerPipelinePage() {
                       <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color_text, flexShrink: 0 }} />
                       <input
                         value={s.label}
+                        // Applied and Offered are the board's fixed endpoints —
+                        // stage_type drives the dashboard stats and the student's
+                        // status label, so their titles aren't editable. A DB
+                        // trigger rejects the rename too (trg_guard_locked_stage).
+                        disabled={s.locked}
+                        title={s.locked ? `"${s.label}" is a fixed column and can't be renamed` : undefined}
                         onChange={(e) => draftRenameStage(s.id, e.target.value)}
                         onBlur={(e) => {
                           // Don't allow empty labels — revert if blank.
@@ -719,7 +835,10 @@ export default function EmployerPipelinePage() {
                         style={{
                           flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 6,
                           border: '1px solid var(--border)', fontSize: '0.85rem',
-                          background: 'var(--surface)',
+                          background: s.locked ? 'var(--bg)' : 'var(--surface)',
+                          color: s.locked ? 'var(--text-secondary)' : 'var(--text)',
+                          cursor: s.locked ? 'not-allowed' : 'text',
+                          fontWeight: s.locked ? 600 : 400,
                         }}
                       />
                       {isNew && (
@@ -807,7 +926,8 @@ export default function EmployerPipelinePage() {
                   </button>
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: 0 }}>
-                  New columns are inserted between Applied and Offered.
+                  New columns are inserted between Applied and Offered. Those two are
+                  fixed — they anchor the board and can&apos;t be renamed or removed.
                 </p>
               </div>
             </div>

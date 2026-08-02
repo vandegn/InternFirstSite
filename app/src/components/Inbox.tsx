@@ -35,6 +35,10 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  // A recipient we've been pointed at (?to=…) who the user hasn't messaged
+  // yet, so there's no conversation row to select. Cleared once the first
+  // message lands and the real conversation appears.
+  const [pendingRecipient, setPendingRecipient] = useState<{ userId: string; name: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,6 +48,20 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
       setUserId(user.id);
       const convs = await getConversations(user.id);
       setConversations(convs);
+
+      // Opened from a "Message Employer" button: pre-select the recipient and
+      // drop a draft in the composer. Nothing is sent until the user hits Send.
+      const params = new URLSearchParams(window.location.search);
+      const to = params.get('to');
+      if (to && to !== user.id) {
+        setSelectedUserId(to);
+        const draft = params.get('draft');
+        if (draft) setNewMessage(draft);
+        if (!convs.some((c) => c.otherUserId === to)) {
+          setPendingRecipient({ userId: to, name: params.get('name') || 'New message' });
+        }
+      }
+
       setLoading(false);
     }
     init();
@@ -85,6 +103,8 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
       // Update last message in conversations
       const convs = await getConversations(userId);
       setConversations(convs);
+      // The thread exists now, so it no longer needs the placeholder row.
+      setPendingRecipient(null);
     } catch {
       // silently fail
     } finally {
@@ -120,7 +140,34 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', height: '550px', background: 'var(--bg)' }}>
           {/* Conversation list */}
           <div style={{ width: '320px', borderRight: '1px solid var(--border)', overflowY: 'auto', flexShrink: 0 }}>
-            {conversations.length === 0 ? (
+            {pendingRecipient && (
+              <div
+                onClick={() => setSelectedUserId(pendingRecipient.userId)}
+                style={{
+                  padding: '14px 16px', cursor: 'pointer',
+                  borderBottom: '1px solid var(--border)',
+                  background: selectedUserId === pendingRecipient.userId ? 'var(--primary-light)' : 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                    background: 'var(--primary-light)', color: 'var(--primary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700,
+                  }}>
+                    {pendingRecipient.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{pendingRecipient.name}</span>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', margin: '2px 0 0', fontStyle: 'italic' }}>
+                      Draft — not sent yet
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {conversations.length === 0 && !pendingRecipient ? (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '12px', opacity: 0.5 }}>
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
@@ -203,7 +250,9 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                     style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
                   />
                   <div>
-                    <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{selectedConv?.otherName}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                      {selectedConv?.otherName ?? pendingRecipient?.name}
+                    </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '8px', textTransform: 'capitalize' }}>
                       {selectedConv?.otherRole}
                     </span>
@@ -212,6 +261,11 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
 
                 {/* Messages */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {messages.length === 0 && (
+                    <p style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '280px', lineHeight: 1.5 }}>
+                      No messages yet. Edit the draft below and send when you&apos;re ready.
+                    </p>
+                  )}
                   {messages.map((msg) => {
                     const isMine = msg.sender_id === userId;
                     return (

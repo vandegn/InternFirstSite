@@ -2692,6 +2692,24 @@ img { max-width: 100%; height: auto; display: block; }
     gap: 16px;
 }
 
+/* Stat cards that navigate to the list they're counting. */
+.stat-card-link {
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.stat-card-link:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.stat-card-link:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 .stat-icon {
     width: 48px;
     height: 48px;
@@ -3550,10 +3568,28 @@ img { max-width: 100%; height: auto; display: block; }
     margin-bottom: 0;
 }
 
+/* The global reset sets `ul { list-style: none }` for nav and chip lists, which
+   silently stripped the markers off every rendered "- bullet" in a listing —
+   the text indented but no bullet appeared. Markers are restored here. */
 .markdown-content ul,
 .markdown-content ol {
     margin: 0 0 0.75em;
     padding-left: 1.5em;
+}
+
+.markdown-content ul { list-style: disc outside; }
+.markdown-content ol { list-style: decimal outside; }
+.markdown-content ul ul { list-style-type: circle; }
+.markdown-content ul ul ul { list-style-type: square; }
+
+.markdown-content li::marker {
+    color: var(--text-light, var(--text-secondary));
+}
+
+/* Nested lists shouldn't inherit the outer list's bottom margin. */
+.markdown-content li > ul,
+.markdown-content li > ol {
+    margin: 0.25em 0 0;
 }
 
 .markdown-content ul:last-child,

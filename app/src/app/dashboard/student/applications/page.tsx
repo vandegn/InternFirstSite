@@ -69,6 +69,14 @@ export default function MyApplications() {
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
 
+  // Deep link from the dashboard stat cards (?status=offered). Read from
+  // window rather than useSearchParams so this client page doesn't need a
+  // Suspense boundary just to pre-select a filter.
+  useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get('status');
+    if (status && FILTER_OPTIONS.some((o) => o.value === status)) setStatusFilter(status);
+  }, []);
+
   // Close dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {

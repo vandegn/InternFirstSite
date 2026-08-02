@@ -7,15 +7,21 @@ import {
   getEmployerByUserId,
   getEmployerApplications,
   getEmployerListings,
+  getEmployerInterviews,
   getListingStages,
   createStage,
   updateStage,
   deleteStage,
   reorderStages,
   updateApplicationStage,
+  createInterview,
+  rescheduleInterview,
+  deleteApplication,
   type PipelineStage,
 } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
+import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
+import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
 
 type ApplicationAnswer = {
   id: string;
@@ -45,7 +51,26 @@ type Application = {
   };
 };
 
+type Interview = {
+  id: string;
+  application_id: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  employer_notes: string | null;
+  status: string;
+};
+
 const APPLIED_DISPLAY_LIMIT = 10;
+
+// An interview that still needs to happen — the card shows it and the
+// schedule action becomes "Reschedule" instead of opening a second invite.
+const LIVE_INTERVIEW_STATUSES = ['pending', 'accepted', 'reschedule_requested'];
+
+function formatInterviewWhen(iso: string) {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
 
 // Same thresholds as the applications list: >= 70 is the PPA-qualifying band.
 function matchPill(score: number) {
@@ -95,9 +120,27 @@ export default function EmployerPipelinePage() {
   const [listings, setListings] = useState<{ id: string; title: string }[]>([]);
   const [selectedListing, setSelectedListing] = useState('');
   const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [employerId, setEmployerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Every drop is staged here and only written once the employer confirms —
+  // a drag is too easy to fire by accident for a change the candidate sees.
+  const [pendingMove, setPendingMove] = useState<{ app: Application; toStage: PipelineStage } | null>(null);
+  const [movingApp, setMovingApp] = useState(false);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+
+  // Trash drop-zone: dropping a card here proposes a permanent delete.
+  const [trashTarget, setTrashTarget] = useState<Application | null>(null);
+  const [trashHover, setTrashHover] = useState(false);
+  const [deletingApp, setDeletingApp] = useState(false);
+  const [removeError, setRemoveError] = useState('');
+
+  // Schedule / reschedule an interview straight from a card.
+  const [scheduleApp, setScheduleApp] = useState<Application | null>(null);
+  const [scheduleInterview, setScheduleInterview] = useState<Interview | null>(null);
 
   // Stage management modal — all edits stage into draftStages /
   // pendingDeletes and only persist on Save changes.
@@ -134,13 +177,16 @@ export default function EmployerPipelinePage() {
       if (!user) return;
       const employer = await getEmployerByUserId(user.id);
       if (!employer) return;
+      setEmployerId(employer.id);
 
-      const [appsData, listingsData] = await Promise.all([
+      const [appsData, listingsData, interviewsData] = await Promise.all([
         getEmployerApplications(employer.id),
         getEmployerListings(employer.id, 1, 100),
+        getEmployerInterviews(employer.id),
       ]);
 
       setApplications(appsData.map(normalizeApp));
+      setInterviews(interviewsData as unknown as Interview[]);
       const ls = listingsData.data.map((l: any) => ({ id: l.id, title: l.title }));
       setListings(ls);
       if (ls.length > 0) setSelectedListing(ls[0].id);
@@ -173,33 +219,123 @@ export default function EmployerPipelinePage() {
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent, newStageId: string) => {
+  // A drop only *proposes* the move. Nothing is written until the employer
+  // confirms in the dialog, because the candidate is notified of every stage
+  // change (see updateApplicationStage) and a mis-drag is otherwise silent.
+  const handleDrop = useCallback((e: React.DragEvent, newStageId: string) => {
     e.preventDefault();
-    const appId = e.dataTransfer.getData('text/plain');
+    setDragOverStageId(null);
+    const appId = e.dataTransfer.getData('text/plain') || draggingId;
+    setDraggingId(null);
     if (!appId) return;
 
     const app = applications.find(a => a.id === appId);
-    if (!app || app.stage_id === newStageId) {
-      setDraggingId(null);
-      return;
-    }
-
     const newStage = stages.find(s => s.id === newStageId);
-    setApplications(prev => prev.map(a =>
-      a.id === appId
-        ? { ...a, stage_id: newStageId, status: newStage?.label ?? a.status }
-        : a
-    ));
-    setDraggingId(null);
+    if (!app || !newStage || app.stage_id === newStageId) return;
 
+    setPendingMove({ app, toStage: newStage });
+  }, [applications, stages, draggingId]);
+
+  async function confirmMove() {
+    if (!pendingMove || movingApp) return;
+    const { app, toStage } = pendingMove;
+    setMovingApp(true);
+    // Optimistic: the board updates as soon as the dialog closes, and rolls
+    // back to the card's original column if the write fails.
+    setApplications(prev => prev.map(a =>
+      a.id === app.id ? { ...a, stage_id: toStage.id, status: toStage.label } : a
+    ));
+    setPendingMove(null);
     try {
-      await updateApplicationStage(appId, newStageId);
-    } catch {
+      await updateApplicationStage(app.id, toStage.id);
+    } catch (err) {
+      console.error('[confirmMove] failed', err);
       setApplications(prev => prev.map(a =>
-        a.id === appId ? { ...a, stage_id: app.stage_id, status: app.status } : a
+        a.id === app.id ? { ...a, stage_id: app.stage_id, status: app.status } : a
       ));
+      if (typeof window !== 'undefined') {
+        window.alert(`Couldn't move ${app.student.profile.full_name} to "${toStage.label}". Please try again.`);
+      }
+    } finally {
+      setMovingApp(false);
     }
-  }, [applications, stages]);
+  }
+
+  function handleTrashDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setTrashHover(false);
+    const appId = e.dataTransfer.getData('text/plain') || draggingId;
+    setDraggingId(null);
+    if (!appId) return;
+    const app = applications.find(a => a.id === appId);
+    if (!app) return;
+    setRemoveError('');
+    setTrashTarget(app);
+  }
+
+  async function confirmRemove() {
+    if (!trashTarget || deletingApp) return;
+    setDeletingApp(true);
+    setRemoveError('');
+    try {
+      await deleteApplication(trashTarget.id);
+      setApplications(prev => prev.filter(a => a.id !== trashTarget.id));
+      // Its interview invites went with it (cascade), so drop them locally too.
+      setInterviews(prev => prev.filter(i => i.application_id !== trashTarget.id));
+      if (expandedId === trashTarget.id) setExpandedId(null);
+      setTrashTarget(null);
+    } catch (err) {
+      console.error('[confirmRemove] failed', err);
+      setRemoveError(err instanceof Error ? err.message : 'Removing the candidate failed. Please try again.');
+    } finally {
+      setDeletingApp(false);
+    }
+  }
+
+  function activeInterviewForApp(applicationId: string): Interview | undefined {
+    return interviews.find(i =>
+      i.application_id === applicationId && LIVE_INTERVIEW_STATUSES.includes(i.status)
+    );
+  }
+
+  function openScheduleModal(app: Application) {
+    setScheduleInterview(activeInterviewForApp(app.id) ?? null);
+    setScheduleApp(app);
+  }
+
+  function closeScheduleModal() {
+    setScheduleApp(null);
+    setScheduleInterview(null);
+  }
+
+  async function handleScheduleSubmit(data: ScheduleInterviewFormData) {
+    if (!scheduleApp || !employerId) return;
+    if (scheduleInterview) {
+      const updated = await rescheduleInterview(scheduleInterview.id, {
+        scheduledAt: data.scheduledAt,
+        durationMinutes: data.durationMinutes,
+        notes: data.notes,
+      });
+      setInterviews(prev => prev.map(i => i.id === updated.id ? (updated as Interview) : i));
+    } else {
+      const created = await createInterview({
+        applicationId: scheduleApp.id,
+        employerId,
+        studentId: scheduleApp.student.id,
+        listingId: scheduleApp.listing.id,
+        scheduledAt: data.scheduledAt,
+        durationMinutes: data.durationMinutes,
+        notes: data.notes,
+      });
+      setInterviews(prev => [...prev, created as Interview]);
+      // trg_sync_stage_on_interview_created may have advanced the candidate to
+      // the Interviewing column, so pull the board's real state back down
+      // rather than guessing where the card should now sit.
+      const appsData = await getEmployerApplications(employerId);
+      setApplications(appsData.map(normalizeApp));
+    }
+    closeScheduleModal();
+  }
 
   function openEditModal() {
     setDraftStages(stages.map(s => ({ ...s })));
@@ -425,6 +561,46 @@ export default function EmployerPipelinePage() {
           <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
             Drag and drop candidates between columns to update status
           </span>
+
+          {/* Trash drop-zone. Only meaningful while a card is in flight, so it
+              stays muted until then and lights up red on hover. */}
+          {selectedListing && (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (!trashHover) setTrashHover(true);
+              }}
+              onDragLeave={() => setTrashHover(false)}
+              onDrop={handleTrashDrop}
+              title="Drag a candidate here to remove them from this pipeline"
+              aria-label="Remove candidate drop zone"
+              style={{
+                marginLeft: 'auto',
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '7px 14px',
+                borderRadius: 'var(--radius-sm)',
+                border: `2px dashed ${trashHover ? 'var(--danger-fg)' : 'var(--border)'}`,
+                background: trashHover ? 'var(--danger-bg)' : 'transparent',
+                color: trashHover ? 'var(--danger-fg)' : 'var(--text-light)',
+                opacity: draggingId ? 1 : 0.6,
+                transform: trashHover ? 'scale(1.04)' : 'scale(1)',
+                transition: 'all 0.15s',
+                pointerEvents: 'auto',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                {trashHover ? 'Release to remove' : 'Drag here to remove'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -468,12 +644,24 @@ export default function EmployerPipelinePage() {
             return (
               <div
                 key={col.id}
-                onDragOver={handleDragOver}
+                onDragOver={(e) => {
+                  handleDragOver(e);
+                  if (dragOverStageId !== col.id) setDragOverStageId(col.id);
+                }}
+                onDragLeave={(e) => {
+                  // Only clear when the cursor actually leaves the column, not
+                  // when it crosses onto a child card.
+                  if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                  if (dragOverStageId === col.id) setDragOverStageId(null);
+                }}
                 onDrop={(e) => handleDrop(e, col.id)}
                 style={{
                   flex: '1 1 0', minWidth: '240px', display: 'flex',
                   flexDirection: 'column', background: 'var(--bg)',
-                  borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  border: `1px solid ${dragOverStageId === col.id && draggingId ? 'var(--primary)' : 'var(--border)'}`,
+                  boxShadow: dragOverStageId === col.id && draggingId ? '0 0 0 3px var(--primary-light)' : 'none',
+                  transition: 'border-color 0.15s, box-shadow 0.15s',
                   overflow: 'hidden',
                 }}
               >
@@ -512,11 +700,13 @@ export default function EmployerPipelinePage() {
                   )}
                   {colApps.map(app => {
                     const isExpanded = expandedId === app.id;
+                    const liveInterview = activeInterviewForApp(app.id);
                     return (
                       <div
                         key={app.id}
                         draggable
                         onDragStart={(e) => handleDragStart(e, app.id)}
+                        onDragEnd={() => { setDraggingId(null); setDragOverStageId(null); setTrashHover(false); }}
                         onClick={() => setExpandedId(isExpanded ? null : app.id)}
                         style={{
                           background: 'var(--surface)',
@@ -595,6 +785,17 @@ export default function EmployerPipelinePage() {
                               Knockout
                             </span>
                           )}
+                          {liveInterview && (
+                            <span
+                              title={`Interview ${liveInterview.status === 'accepted' ? 'confirmed' : 'invite sent'} for ${formatInterviewWhen(liveInterview.scheduled_at)}`}
+                              style={{
+                                fontSize: '0.63rem', fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                                background: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)',
+                              }}
+                            >
+                              {formatInterviewWhen(liveInterview.scheduled_at)}
+                            </span>
+                          )}
                         </div>
 
                         <p style={{ fontSize: '0.68rem', color: 'var(--text-light)' }}>
@@ -650,6 +851,18 @@ export default function EmployerPipelinePage() {
                               </div>
                             )}
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => openScheduleModal(app)}
+                                style={{
+                                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid var(--primary)', background: 'var(--primary)',
+                                  color: 'var(--on-primary)', fontWeight: 600, cursor: 'pointer',
+                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                }}
+                              >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                {liveInterview ? 'Reschedule interview' : 'Schedule interview'}
+                              </button>
                               {app.resume && (
                                 <a
                                   href={app.resume.file_url}
@@ -665,8 +878,12 @@ export default function EmployerPipelinePage() {
                                   Resume
                                 </a>
                               )}
+                              {/* Deep-link straight into the thread with this
+                                  student: Inbox reads ?to= to pre-select the
+                                  conversation (creating a draft row if they've
+                                  never been messaged) and focuses the composer. */}
                               <Link
-                                href="/dashboard/employer/inbox"
+                                href={`/dashboard/employer/inbox?to=${app.student.user_id}&name=${encodeURIComponent(app.student.profile.full_name)}`}
                                 style={{
                                   fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
                                   border: '1px solid var(--border)', color: 'var(--text)',
@@ -1086,6 +1303,142 @@ export default function EmployerPipelinePage() {
           </div>
         );
       })()}
+
+      {/* Confirm a stage move */}
+      {pendingMove && (() => {
+        const fromStage = stages.find(s => s.id === pendingMove.app.stage_id);
+        return (
+          <div
+            onClick={() => { if (!movingApp) setPendingMove(null); }}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--surface)', borderRadius: 'var(--radius)',
+                width: 'min(420px, 92vw)', padding: '24px',
+              }}
+            >
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 10 }}>
+                Move {pendingMove.app.student.profile.full_name} to &ldquo;{pendingMove.toStage.label}&rdquo;?
+              </h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                {fromStage
+                  ? <>They&apos;ll move from <strong>{fromStage.label}</strong> to <strong>{pendingMove.toStage.label}</strong>.</>
+                  : <>They&apos;ll be placed in <strong>{pendingMove.toStage.label}</strong>.</>}
+              </p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', marginBottom: 18 }}>
+                Pipeline columns are visible to candidates, so {pendingMove.app.student.profile.full_name.split(' ')[0]} will
+                be notified that their application status changed.
+              </p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setPendingMove(null)}
+                  disabled={movingApp}
+                  className="btn-secondary"
+                  style={{ fontSize: '0.85rem', padding: '7px 14px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmMove}
+                  disabled={movingApp}
+                  className="btn-primary"
+                  style={{
+                    fontSize: '0.85rem', padding: '7px 14px',
+                    opacity: movingApp ? 0.6 : 1,
+                    cursor: movingApp ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {movingApp ? 'Moving…' : 'Yes, move candidate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Confirm permanent removal (trash drop-zone) */}
+      {trashTarget && (
+        <div
+          onClick={() => { if (!deletingApp) { setTrashTarget(null); setRemoveError(''); } }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)', borderRadius: 'var(--radius)',
+              width: 'min(440px, 92vw)', padding: '24px',
+            }}
+          >
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 10 }}>
+              Remove {trashTarget.student.profile.full_name} from this pipeline?
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+              This permanently deletes their application to{' '}
+              <strong>{trashTarget.listing.title}</strong>, along with their answers
+              and any scheduled interviews. <strong>This can&apos;t be undone.</strong>
+            </p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', marginBottom: 18 }}>
+              The application also disappears from the candidate&apos;s tracker, and they
+              become free to apply to this listing again. To reject someone without
+              deleting their record, move them to a column instead.
+            </p>
+            {removeError && (
+              <div style={{
+                padding: '8px 12px', borderRadius: 6, marginBottom: 14,
+                background: 'var(--danger-bg)', color: 'var(--danger-fg)',
+                fontSize: '0.8rem', border: '1px solid var(--danger-border)',
+              }}>
+                {removeError}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setTrashTarget(null); setRemoveError(''); }}
+                disabled={deletingApp}
+                className="btn-secondary"
+                style={{ fontSize: '0.85rem', padding: '7px 14px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemove}
+                disabled={deletingApp}
+                style={{
+                  fontSize: '0.85rem', padding: '7px 14px', borderRadius: 6,
+                  border: '1px solid var(--danger-border)', background: 'var(--danger-bg)',
+                  color: 'var(--danger-fg)', fontWeight: 600,
+                  opacity: deletingApp ? 0.6 : 1,
+                  cursor: deletingApp ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {deletingApp ? 'Removing…' : 'Yes, remove permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ScheduleInterviewModal
+        open={scheduleApp !== null}
+        onClose={closeScheduleModal}
+        onSubmit={handleScheduleSubmit}
+        candidateName={scheduleApp?.student.profile.full_name}
+        listingTitle={scheduleApp?.listing.title}
+        mode={scheduleInterview ? 'reschedule' : 'create'}
+        initialData={scheduleInterview ? {
+          scheduledAt: scheduleInterview.scheduled_at,
+          durationMinutes: scheduleInterview.duration_minutes,
+          notes: scheduleInterview.employer_notes || '',
+        } : null}
+      />
     </div>
   );
 }

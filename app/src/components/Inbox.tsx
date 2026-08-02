@@ -40,7 +40,11 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
   // yet, so there's no conversation row to select. Cleared once the first
   // message lands and the real conversation appears.
   const [pendingRecipient, setPendingRecipient] = useState<{ userId: string; name: string } | null>(null);
+  // Set when we arrive via ?to=… so the caller lands in the composer with the
+  // cursor already blinking, instead of having to click the thread first.
+  const [focusComposer, setFocusComposer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function init() {
@@ -56,6 +60,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
       const to = params.get('to');
       if (to && to !== user.id) {
         setSelectedUserId(to);
+        setFocusComposer(true);
         const draft = params.get('draft');
         if (draft) setNewMessage(draft);
         if (!convs.some((c) => c.otherUserId === to)) {
@@ -91,6 +96,19 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // The composer only mounts once the thread is on screen, so wait for the
+  // loading state to clear before reaching for it. Fires once per arrival.
+  useEffect(() => {
+    if (!focusComposer || loading || !selectedUserId) return;
+    const input = composerRef.current;
+    if (!input) return;
+    input.focus();
+    // Put the caret after any prefilled ?draft= text rather than selecting it.
+    const end = input.value.length;
+    input.setSelectionRange(end, end);
+    setFocusComposer(false);
+  }, [focusComposer, loading, selectedUserId]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -296,6 +314,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                 {/* Input */}
                 <form onSubmit={handleSend} style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
                   <input
+                    ref={composerRef}
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}

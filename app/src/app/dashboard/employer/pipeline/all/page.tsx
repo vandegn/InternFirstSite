@@ -40,6 +40,9 @@ function PipelineAllInner() {
   const [listingTitle, setListingTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Same rule as the board: no stage change lands without a confirmation.
+  const [pendingMove, setPendingMove] = useState<{ app: Application; toStage: PipelineStage } | null>(null);
+  const [movingApp, setMovingApp] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -83,13 +86,35 @@ function PipelineAllInner() {
 
   const stage = stages.find(s => s.id === stageId);
 
-  async function moveApplication(appId: string, newStageId: string) {
-    if (!newStageId || newStageId === stageId) return;
-    setApplications(prev => prev.filter(a => a.id !== appId));
+  function requestMove(app: Application, newStageId: string) {
+    if (!newStageId || newStageId === app.stage_id) return;
+    const toStage = stages.find(s => s.id === newStageId);
+    if (!toStage) return;
+    setPendingMove({ app, toStage });
+  }
+
+  async function confirmMove() {
+    if (!pendingMove || movingApp) return;
+    const { app, toStage } = pendingMove;
+    setMovingApp(true);
+    setPendingMove(null);
+    // This view only lists one column, so a confirmed move takes the card off
+    // the list entirely.
+    setApplications(prev => prev.filter(a => a.id !== app.id));
     try {
-      await updateApplicationStage(appId, newStageId);
-    } catch {
-      // soft fail; reload would recover
+      await updateApplicationStage(app.id, toStage.id);
+    } catch (err) {
+      console.error('[confirmMove] failed', err);
+      setApplications(prev =>
+        prev.some(a => a.id === app.id)
+          ? prev
+          : [...prev, app].sort((a, b) => new Date(a.applied_at).getTime() - new Date(b.applied_at).getTime())
+      );
+      if (typeof window !== 'undefined') {
+        window.alert(`Couldn't move ${app.student.profile.full_name} to "${toStage.label}". Please try again.`);
+      }
+    } finally {
+      setMovingApp(false);
     }
   }
 
@@ -183,7 +208,7 @@ function PipelineAllInner() {
                   <select
                     value={app.stage_id ?? ''}
                     onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => moveApplication(app.id, e.target.value)}
+                    onChange={(e) => requestMove(app, e.target.value)}
                     style={{
                       padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)',
                       fontSize: '0.82rem', background: 'var(--surface)',
@@ -228,7 +253,7 @@ function PipelineAllInner() {
                         </a>
                       )}
                       <Link
-                        href="/dashboard/employer/inbox"
+                        href={`/dashboard/employer/inbox?to=${app.student.user_id}&name=${encodeURIComponent(app.student.profile.full_name)}`}
                         style={{
                           fontSize: '0.8rem', padding: '5px 12px', borderRadius: 'var(--radius-sm)',
                           border: '1px solid var(--border)', color: 'var(--text)',
@@ -243,6 +268,59 @@ function PipelineAllInner() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {pendingMove && (
+        <div
+          onClick={() => { if (!movingApp) setPendingMove(null); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)', borderRadius: 'var(--radius)',
+              width: 'min(420px, 92vw)', padding: 24,
+            }}
+          >
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 10 }}>
+              Move {pendingMove.app.student.profile.full_name} to &ldquo;{pendingMove.toStage.label}&rdquo;?
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+              They&apos;ll move from <strong>{stage?.label ?? 'this column'}</strong> to{' '}
+              <strong>{pendingMove.toStage.label}</strong>.
+            </p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', marginBottom: 18 }}>
+              Pipeline columns are visible to candidates, so{' '}
+              {pendingMove.app.student.profile.full_name.split(' ')[0]} will be notified
+              that their application status changed.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setPendingMove(null)}
+                disabled={movingApp}
+                className="btn-secondary"
+                style={{ fontSize: '0.85rem', padding: '7px 14px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmMove}
+                disabled={movingApp}
+                className="btn-primary"
+                style={{
+                  fontSize: '0.85rem', padding: '7px 14px',
+                  opacity: movingApp ? 0.6 : 1,
+                  cursor: movingApp ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {movingApp ? 'Moving…' : 'Yes, move candidate'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

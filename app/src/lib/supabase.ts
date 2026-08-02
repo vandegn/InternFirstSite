@@ -1124,6 +1124,26 @@ export async function updateApplicationStage(applicationId: string, stageId: str
   return data;
 }
 
+// Permanently remove an application. Cascades take out its answers, EEO row
+// and interview invites; messages keep their history (application_id is set
+// null) and the PPA charge survives (see
+// migrations/20260802_pipeline_remove_candidate.sql) so an employer can't
+// clear their bill by clearing the board.
+//
+// RLS makes a forbidden delete a silent zero-row no-op rather than an error,
+// so the returned rows are the only proof it actually happened.
+export async function deleteApplication(applicationId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .delete()
+    .eq('id', applicationId)
+    .select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('Application was not removed — you may not have permission to delete it.');
+  }
+}
+
 export async function getApplicationStatus(studentId: string, listingId: string) {
   const { data, error } = await supabase
     .from('applications')

@@ -15,6 +15,36 @@ export const INDUSTRIES = [
 
 export type Industry = (typeof INDUSTRIES)[number];
 
+// The career survey offers a broader, student-facing industry vocabulary than
+// the values employers pick from above ("Finance & Banking" vs. "Finance").
+// Anything a student selects has to be translated before it can be compared to
+// a listing's `industry`, or it silently matches nothing.
+//
+// Picks with no counterpart (e.g. Consulting) map to nothing on purpose.
+export const SURVEY_INDUSTRY_TO_LISTING: Record<string, string> = {
+  'Technology': 'Technology',
+  'Finance & Banking': 'Finance',
+  'Healthcare': 'Healthcare',
+  'Marketing & Advertising': 'Marketing',
+  'Media & Entertainment': 'Media',
+  'Education': 'Education',
+  'Government & Policy': 'Government',
+  'Engineering': 'Engineering',
+  'Nonprofit & Social Impact': 'Nonprofit',
+  'Real Estate': 'Finance',
+  'Energy & Sustainability': 'Engineering',
+};
+
+// Translate survey industry labels to listing industries, dropping unmapped
+// picks and duplicates (two survey picks can share one listing industry).
+export function surveyIndustriesToListingIndustries(industries: string[]): string[] {
+  return [...new Set(
+    industries
+      .map((i) => SURVEY_INDUSTRY_TO_LISTING[i])
+      .filter((i): i is string => Boolean(i)),
+  )];
+}
+
 export const DURATIONS = [
   'Summer',
   'Fall Semester',
@@ -125,7 +155,26 @@ export function formatCompensation(comp: CompensationInput): string | null {
 
   const base = `${amount}${type.suffix}`;
   const note = comp_note?.trim();
-  return note ? `${base} · ${note}` : base;
+  return note ? `${base}${COMP_NOTE_SEPARATOR}${note}` : base;
+}
+
+// formatCompensation joins the figure and the employer's free-text note into
+// one stored string. Compact surfaces (the browse sidebar) only have room for
+// the figure — a two-line note there wrecks the card — so they split it back
+// apart and show a "more details" affordance instead.
+export const COMP_NOTE_SEPARATOR = ' · ';
+
+export function splitCompensation(compensation: string | null | undefined): {
+  summary: string | null;
+  note: string | null;
+} {
+  if (!compensation) return { summary: null, note: null };
+  const idx = compensation.indexOf(COMP_NOTE_SEPARATOR);
+  if (idx === -1) return { summary: compensation, note: null };
+  return {
+    summary: compensation.slice(0, idx),
+    note: compensation.slice(idx + COMP_NOTE_SEPARATOR.length),
+  };
 }
 
 // ============================================
@@ -220,6 +269,11 @@ export const PPA_MATCH_THRESHOLD = 70;
 // UI, in addStudentSkill, and by an enforce_skill_limit DB trigger — keep these
 // in sync (see supabase/migrations/20260731_student_skill_limit.sql).
 export const MAX_STUDENT_SKILLS = 10;
+
+// Max preferred skills an employer can attach to a listing. Drawn from the same
+// catalog students pick from, so the two sides are directly comparable. Also
+// enforced by a check constraint on internship_listings.preferred_skills.
+export const MAX_LISTING_SKILLS = 10;
 
 // PPJ application-range bands the employer picks from. The band's median drives
 // the fixed fee (no cap on actual applications).

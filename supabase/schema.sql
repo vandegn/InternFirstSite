@@ -150,6 +150,11 @@ create table listing_views (
 create index idx_listing_views_listing on listing_views(listing_id);
 create index idx_listing_views_viewer on listing_views(viewer_id);
 
+-- One row per account per listing, so view counts are unique viewers rather
+-- than page loads. NULL viewer_ids stay distinct (no constraint on anonymous).
+create unique index idx_listing_views_unique_viewer
+  on listing_views(listing_id, viewer_id);
+
 -- RLS for listing_views
 alter table listing_views enable row level security;
 
@@ -166,6 +171,36 @@ create policy "Employers can view analytics for their listings"
 create policy "Authenticated users can insert views"
   on listing_views for insert to authenticated
   with check (true);
+
+-- ============================================
+-- 4c. SAVED LISTINGS (student bookmarks)
+-- ============================================
+-- Private to the student: saving is not applying, costs the employer nothing,
+-- and is never visible to them.
+create table saved_listings (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id) on delete cascade not null,
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  saved_at timestamptz not null default now(),
+  unique (student_id, listing_id)
+);
+
+create index idx_saved_listings_student on saved_listings(student_id);
+create index idx_saved_listings_listing on saved_listings(listing_id);
+
+alter table saved_listings enable row level security;
+
+create policy "Students can view own saved listings"
+  on saved_listings for select to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can save listings"
+  on saved_listings for insert to authenticated
+  with check (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students can unsave listings"
+  on saved_listings for delete to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
 
 -- ============================================
 -- 5. APPLICATIONS
@@ -416,7 +451,9 @@ create trigger student_skills_limit
 create table student_experiences (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade not null,
-  type text not null check (type in ('internship', 'work', 'project', 'campus_involvement')),
+  -- Professional history only. Campus clubs and involvement live in
+  -- student_organizations.
+  type text not null check (type in ('internship', 'work', 'project')),
   title text not null,
   organization text,
   location text,
@@ -472,12 +509,15 @@ create policy "Employers can view experiences of applicants"
 create table student_organizations (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade not null,
-  type text not null check (type in ('greek_life', 'club')),
+  type text not null check (type in ('greek_life', 'club', 'campus_involvement', 'other')),
   name text not null,
   chapter text,
   role text,
+  description text,
   join_date date,
   end_date date,
+  -- Still a member: the UI ignores end_date and renders "Present".
+  is_current boolean default false,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
@@ -571,6 +611,10 @@ CREATE TABLE career_survey_responses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id uuid NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
   industries text[] NOT NULL DEFAULT '{}',
+  -- Ranked, strongest preference first. The scalar columns mirror element 1 and
+  -- are maintained by trg_sync_survey_preference_arrays.
+  work_environments text[] NOT NULL DEFAULT '{}',
+  preferred_durations text[] NOT NULL DEFAULT '{}',
   work_environment text NOT NULL,
   preferred_duration text NOT NULL,
   skills text[] NOT NULL DEFAULT '{}',

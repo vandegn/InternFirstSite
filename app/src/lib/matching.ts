@@ -6,17 +6,22 @@
 // so sub-threshold applicants are unbilled by design.
 //
 // Weighted components (standard ATS-style criteria):
-//   - Skills/keyword match ...... 40  student skills vs. skills mentioned in listing text
+//   - Skills/keyword match ...... 40  student skills vs. the listing's preferred_skills
+//                                     (falling back to skills named in its text)
 //   - Industry alignment ........ 25  career-survey industries, then major-to-industry mapping
 //   - Experience relevance ...... 20  past experience/bio overlap with listing keywords
 //   - Work environment fit ......  7.5 survey preference vs. remote/hybrid/in-person
 //   - Duration fit ..............  7.5 survey preference vs. listing duration
 //
+// Environment and duration are ranked multi-selects: students order their picks
+// and each successive pick earns proportionally less, so breadth doesn't inflate
+// a score the way it would if every pick counted as a first choice.
+//
 // Missing data earns neutral partial credit rather than zero, so a student who
 // skipped the survey isn't automatically disqualified — but an empty profile
 // still lands well under the billing threshold.
 
-import { MAJOR_TO_INDUSTRIES, SKILLS } from './constants';
+import { MAJOR_TO_INDUSTRIES, SKILLS, SURVEY_INDUSTRY_TO_LISTING } from './constants';
 
 export type MatchStudentInput = {
   major: string | null;
@@ -30,6 +35,10 @@ export type MatchStudentInput = {
   }[];
   survey: {
     industries: string[];
+    // Ranked, strongest preference first. The singular fields are the legacy
+    // shape and are treated as a one-element ranking when the arrays are absent.
+    work_environments?: string[] | null;
+    preferred_durations?: string[] | null;
     work_environment: string;
     preferred_duration: string;
   } | null;
@@ -44,6 +53,10 @@ export type MatchListingInput = {
   is_remote: boolean | null;
   is_hybrid: boolean | null;
   duration: string | null;
+  // Skills the employer explicitly picked (max 10). When present these are
+  // authoritative and the prose is not scanned — an employer who names their
+  // skills shouldn't be second-guessed by keyword spotting in the job blurb.
+  preferred_skills?: string[] | null;
 };
 
 export type MatchBreakdown = {
@@ -63,22 +76,8 @@ const WEIGHTS = {
   duration: 7.5,
 } as const;
 
-// Career-survey industry labels differ from listing `industry` values; map the
-// ones with a clear counterpart. Unmapped survey picks (e.g. Consulting) simply
-// never match a listing industry.
-const SURVEY_INDUSTRY_TO_LISTING: Record<string, string> = {
-  'Technology': 'Technology',
-  'Finance & Banking': 'Finance',
-  'Healthcare': 'Healthcare',
-  'Marketing & Advertising': 'Marketing',
-  'Media & Entertainment': 'Media',
-  'Education': 'Education',
-  'Government & Policy': 'Government',
-  'Engineering': 'Engineering',
-  'Nonprofit & Social Impact': 'Nonprofit',
-  'Real Estate': 'Finance',
-  'Energy & Sustainability': 'Engineering',
-};
+// SURVEY_INDUSTRY_TO_LISTING lives in constants.ts — getRecommendedListings
+// needs the same translation, and two copies would inevitably drift.
 
 // Survey duration buckets vs. listing DURATIONS values they satisfy.
 const SURVEY_DURATION_TO_LISTING: Record<string, string[]> = {
@@ -173,30 +172,73 @@ function scoreExperience(
   return base + relevanceWeight * (hits / keywords.length);
 }
 
+// Environment and length are ranked multi-selects. A student who lists three
+// acceptable options shouldn't score the same on all three as a student who
+// named only one — so each successive pick is worth 15% less, floored at 0.4
+// so a genuine third choice still beats no match at all.
+const RANK_DECAY = 0.15;
+const RANK_FLOOR = 0.4;
+
+function rankMultiplier(rank: number): number {
+  return Math.max(RANK_FLOOR, 1 - RANK_DECAY * rank);
+}
+
+// Legacy rows (and any writer that only sends the scalar) become a
+// one-element ranking.
+function rankedPreferences(list: string[] | null | undefined, fallback: string | undefined): string[] {
+  const ranked = (list ?? []).filter(Boolean);
+  if (ranked.length > 0) return ranked;
+  return fallback ? [fallback] : [];
+}
+
 function scoreEnvironment(student: MatchStudentInput, listing: MatchListingInput): number {
-  const pref = student.survey?.work_environment;
-  if (!pref) return WEIGHTS.environment * 0.5;
-  if (pref === 'no_preference') return WEIGHTS.environment;
+  const prefs = rankedPreferences(student.survey?.work_environments, student.survey?.work_environment);
+  if (prefs.length === 0) return WEIGHTS.environment * 0.5;
+  if (prefs.includes('no_preference')) return WEIGHTS.environment;
+
   const listingEnv = listing.is_remote ? 'remote' : listing.is_hybrid ? 'hybrid' : 'in_person';
-  if (pref === listingEnv) return WEIGHTS.environment;
+
+  const exact = prefs.indexOf(listingEnv);
+  if (exact !== -1) return WEIGHTS.environment * rankMultiplier(exact);
+
   // Hybrid is adjacent to both remote and in-person; remote vs in-person is not.
-  if (pref === 'hybrid' || listingEnv === 'hybrid') return WEIGHTS.environment * 0.6;
+  // Credit the best-ranked adjacent pick rather than the first one found.
+  const adjacent = prefs.findIndex((p) => p === 'hybrid' || listingEnv === 'hybrid');
+  if (adjacent !== -1) return WEIGHTS.environment * 0.6 * rankMultiplier(adjacent);
+
   return WEIGHTS.environment * 0.2;
 }
 
 function scoreDuration(student: MatchStudentInput, listing: MatchListingInput): number {
-  const pref = student.survey?.preferred_duration;
-  if (!pref || !listing.duration) return WEIGHTS.duration * 0.5;
-  const compatible = SURVEY_DURATION_TO_LISTING[pref];
-  if (!compatible) return WEIGHTS.duration * 0.5;
-  return compatible.includes(listing.duration) ? WEIGHTS.duration : WEIGHTS.duration * 0.2;
+  const prefs = rankedPreferences(student.survey?.preferred_durations, student.survey?.preferred_duration);
+  if (prefs.length === 0 || !listing.duration) return WEIGHTS.duration * 0.5;
+
+  // The highest-ranked pick this listing satisfies sets the score.
+  for (let rank = 0; rank < prefs.length; rank++) {
+    const compatible = SURVEY_DURATION_TO_LISTING[prefs[rank]];
+    if (compatible?.includes(listing.duration)) {
+      return WEIGHTS.duration * rankMultiplier(rank);
+    }
+  }
+
+  // None of their picks map to a known bucket — no signal either way.
+  if (prefs.every((p) => !SURVEY_DURATION_TO_LISTING[p])) return WEIGHTS.duration * 0.5;
+  return WEIGHTS.duration * 0.2;
+}
+
+// The employer's explicit picks win outright; otherwise fall back to scanning
+// the listing text, which is all older postings have.
+function listingSkills(listing: MatchListingInput, studentSkills: string[]): string[] {
+  const explicit = (listing.preferred_skills ?? []).filter((s) => s.trim());
+  if (explicit.length > 0) return explicit;
+  return extractListingSkills(listingText(listing), studentSkills);
 }
 
 export function computeMatchBreakdown(
   student: MatchStudentInput,
   listing: MatchListingInput
 ): MatchBreakdown {
-  const foundListingSkills = extractListingSkills(listingText(listing), student.skills);
+  const foundListingSkills = listingSkills(listing, student.skills);
   const parts = {
     skills: scoreSkills(student, foundListingSkills),
     industry: scoreIndustry(student, listing),

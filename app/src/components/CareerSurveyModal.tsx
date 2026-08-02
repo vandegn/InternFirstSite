@@ -23,19 +23,68 @@ type Step = {
 
 const STEPS: Step[] = [
   { id: 'industries', title: 'Which industries interest you?', subtitle: 'Select up to 3 that excite you most' },
-  { id: 'environment', title: 'Ideal work environment?', subtitle: 'Where do you do your best work' },
-  { id: 'duration', title: 'Preferred internship length?', subtitle: 'This helps us filter the right openings' },
+  { id: 'environment', title: 'Ideal work environment?', subtitle: 'Pick all that work for you — tap in order of preference' },
+  { id: 'duration', title: 'Preferred internship length?', subtitle: 'Pick all that work for you — tap in order of preference' },
   { id: 'skills', title: 'Skills you want to develop?', subtitle: 'Pick the areas you want to grow in' },
   { id: 'goals', title: 'What are your career goals?', subtitle: 'A sentence or two about where you\'re headed' },
 ];
 
+const ENVIRONMENT_OPTIONS = [
+  { value: 'in_person', label: 'In-person', desc: 'Working on-site at the company office' },
+  { value: 'remote', label: 'Remote', desc: 'Working from home or anywhere with wifi' },
+  { value: 'hybrid', label: 'Hybrid', desc: 'A mix of in-person and remote days' },
+  { value: 'no_preference', label: 'No preference', desc: 'Open to any arrangement' },
+];
+
+const DURATION_OPTIONS = [
+  { value: '1_month', label: '1 month', sub: 'Short-term project' },
+  { value: '3_months', label: '3 months', sub: 'One semester' },
+  { value: '6_months', label: '6 months', sub: 'Two semesters / co-op' },
+  { value: '12_months', label: '12 months', sub: 'Full-year placement' },
+];
+
 export type CareerSurveyFormData = {
   industries: string[];
+  // Ordered strongest-first. Selection order is the ranking, which is what
+  // match scoring weights by — see lib/matching.ts.
+  work_environments: string[];
+  preferred_durations: string[];
   work_environment: string;
   preferred_duration: string;
   skills: string[];
   career_goals: string;
 };
+
+// Ranked multi-select: tapping appends, tapping again removes and everything
+// after it shifts up. Ranks stay contiguous, so there's never a "#1 and #3".
+function toggleRanked(list: string[], value: string): string[] {
+  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+}
+
+// Explains the ranking once the student has picked more than one, so the
+// numbers don't look like arbitrary decoration.
+function RankHint({ count }: { count: number }) {
+  if (count < 2) return null;
+  return (
+    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #6b7280)', margin: '10px 0 0', lineHeight: 1.5 }}>
+      Ranked in the order you tapped them — <strong>1</strong> counts most toward your matches. Tap again to remove.
+    </p>
+  );
+}
+
+// Small numbered badge showing where a pick sits in the ranking.
+function RankBadge({ rank }: { rank: number }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+      background: 'var(--accent, #9FC63C)', color: 'var(--on-accent, #fff)',
+      fontSize: '0.7rem', fontWeight: 700,
+    }}>
+      {rank + 1}
+    </span>
+  );
+}
 
 type Props = {
   open: boolean;
@@ -52,8 +101,8 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
 
   // Answers
   const [industries, setIndustries] = useState<Set<string>>(new Set());
-  const [environment, setEnvironment] = useState('');
-  const [duration, setDuration] = useState('');
+  const [environments, setEnvironments] = useState<string[]>([]);
+  const [durations, setDurations] = useState<string[]>([]);
   const [skills, setSkills] = useState<Set<string>>(new Set());
   const [goals, setGoals] = useState('');
 
@@ -61,15 +110,16 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
   useEffect(() => {
     if (open && initialData) {
       setIndustries(new Set(initialData.industries));
-      setEnvironment(initialData.work_environment);
-      setDuration(initialData.preferred_duration);
+      // Surveys answered before multi-select shipped only have the scalar.
+      setEnvironments(initialData.work_environments?.length ? initialData.work_environments : [initialData.work_environment].filter(Boolean));
+      setDurations(initialData.preferred_durations?.length ? initialData.preferred_durations : [initialData.preferred_duration].filter(Boolean));
       setSkills(new Set(initialData.skills));
       setGoals(initialData.career_goals);
       setStep(0);
     } else if (open && !initialData) {
       setIndustries(new Set());
-      setEnvironment('');
-      setDuration('');
+      setEnvironments([]);
+      setDurations([]);
       setSkills(new Set());
       setGoals('');
       setStep(0);
@@ -117,11 +167,21 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
     return next;
   }, []);
 
+  // "No preference" is exclusive — ranking it against specific choices is
+  // meaningless, so picking it clears the rest and vice versa.
+  const toggleEnvironment = (value: string) => {
+    setEnvironments((prev) => {
+      if (value === 'no_preference') return prev.includes(value) ? [] : ['no_preference'];
+      const withoutAny = prev.filter((v) => v !== 'no_preference');
+      return toggleRanked(withoutAny, value);
+    });
+  };
+
   const canAdvance = (): boolean => {
     switch (step) {
       case 0: return industries.size > 0;
-      case 1: return environment !== '';
-      case 2: return duration !== '';
+      case 1: return environments.length > 0;
+      case 2: return durations.length > 0;
       case 3: return skills.size > 0;
       case 4: return goals.trim().length > 0;
       default: return false;
@@ -134,8 +194,11 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
     } else {
       onSubmit({
         industries: Array.from(industries),
-        work_environment: environment,
-        preferred_duration: duration,
+        work_environments: environments,
+        preferred_durations: durations,
+        // Legacy mirrors, so anything still reading the scalar sees the top pick.
+        work_environment: environments[0] ?? '',
+        preferred_duration: durations[0] ?? '',
         skills: Array.from(skills),
         career_goals: goals,
       });
@@ -264,20 +327,16 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
             </div>
           )}
 
-          {/* Step 1: Work environment (single select) */}
+          {/* Step 1: Work environment (ranked multi-select) */}
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { value: 'in_person', label: 'In-person', desc: 'Working on-site at the company office' },
-                { value: 'remote', label: 'Remote', desc: 'Working from home or anywhere with wifi' },
-                { value: 'hybrid', label: 'Hybrid', desc: 'A mix of in-person and remote days' },
-                { value: 'no_preference', label: 'No preference', desc: 'Open to any arrangement' },
-              ].map(opt => {
-                const selected = environment === opt.value;
+              {ENVIRONMENT_OPTIONS.map(opt => {
+                const rank = environments.indexOf(opt.value);
+                const selected = rank !== -1;
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => setEnvironment(opt.value)}
+                    onClick={() => toggleEnvironment(opt.value)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -294,14 +353,15 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
                     onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                   >
-                    <div style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
-                      border: selected ? '6px solid var(--accent, #9FC63C)' : '2px solid var(--border, #e5e7eb)',
-                      flexShrink: 0,
-                      transition: 'border 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }} />
+                    {selected ? <RankBadge rank={rank} /> : (
+                      <div style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 6,
+                        border: '2px solid var(--border, #e5e7eb)',
+                        flexShrink: 0,
+                      }} />
+                    )}
                     <div>
                       <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text, #2d2d2d)' }}>{opt.label}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #6b7280)', marginTop: 1 }}>{opt.desc}</div>
@@ -309,42 +369,48 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
                   </button>
                 );
               })}
+              <RankHint count={environments.length} />
             </div>
           )}
 
-          {/* Step 2: Duration (single select) */}
+          {/* Step 2: Duration (ranked multi-select) */}
           {step === 2 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {[
-                { value: '1_month', label: '1 month', sub: 'Short-term project' },
-                { value: '3_months', label: '3 months', sub: 'One semester' },
-                { value: '6_months', label: '6 months', sub: 'Two semesters / co-op' },
-                { value: '12_months', label: '12 months', sub: 'Full-year placement' },
-              ].map(opt => {
-                const selected = duration === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => setDuration(opt.value)}
-                    style={{
-                      padding: '18px 16px',
-                      borderRadius: 12,
-                      border: selected ? '1.5px solid var(--accent, #9FC63C)' : '1px solid var(--border, #e5e7eb)',
-                      background: selected ? 'var(--accent-light, #eef5da)' : 'var(--surface)',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}
-                    onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-                    onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-                  >
-                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: selected ? 'var(--accent-dark, #8ab32e)' : 'var(--text, #2d2d2d)' }}>{opt.label}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #6b7280)', marginTop: 2 }}>{opt.sub}</div>
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {DURATION_OPTIONS.map(opt => {
+                  const rank = durations.indexOf(opt.value);
+                  const selected = rank !== -1;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setDurations(prev => toggleRanked(prev, opt.value))}
+                      style={{
+                        position: 'relative',
+                        padding: '18px 16px',
+                        borderRadius: 12,
+                        border: selected ? '1.5px solid var(--accent, #9FC63C)' : '1px solid var(--border, #e5e7eb)',
+                        background: selected ? 'var(--accent-light, #eef5da)' : 'var(--surface)',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+                      onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                    >
+                      {selected && (
+                        <span style={{ position: 'absolute', top: 8, right: 8 }}>
+                          <RankBadge rank={rank} />
+                        </span>
+                      )}
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: selected ? 'var(--accent-dark, #8ab32e)' : 'var(--text, #2d2d2d)' }}>{opt.label}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #6b7280)', marginTop: 2 }}>{opt.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <RankHint count={durations.length} />
+            </>
           )}
 
           {/* Step 3: Skills (multi-select chips) */}

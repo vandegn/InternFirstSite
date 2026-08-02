@@ -1,7 +1,7 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
-import { MAX_STUDENT_SKILLS, type CompType, type QuestionType } from '@/lib/constants';
+import { MAX_STUDENT_SKILLS, surveyIndustriesToListingIndustries, type CompType, type QuestionType } from '@/lib/constants';
 import { isFreeEmailProvider } from '@/lib/domain-signals';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -288,6 +288,10 @@ export async function createListing(listing: {
   role_tags?: string[];
   banner_url?: string | null;
   accent_color?: string | null;
+  // Render order of the three core sections, and the employer's explicit skill
+  // picks (max 10) that match scoring prefers over scraping the prose.
+  section_order?: string[];
+  preferred_skills?: string[];
   // Billing
   pricing_model?: 'ppj' | 'ppa';
   applicant_quota?: number | null;   // PPJ: upper bound of the estimate (informational, no cap)
@@ -330,6 +334,9 @@ export type ActiveListingsFilters = {
   paid?: 'all' | 'paid' | 'unpaid';
   mode?: 'all' | 'remote' | 'hybrid' | 'in-person';
   duration?: string;
+  // Restrict to these listing ids — used by the "Saved" filter, which passes
+  // the student's bookmarks so every other filter still applies on top.
+  onlyIds?: string[];
 };
 
 // Local "today" as YYYY-MM-DD, for comparing against the date-typed
@@ -353,11 +360,22 @@ export async function getActiveListings(
 ) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
+
+  // An empty allow-list means "nothing matches" — short-circuit rather than
+  // send `in.()`, which PostgREST rejects.
+  if (filters.onlyIds && filters.onlyIds.length === 0) {
+    return { data: [], totalCount: 0 };
+  }
+
   let query = supabase
     .from('internship_listings')
     .select('*, employers(company_name, logo_url)', { count: 'exact' })
     .eq('status', 'active');
   query = excludeExpired(query);
+
+  if (filters.onlyIds) {
+    query = query.in('id', filters.onlyIds);
+  }
 
   if (filters.industry) {
     query = query.eq('industry', filters.industry);
@@ -401,6 +419,37 @@ export async function getActiveListings(
   return { data: data ?? [], totalCount: count ?? 0 };
 }
 
+// ---- Saved (bookmarked) listings ----
+//
+// Private to the student — see migrations/20260802_saved_listings.sql. Saving
+// never creates an application, so students can track roles without applying.
+
+export async function getSavedListingIds(studentId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('saved_listings')
+    .select('listing_id')
+    .eq('student_id', studentId);
+  if (error) return [];
+  return (data ?? []).map((r) => r.listing_id as string);
+}
+
+export async function saveListing(studentId: string, listingId: string) {
+  const { error } = await supabase
+    .from('saved_listings')
+    // Re-saving something already saved shouldn't surface a unique violation.
+    .upsert({ student_id: studentId, listing_id: listingId }, { onConflict: 'student_id,listing_id', ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+export async function unsaveListing(studentId: string, listingId: string) {
+  const { error } = await supabase
+    .from('saved_listings')
+    .delete()
+    .eq('student_id', studentId)
+    .eq('listing_id', listingId);
+  if (error) throw error;
+}
+
 export async function getListingById(id: string) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -411,14 +460,19 @@ export async function getListingById(id: string) {
   return data;
 }
 
+// `industries` are career-survey labels ("Finance & Banking"), which are not
+// the values stored on a listing ("Finance"). Comparing them raw matched only
+// the handful whose names happen to coincide, so a student who picked Finance,
+// Marketing, or Media saw an empty "Recommended for You".
 export async function getRecommendedListings(industries: string[], limit = 3) {
-  if (industries.length === 0) return [];
+  const listingIndustries = surveyIndustriesToListingIndustries(industries);
+  if (listingIndustries.length === 0) return [];
   const { data, error } = await excludeExpired(
     supabase
       .from('internship_listings')
       .select('*, employers(company_name, logo_url)')
       .eq('status', 'active')
-      .in('industry', industries)
+      .in('industry', listingIndustries)
   )
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -734,7 +788,7 @@ async function computeMatchScoreForApplication(studentId: string, listingId: str
     const [listingRes, studentRes, skillsRes, expRes, surveyRes] = await Promise.all([
       supabase
         .from('internship_listings')
-        .select('title, description, requirements, key_responsibilities, industry, is_remote, is_hybrid, duration')
+        .select('title, description, requirements, key_responsibilities, industry, is_remote, is_hybrid, duration, preferred_skills')
         .eq('id', listingId)
         .single(),
       supabase.from('students').select('major, bio').eq('id', studentId).single(),
@@ -742,7 +796,7 @@ async function computeMatchScoreForApplication(studentId: string, listingId: str
       supabase.from('student_experiences').select('type, title, description, technologies').eq('student_id', studentId),
       supabase
         .from('career_survey_responses')
-        .select('industries, work_environment, preferred_duration, skills')
+        .select('industries, work_environments, preferred_durations, work_environment, preferred_duration, skills')
         .eq('student_id', studentId)
         .maybeSingle(),
     ]);
@@ -1162,11 +1216,17 @@ export async function getListingViewCounts(employerId: string) {
   return counts;
 }
 
+// One view per account per listing — repeat visits are no-ops. The unique index
+// on (listing_id, viewer_id) is what actually enforces this; see
+// supabase/migrations/20260801_unique_listing_views.sql.
 export async function trackListingView(listingId: string, viewerId: string | null) {
-  await supabase.from('listing_views').insert({
-    listing_id: listingId,
-    viewer_id: viewerId,
-  });
+  await supabase.from('listing_views').upsert(
+    {
+      listing_id: listingId,
+      viewer_id: viewerId,
+    },
+    { onConflict: 'listing_id,viewer_id', ignoreDuplicates: true }
+  );
 }
 
 // ---- Employer Listings with full details ----
@@ -1359,8 +1419,10 @@ export async function addStudentOrganization(studentId: string, org: {
   name: string;
   chapter?: string;
   role?: string;
+  description?: string;
   join_date?: string;
-  end_date?: string;
+  end_date?: string | null;
+  is_current?: boolean;
 }) {
   const { data, error } = await supabase
     .from('student_organizations')
@@ -1372,11 +1434,14 @@ export async function addStudentOrganization(studentId: string, org: {
 }
 
 export async function updateStudentOrganization(orgId: string, fields: {
+  type?: string;
   name?: string;
   chapter?: string;
   role?: string;
+  description?: string;
   join_date?: string;
   end_date?: string | null;
+  is_current?: boolean;
 }) {
   const { data, error } = await supabase
     .from('student_organizations')
@@ -1400,6 +1465,11 @@ export async function deleteStudentOrganization(orgId: string) {
 
 export type CareerSurveyData = {
   industries: string[];
+  // Ranked, strongest preference first. The scalar mirrors below are maintained
+  // by a DB trigger; they're kept in the type because legacy readers still use
+  // them and because the columns are NOT NULL.
+  work_environments: string[];
+  preferred_durations: string[];
   work_environment: string;
   preferred_duration: string;
   skills: string[];
@@ -1409,22 +1479,33 @@ export type CareerSurveyData = {
 export async function getCareerSurvey(studentId: string): Promise<(CareerSurveyData & { completed_at: string; updated_at: string }) | null> {
   const { data, error } = await supabase
     .from('career_survey_responses')
-    .select('industries, work_environment, preferred_duration, skills, career_goals, completed_at, updated_at')
+    .select('industries, work_environments, preferred_durations, work_environment, preferred_duration, skills, career_goals, completed_at, updated_at')
     .eq('student_id', studentId)
     .single();
   if (error || !data) return null;
-  return data;
+  // Rows written before the arrays existed still only have the scalars.
+  return {
+    ...data,
+    work_environments: data.work_environments?.length ? data.work_environments : [data.work_environment].filter(Boolean),
+    preferred_durations: data.preferred_durations?.length ? data.preferred_durations : [data.preferred_duration].filter(Boolean),
+  };
 }
 
 export async function upsertCareerSurvey(studentId: string, data: CareerSurveyData) {
+  const environments = data.work_environments?.length ? data.work_environments : [data.work_environment].filter(Boolean);
+  const durations = data.preferred_durations?.length ? data.preferred_durations : [data.preferred_duration].filter(Boolean);
   const { error } = await supabase
     .from('career_survey_responses')
     .upsert(
       {
         student_id: studentId,
         industries: data.industries,
-        work_environment: data.work_environment,
-        preferred_duration: data.preferred_duration,
+        work_environments: environments,
+        preferred_durations: durations,
+        // Sent explicitly as well as by the trigger: the columns are NOT NULL,
+        // so an insert has to carry a value of its own.
+        work_environment: environments[0] ?? '',
+        preferred_duration: durations[0] ?? '',
         skills: data.skills,
         career_goals: data.career_goals,
         updated_at: new Date().toISOString(),
@@ -1604,6 +1685,8 @@ export async function updateListing(listingId: string, fields: {
   role_tags?: string[];
   banner_url?: string | null;
   accent_color?: string | null;
+  section_order?: string[];
+  preferred_skills?: string[];
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -1758,12 +1841,11 @@ export async function respondToInterview(
     .single();
   if (error) throw error;
 
-  if (action === 'decline' && data?.application_id) {
-    await supabase
-      .from('applications')
-      .update({ status: 'reviewed' })
-      .eq('id', data.application_id);
-  }
+  // Declining walks the candidate back out of the Interviewing column — done by
+  // trg_sync_stage_on_interview_closed rather than here, because a student has
+  // no RLS write access to applications. Writing applications.status directly
+  // (as this used to) also never showed up: status is a denormalized mirror of
+  // the stage label, so the posting's status was left untouched.
 
   // Notify the employer how the candidate responded.
   try {

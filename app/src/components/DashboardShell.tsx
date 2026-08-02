@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase, getProfile, getUnreadCount, DASHBOARD_ROUTES } from '@/lib/supabase';
 import NotificationBell from './NotificationBell';
+import FeedbackButton from './FeedbackButton';
 
 type NavItem = {
   href: string;
@@ -323,6 +324,10 @@ export default function DashboardShell({ children, role }: { children: React.Rea
           </div>
         </main>
       </div>
+
+      {/* Feedback routes into the admin's inbox — pointless for the admin, who
+          would just be messaging themselves. */}
+      {role !== 'intern_first_admin' && <FeedbackButton />}
     </div>
   );
 }

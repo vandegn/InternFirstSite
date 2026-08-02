@@ -3490,18 +3490,38 @@ img { max-width: 100%; height: auto; display: block; }
     color: #0f172a;
 }
 
+/* minmax(0, 1fr) rather than 1fr: grid items default to min-width:auto, so a
+   nowrap row or a long <option> inside a cell widens the whole grid past its
+   container and the form spills off the page. */
 .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 20px;
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .form-group.full-width { grid-column: 1 / -1; }
+
+/* Listing create/edit: editor on the left, live student preview on the right.
+   Collapses to one column before the two columns get too narrow to type in. */
+.listing-composer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+}
+
+.listing-composer-preview { position: sticky; top: 32px; }
+
+@media (max-width: 1180px) {
+    .listing-composer { grid-template-columns: minmax(0, 1fr); }
+    .listing-composer-preview { position: static; }
+}
 
 .form-group label {
     font-size: 13px;

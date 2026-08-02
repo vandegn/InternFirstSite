@@ -227,7 +227,7 @@ export default function NewListingPage() {
         />
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
+      <div className="listing-composer">
         {/* ── Left: Form ── */}
         <div className="profile-card" style={{ padding: '28px' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px' }}>Listing Details</h2>
@@ -455,7 +455,7 @@ export default function NewListingPage() {
         </div>
 
         {/* ── Right: Live Preview (mirrors student detail page) ── */}
-        <div style={{ position: 'sticky', top: '32px' }}>
+        <div className="listing-composer-preview">
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             Student Preview

@@ -33,7 +33,14 @@ export async function POST(req: NextRequest) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const { data, error } = await supabase
+  // No .select() on the way out. Chaining one makes PostgREST issue
+  // INSERT ... RETURNING, and under RLS a RETURNING clause is only allowed to
+  // hand back rows the caller could have SELECTed. feedback_submissions grants
+  // SELECT to intern_first_admin alone -- on purpose, this is a private channel
+  // to the team, not a board people can read back -- so asking for the row
+  // failed the write for every student and employer who tried to send anything.
+  // The id was never used by the caller anyway.
+  const { error } = await supabase
     .from('feedback_submissions')
     .insert({
       user_id: user.id,
@@ -43,14 +50,12 @@ export async function POST(req: NextRequest) {
       category: category && CATEGORIES.has(category) ? category : 'other',
       message: message.trim().slice(0, MAX_BODY),
       page_path: typeof pagePath === 'string' && pagePath.startsWith('/') ? pagePath : null,
-    })
-    .select('id')
-    .single();
+    });
 
   if (error) {
-    console.error('[feedback] insert failed', error.message);
+    console.error('[feedback] insert failed', error.code, error.message);
     return NextResponse.json({ error: 'Could not send your feedback.' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, id: data.id });
+  return NextResponse.json({ ok: true });
 }

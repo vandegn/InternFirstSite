@@ -1,6 +1,6 @@
 'use client';
 
-import ReactMarkdown from 'react-markdown';
+import { ListingCoreSectionsView } from '@/components/ListingCoreSections';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -31,6 +31,8 @@ type ListingWithStats = {
   description: string;
   requirements: string | null;
   key_responsibilities: string | null;
+  section_order: string[] | null;
+  preferred_skills: string[] | null;
   application_deadline: string | null;
   created_at: string;
   applicant_count: number;
@@ -518,18 +520,21 @@ export default function PostedJobsPage() {
 
             {/* Listing content */}
             <div className="profile-card" style={{ padding: '24px', marginBottom: '20px' }}>
-              {selectedListing.requirements && (
+              <ListingCoreSectionsView
+                listing={selectedListing}
+                headingStyle={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}
+              />
+              {selectedListing.preferred_skills && selectedListing.preferred_skills.length > 0 && (
                 <>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Qualifications</h3>
-                  <div className="markdown-content"><ReactMarkdown>{selectedListing.requirements}</ReactMarkdown></div>
-                </>
-              )}
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginTop: selectedListing.requirements ? '20px' : '0', marginBottom: '12px' }}>Job Overview</h3>
-              <div className="markdown-content"><ReactMarkdown>{selectedListing.description}</ReactMarkdown></div>
-              {selectedListing.key_responsibilities && (
-                <>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginTop: '20px', marginBottom: '12px' }}>Key Responsibilities</h3>
-                  <div className="markdown-content"><ReactMarkdown>{selectedListing.key_responsibilities || ''}</ReactMarkdown></div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Preferred Skills</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {selectedListing.preferred_skills.map((skill) => (
+                      <span key={skill} style={{
+                        padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem',
+                        background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500,
+                      }}>{skill}</span>
+                    ))}
+                  </div>
                 </>
               )}
             </div>

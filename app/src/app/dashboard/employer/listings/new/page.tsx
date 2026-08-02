@@ -24,8 +24,12 @@ import {
   formatCents,
   type PricingModel,
 } from '@/lib/constants';
-import ReactMarkdown from 'react-markdown';
-import AutoResizeTextarea from '@/components/AutoResizeTextarea';
+import ListingCoreSections, {
+  ListingCoreSectionsView,
+  DEFAULT_SECTION_ORDER,
+  type CoreSectionKey,
+} from '@/components/ListingCoreSections';
+import PreferredSkillsPicker from '@/components/PreferredSkillsPicker';
 import CompensationFields, { EMPTY_COMPENSATION, compToCents, compDisplayString, type CompensationValue } from '@/components/CompensationFields';
 import ListingSectionsEditor from '@/components/ListingSectionsEditor';
 import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
@@ -51,6 +55,11 @@ export default function NewListingPage() {
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyWebsite, setCompanyWebsite] = useState<string | null>(null);
   const [employerId, setEmployerId] = useState<string | null>(null);
+
+  // Core section order + explicit skills. Qualifications leads by default.
+  const [sectionOrder, setSectionOrder] = useState<CoreSectionKey[]>(DEFAULT_SECTION_ORDER);
+  const [preferredSkills, setPreferredSkills] = useState<string[]>([]);
+  const [showSectionErrors, setShowSectionErrors] = useState(false);
 
   // ── Customization ──
   const [sections, setSections] = useState<ListingSectionInput[]>([]);
@@ -118,6 +127,15 @@ export default function NewListingPage() {
     try {
       if (!employerId) throw new Error('Employer profile not found.');
 
+      // All three core sections are required — a listing missing any of them
+      // reads as half-written to students.
+      if (!description.trim() || !requirements.trim() || !keyResponsibilities.trim()) {
+        setShowSectionErrors(true);
+        setLoading(false);
+        setError('Job Overview, Qualifications, and Key Responsibilities are all required.');
+        return;
+      }
+
       if (pricingModel === 'ppa' && !hasCard) {
         setLoading(false);
         await startCardSetup();
@@ -139,8 +157,10 @@ export default function NewListingPage() {
         // and the paid/unpaid filter read, so both must be written together.
         compensation: compDisplayString(comp) || undefined,
         ...compToCents(comp),
-        requirements: requirements || undefined,
-        key_responsibilities: keyResponsibilities || undefined,
+        requirements,
+        key_responsibilities: keyResponsibilities,
+        section_order: sectionOrder,
+        preferred_skills: preferredSkills,
         industry,
         duration: duration || undefined,
         application_deadline: applicationDeadline || undefined,
@@ -313,42 +333,19 @@ export default function NewListingPage() {
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="description">Job Overview</label>
-              <AutoResizeTextarea
-                id="description"
-                placeholder="Describe the role and what the intern will learn...&#10;&#10;Tip: Use - for bullet points"
-                required
-                rows={5}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                style={{ width: '100%', resize: 'vertical' }}
-              />
-            </div>
+            <ListingCoreSections
+              order={sectionOrder}
+              values={{ description, requirements, key_responsibilities: keyResponsibilities }}
+              showErrors={showSectionErrors}
+              onChange={(key, val) => {
+                if (key === 'description') setDescription(val);
+                else if (key === 'requirements') setRequirements(val);
+                else setKeyResponsibilities(val);
+              }}
+              onReorder={setSectionOrder}
+            />
 
-            <div className="form-group">
-              <label htmlFor="requirements">Qualifications</label>
-              <AutoResizeTextarea
-                id="requirements"
-                placeholder="List skills, qualifications, or experience needed...&#10;&#10;Tip: Use - for bullet points"
-                rows={4}
-                value={requirements}
-                onChange={(e) => setRequirements(e.target.value)}
-                style={{ width: '100%', resize: 'vertical' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="keyResponsibilities">Key Responsibilities</label>
-              <AutoResizeTextarea
-                id="keyResponsibilities"
-                placeholder="List the main duties and responsibilities of the role...&#10;&#10;Tip: Use - for bullet points"
-                rows={4}
-                value={keyResponsibilities}
-                onChange={(e) => setKeyResponsibilities(e.target.value)}
-                style={{ width: '100%', resize: 'vertical' }}
-              />
-            </div>
+            <PreferredSkillsPicker value={preferredSkills} onChange={setPreferredSkills} />
 
             <ListingSectionsEditor sections={sections} onChange={setSections} />
 
@@ -552,42 +549,28 @@ export default function NewListingPage() {
 
             <div className="sidebar-divider" style={{ margin: '24px 0' }}></div>
 
-            {/* Qualifications */}
-            {requirements ? (
-              <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Qualifications</h3>
-                <div className="markdown-content"><ReactMarkdown>{requirements}</ReactMarkdown></div>
-              </div>
-            ) : (
-              <div style={{ marginBottom: '24px', padding: '16px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm, 8px)' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '4px', color: 'var(--text-light)' }}>Qualifications</h3>
-                <p style={{ color: 'var(--text-light)', fontSize: '0.85rem', margin: 0 }}>Fill in the Qualifications field to preview...</p>
-              </div>
-            )}
+            {/* Core sections, in the employer's chosen order */}
+            <ListingCoreSectionsView
+              listing={{
+                description,
+                requirements,
+                key_responsibilities: keyResponsibilities,
+                section_order: sectionOrder,
+              }}
+              emptyPlaceholder
+            />
 
-            {/* Job Overview */}
-            {description ? (
+            {preferredSkills.length > 0 && (
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Job Overview</h3>
-                <div className="markdown-content"><ReactMarkdown>{description}</ReactMarkdown></div>
-              </div>
-            ) : (
-              <div style={{ marginBottom: '24px', padding: '16px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm, 8px)' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '4px', color: 'var(--text-light)' }}>Job Overview</h3>
-                <p style={{ color: 'var(--text-light)', fontSize: '0.85rem', margin: 0 }}>Fill in the Job Overview field to preview...</p>
-              </div>
-            )}
-
-            {/* Key Responsibilities */}
-            {keyResponsibilities ? (
-              <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Key Responsibilities</h3>
-                <div className="markdown-content"><ReactMarkdown>{keyResponsibilities}</ReactMarkdown></div>
-              </div>
-            ) : (
-              <div style={{ marginBottom: '24px', padding: '16px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm, 8px)' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '4px', color: 'var(--text-light)' }}>Key Responsibilities</h3>
-                <p style={{ color: 'var(--text-light)', fontSize: '0.85rem', margin: 0 }}>Fill in the Key Responsibilities field to preview...</p>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Preferred Skills</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {preferredSkills.map((skill) => (
+                    <span key={skill} style={{
+                      padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem',
+                      background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500,
+                    }}>{skill}</span>
+                  ))}
+                </div>
               </div>
             )}
 

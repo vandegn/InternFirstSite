@@ -18,6 +18,12 @@ import {
 import { INDUSTRIES, DURATIONS, formatCents } from '@/lib/constants';
 import CompensationFields, { compFromListing, compToCents, compDisplayString, EMPTY_COMPENSATION, type CompensationValue } from '@/components/CompensationFields';
 import ListingSectionsEditor from '@/components/ListingSectionsEditor';
+import ListingCoreSections, {
+  normalizeSectionOrder,
+  DEFAULT_SECTION_ORDER,
+  type CoreSectionKey,
+} from '@/components/ListingCoreSections';
+import PreferredSkillsPicker from '@/components/PreferredSkillsPicker';
 import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
 import ListingBrandingFields from '@/components/ListingBrandingFields';
 import LocationPicker, { EMPTY_LOCATION, locationFromListing, type LocationValue } from '@/components/LocationPicker';
@@ -34,6 +40,9 @@ export default function EditListingPage() {
   const [comp, setComp] = useState<CompensationValue>(EMPTY_COMPENSATION);
   const [requirements, setRequirements] = useState('');
   const [keyResponsibilities, setKeyResponsibilities] = useState('');
+  const [sectionOrder, setSectionOrder] = useState<CoreSectionKey[]>(DEFAULT_SECTION_ORDER);
+  const [preferredSkills, setPreferredSkills] = useState<string[]>([]);
+  const [showSectionErrors, setShowSectionErrors] = useState(false);
   const [industry, setIndustry] = useState('');
   const [duration, setDuration] = useState('');
   const [status, setStatus] = useState('active');
@@ -78,6 +87,10 @@ export default function EditListingPage() {
         setComp(compFromListing(listing));
         setRequirements(listing.requirements || '');
         setKeyResponsibilities(listing.key_responsibilities || '');
+        // Listings created before section_order existed fall back to the
+        // default; normalizeSectionOrder also repairs partial arrays.
+        setSectionOrder(normalizeSectionOrder(listing.section_order));
+        setPreferredSkills(listing.preferred_skills ?? []);
         setIndustry(listing.industry || '');
         setDuration(listing.duration || '');
         setStatus(listing.status || 'active');
@@ -119,6 +132,13 @@ export default function EditListingPage() {
     setLoading(true);
 
     try {
+      if (!description.trim() || !requirements.trim() || !keyResponsibilities.trim()) {
+        setShowSectionErrors(true);
+        setLoading(false);
+        setError('Job Overview, Qualifications, and Key Responsibilities are all required.');
+        return;
+      }
+
       await updateListing(id, {
         title,
         description,
@@ -133,8 +153,10 @@ export default function EditListingPage() {
         // paid/unpaid filter in getActiveListings).
         compensation: compDisplayString(comp) || undefined,
         ...compToCents(comp),
-        requirements: requirements || undefined,
-        key_responsibilities: keyResponsibilities || undefined,
+        requirements,
+        key_responsibilities: keyResponsibilities,
+        section_order: sectionOrder,
+        preferred_skills: preferredSkills,
         industry,
         duration: duration || null,
         application_deadline: applicationDeadline || null,
@@ -316,42 +338,19 @@ export default function EditListingPage() {
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="description">Description</label>
-            <textarea
-              id="description"
-              placeholder="Describe the role, responsibilities, and what the intern will learn..."
-              required
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
+          <ListingCoreSections
+            order={sectionOrder}
+            values={{ description, requirements, key_responsibilities: keyResponsibilities }}
+            showErrors={showSectionErrors}
+            onChange={(key, val) => {
+              if (key === 'description') setDescription(val);
+              else if (key === 'requirements') setRequirements(val);
+              else setKeyResponsibilities(val);
+            }}
+            onReorder={setSectionOrder}
+          />
 
-          <div className="form-group">
-            <label htmlFor="requirements">Requirements</label>
-            <textarea
-              id="requirements"
-              placeholder="List skills, qualifications, or experience needed..."
-              rows={4}
-              value={requirements}
-              onChange={(e) => setRequirements(e.target.value)}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="keyResponsibilities">Key Responsibilities</label>
-            <textarea
-              id="keyResponsibilities"
-              placeholder="List the main duties and responsibilities of the role..."
-              rows={4}
-              value={keyResponsibilities}
-              onChange={(e) => setKeyResponsibilities(e.target.value)}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
+          <PreferredSkillsPicker value={preferredSkills} onChange={setPreferredSkills} />
 
           <ListingSectionsEditor sections={sections} onChange={setSections} />
 

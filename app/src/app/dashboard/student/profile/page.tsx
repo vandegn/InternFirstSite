@@ -14,7 +14,21 @@ import { MAJORS, MAX_STUDENT_SKILLS } from '@/lib/constants';
 interface Resume { id: string; name: string; file_url: string; uploaded_at: string; }
 interface Skill { id: string; name: string; }
 interface Experience { id: string; type: string; title: string; organization?: string; location?: string; description?: string; technologies?: string; link?: string; start_date?: string; end_date?: string; is_current?: boolean; }
-interface Org { id: string; type: string; name: string; chapter?: string; role?: string; join_date?: string; end_date?: string; }
+interface Org { id: string; type: string; name: string; chapter?: string; role?: string; description?: string; join_date?: string; end_date?: string; is_current?: boolean; }
+
+// Organizations is one section covering everything campus-side — Greek life,
+// clubs, and general involvement — rather than splitting across two cards with
+// "Campus Involvement" stranded under Experience. Experience stays professional.
+const ORG_TYPES: { value: string; label: string }[] = [
+  { value: 'club', label: 'Club' },
+  { value: 'greek_life', label: 'Greek Life' },
+  { value: 'campus_involvement', label: 'Campus Involvement' },
+  { value: 'other', label: 'Other' },
+];
+
+const ORG_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  ORG_TYPES.map((t) => [t.value, t.label]),
+);
 
 // Pencil icon button
 function EditBtn({ onClick, editing }: { onClick: () => void; editing: boolean }) {
@@ -59,10 +73,9 @@ export default function StudentProfile() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [internships, setInternships] = useState<Experience[]>([]);
+  const [jobs, setJobs] = useState<Experience[]>([]);
   const [projects, setProjects] = useState<Experience[]>([]);
-  const [campusInvolvements, setCampusInvolvements] = useState<Experience[]>([]);
-  const [greekLife, setGreekLife] = useState<Org[]>([]);
-  const [clubs, setClubs] = useState<Org[]>([]);
+  const [orgs, setOrgs] = useState<Org[]>([]);
 
   // Edit mode per section
   const [editingHero, setEditingHero] = useState(false);
@@ -101,14 +114,16 @@ export default function StudentProfile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Experience forms
-  const [showExpForm, setShowExpForm] = useState<{ internship: boolean; project: boolean; campus_involvement: boolean }>({ internship: false, project: false, campus_involvement: false });
+  const [showExpForm, setShowExpForm] = useState<{ internship: boolean; work: boolean; project: boolean }>({ internship: false, work: false, project: false });
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
   const [expForm, setExpForm] = useState<Partial<Experience>>({});
+  const [expError, setExpError] = useState('');
 
   // Organization forms
-  const [showOrgForm, setShowOrgForm] = useState<{ greek_life: boolean; club: boolean }>({ greek_life: false, club: false });
+  const [showOrgForm, setShowOrgForm] = useState(false);
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
   const [orgForm, setOrgForm] = useState<Partial<Org>>({});
+  const [orgError, setOrgError] = useState('');
 
   // Status
   const [saveMsg, setSaveMsg] = useState('');
@@ -143,10 +158,9 @@ export default function StudentProfile() {
         ]);
         setSkills(studentSkills);
         setInternships(allExperiences.filter((e: Experience) => e.type === 'internship'));
+        setJobs(allExperiences.filter((e: Experience) => e.type === 'work'));
         setProjects(allExperiences.filter((e: Experience) => e.type === 'project'));
-        setCampusInvolvements(allExperiences.filter((e: Experience) => e.type === 'campus_involvement'));
-        setGreekLife(allOrganizations.filter((o: Org) => o.type === 'greek_life'));
-        setClubs(allOrganizations.filter((o: Org) => o.type === 'club'));
+        setOrgs(allOrganizations);
       }
 
       setLoading(false);
@@ -260,19 +274,23 @@ export default function StudentProfile() {
   const skillQuery = debouncedSkillSearch.toLowerCase().trim();
   // Rank matches by relevance (prefix > word-start > substring), not alphabetically,
   // so a broad query like "eng" surfaces "Engineering" instead of the first 20 A–C hits.
-  const filteredSkills = skillQuery === '' ? [] : skillCatalog
-    .reduce<{ name: string; score: number }[]>((acc, s) => {
-      const lower = s.toLowerCase();
-      if (existingSkillNames.includes(lower)) return acc;
-      const idx = lower.indexOf(skillQuery);
-      if (idx === -1) return acc;
-      const score = idx === 0 ? 0 : lower[idx - 1] === ' ' ? 1 : 2;
-      acc.push({ name: s, score });
-      return acc;
-    }, [])
-    .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
-    .slice(0, 20)
-    .map((x) => x.name);
+  // With no query the full catalog is browsable — students shouldn't have to
+  // guess a search term to discover what's on offer. Results stay uncapped and
+  // the dropdown scrolls.
+  const filteredSkills = skillQuery === ''
+    ? skillCatalog.filter((s) => !existingSkillNames.includes(s.toLowerCase()))
+    : skillCatalog
+      .reduce<{ name: string; score: number }[]>((acc, s) => {
+        const lower = s.toLowerCase();
+        if (existingSkillNames.includes(lower)) return acc;
+        const idx = lower.indexOf(skillQuery);
+        if (idx === -1) return acc;
+        const score = idx === 0 ? 0 : lower[idx - 1] === ' ' ? 1 : 2;
+        acc.push({ name: s, score });
+        return acc;
+      }, [])
+      .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
+      .map((x) => x.name);
 
   async function handleAddSkill(name: string) {
     // Only skills chosen from the catalog can be added — no custom entries, to keep matching consistent.
@@ -314,14 +332,26 @@ export default function StudentProfile() {
     } catch { /* ignore */ }
   }
 
+  // Save failures used to disappear into console.error, so a rejected insert
+  // looked identical to a successful one minus the row. Every handler below
+  // surfaces the message instead.
+  function errorMessage(err: unknown, fallback: string) {
+    if (err && typeof err === 'object' && 'message' in err) {
+      const m = (err as { message?: unknown }).message;
+      if (typeof m === 'string' && m.trim()) return m;
+    }
+    return fallback;
+  }
+
   // ---- Experience handlers ----
-  function getExpListAndSetter(type: string): [Experience[], React.Dispatch<React.SetStateAction<Experience[]>>] {
-    if (type === 'internship') return [internships, setInternships];
-    if (type === 'project') return [projects, setProjects];
-    return [campusInvolvements, setCampusInvolvements];
+  function getExpSetter(type: string): React.Dispatch<React.SetStateAction<Experience[]>> {
+    if (type === 'internship') return setInternships;
+    if (type === 'work') return setJobs;
+    return setProjects;
   }
 
   function openExpForm(type: string, existing?: Experience) {
+    setExpError('');
     if (existing) { setEditingExpId(existing.id); setExpForm({ ...existing }); }
     else { setEditingExpId(null); setExpForm({ type }); }
     setShowExpForm((prev) => ({ ...prev, [type]: true }));
@@ -331,84 +361,114 @@ export default function StudentProfile() {
     setShowExpForm((prev) => ({ ...prev, [type]: false }));
     setEditingExpId(null);
     setExpForm({});
+    setExpError('');
   }
 
   async function handleSaveExperience(type: string) {
-    const [, setter] = getExpListAndSetter(type);
+    const setter = getExpSetter(type);
+    // Whitelist the columns rather than spreading the row and stripping keys —
+    // a spread quietly carries along anything the table gains later.
+    const fields = {
+      title: expForm.title || '',
+      organization: expForm.organization,
+      location: expForm.location,
+      description: expForm.description,
+      technologies: expForm.technologies,
+      link: expForm.link,
+      start_date: expForm.start_date,
+      end_date: expForm.is_current ? null : expForm.end_date,
+      is_current: expForm.is_current ?? false,
+    };
+    setExpError('');
     try {
       if (editingExpId) {
-        const { id: _id, student_id: _sid, type: _t, created_at: _ca, updated_at: _ua, ...fields } = expForm as any;
         const updated = await updateStudentExperience(editingExpId, fields);
         setter((prev) => prev.map((e) => (e.id === editingExpId ? updated : e)));
       } else {
         const newExp = await addStudentExperience(studentId, {
           type,
-          title: expForm.title || '',
-          organization: expForm.organization,
-          location: expForm.location,
-          description: expForm.description,
-          technologies: expForm.technologies,
-          link: expForm.link,
-          start_date: expForm.start_date,
-          end_date: expForm.is_current ? undefined : expForm.end_date,
-          is_current: expForm.is_current,
+          ...fields,
+          end_date: fields.end_date ?? undefined,
         });
         setter((prev) => [newExp, ...prev]);
       }
       closeExpForm(type);
       showSaved();
-    } catch (err) { console.error('Failed to save experience:', err); }
+    } catch (err) {
+      setExpError(errorMessage(err, 'Could not save. Please try again.'));
+    }
   }
 
   async function handleDeleteExperience(type: string, id: string) {
-    const [, setter] = getExpListAndSetter(type);
-    try { await deleteStudentExperience(id); setter((prev) => prev.filter((e) => e.id !== id)); } catch { /* ignore */ }
+    const setter = getExpSetter(type);
+    try {
+      await deleteStudentExperience(id);
+      setter((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      setExpError(errorMessage(err, 'Could not delete that entry.'));
+    }
   }
 
   // ---- Organization handlers ----
-  function getOrgListAndSetter(type: string): [Org[], React.Dispatch<React.SetStateAction<Org[]>>] {
-    if (type === 'greek_life') return [greekLife, setGreekLife];
-    return [clubs, setClubs];
+  // Current memberships first, then most recently joined.
+  function sortOrgs(list: Org[]) {
+    return [...list].sort((a, b) => {
+      if (!!a.is_current !== !!b.is_current) return a.is_current ? -1 : 1;
+      return (b.join_date || '').localeCompare(a.join_date || '');
+    });
   }
 
-  function openOrgForm(type: string, existing?: Org) {
+  function openOrgForm(existing?: Org) {
+    setOrgError('');
     if (existing) { setEditingOrgId(existing.id); setOrgForm({ ...existing }); }
-    else { setEditingOrgId(null); setOrgForm({ type }); }
-    setShowOrgForm((prev) => ({ ...prev, [type]: true }));
+    else { setEditingOrgId(null); setOrgForm({ type: 'club', is_current: true }); }
+    setShowOrgForm(true);
   }
 
-  function closeOrgForm(type: string) {
-    setShowOrgForm((prev) => ({ ...prev, [type]: false }));
+  function closeOrgForm() {
+    setShowOrgForm(false);
     setEditingOrgId(null);
     setOrgForm({});
+    setOrgError('');
   }
 
-  async function handleSaveOrganization(type: string) {
-    const [, setter] = getOrgListAndSetter(type);
+  async function handleSaveOrganization() {
+    const type = orgForm.type || 'club';
+    const fields = {
+      type,
+      name: orgForm.name?.trim() || '',
+      // Chapter only means anything for Greek life; don't carry a stale value
+      // over if the student switches the type after typing one.
+      chapter: type === 'greek_life' ? orgForm.chapter : undefined,
+      role: orgForm.role,
+      description: orgForm.description,
+      join_date: orgForm.join_date,
+      end_date: orgForm.is_current ? null : orgForm.end_date,
+      is_current: orgForm.is_current ?? false,
+    };
+    setOrgError('');
     try {
       if (editingOrgId) {
-        const { id: _id, student_id: _sid, type: _t, created_at: _ca, updated_at: _ua, ...fields } = orgForm as any;
         const updated = await updateStudentOrganization(editingOrgId, fields);
-        setter((prev) => prev.map((o) => (o.id === editingOrgId ? updated : o)));
+        setOrgs((prev) => sortOrgs(prev.map((o) => (o.id === editingOrgId ? updated : o))));
       } else {
-        const newOrg = await addStudentOrganization(studentId, {
-          type,
-          name: orgForm.name || '',
-          chapter: orgForm.chapter,
-          role: orgForm.role,
-          join_date: orgForm.join_date,
-          end_date: orgForm.end_date,
-        });
-        setter((prev) => [newOrg, ...prev]);
+        const newOrg = await addStudentOrganization(studentId, fields);
+        setOrgs((prev) => sortOrgs([newOrg, ...prev]));
       }
-      closeOrgForm(type);
+      closeOrgForm();
       showSaved();
-    } catch (err) { console.error('Failed to save organization:', err); }
+    } catch (err) {
+      setOrgError(errorMessage(err, 'Could not save. Please try again.'));
+    }
   }
 
-  async function handleDeleteOrganization(type: string, id: string) {
-    const [, setter] = getOrgListAndSetter(type);
-    try { await deleteStudentOrganization(id); setter((prev) => prev.filter((o) => o.id !== id)); } catch { /* ignore */ }
+  async function handleDeleteOrganization(id: string) {
+    try {
+      await deleteStudentOrganization(id);
+      setOrgs((prev) => prev.filter((o) => o.id !== id));
+    } catch (err) {
+      setOrgError(errorMessage(err, 'Could not delete that organization.'));
+    }
   }
 
   // ---- Shared styles ----
@@ -494,13 +554,29 @@ export default function StudentProfile() {
     );
   }
 
-  const hasExperience = internships.length > 0 || projects.length > 0 || campusInvolvements.length > 0;
-  const hasOrgs = greekLife.length > 0 || clubs.length > 0;
+  const hasExperience = internships.length > 0 || jobs.length > 0 || projects.length > 0;
   const displayAvatar = avatarPreview || avatarUrl;
 
   const emptyText = (text: string) => (
     <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontStyle: 'italic' }}>{text}</span>
   );
+
+  const errorBanner = (msg: string) => (
+    <div style={{
+      padding: '8px 12px', borderRadius: '8px', marginBottom: '10px',
+      background: 'var(--danger-bg)', color: 'var(--danger-fg)',
+      border: '1px solid var(--danger-border)', fontSize: '0.8rem',
+    }}>{msg}</div>
+  );
+
+  // "Jan 2025 — Present" / "Jan 2025 — May 2026" / "" when no dates are set.
+  function dateRange(start?: string, end?: string, current?: boolean) {
+    const from = formatDate(start);
+    const to = current ? 'Present' : formatDate(end);
+    if (!from && !to) return '';
+    if (!from) return to;
+    return `${from} — ${to || 'Present'}`;
+  }
 
   // ---- Experience inline form (reusable) ----
   function renderExpForm(type: string, fields: { showOrg?: boolean; showLoc?: boolean; showTech?: boolean; showLink?: boolean; showDates?: boolean; titleLabel?: string; orgLabel?: string }) {
@@ -557,6 +633,7 @@ export default function StudentProfile() {
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description</label>
           <textarea rows={2} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' as const }} />
         </div>
+        {expError && errorBanner(expError)}
         <div style={{ display: 'flex', gap: '6px' }}>
           <button type="button" onClick={() => handleSaveExperience(type)} disabled={!expForm.title?.trim()} style={{ ...addBtnStyle, background: 'var(--primary)', color: 'var(--on-primary)', border: '1px solid var(--primary)', opacity: expForm.title?.trim() ? 1 : 0.5 }}>
             {editingExpId ? 'Update' : 'Save'}
@@ -568,14 +645,23 @@ export default function StudentProfile() {
   }
 
   // ---- Org inline form ----
-  function renderOrgForm(type: string, showChapter: boolean) {
+  function renderOrgForm() {
+    const type = orgForm.type || 'club';
     return (
       <div style={inlineFormStyle}>
         <div style={{ marginBottom: '10px' }}>
-          <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Name *</label>
-          <input style={inputStyle} type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} />
+          <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Type</label>
+          <select style={inputStyle} value={type} onChange={(e) => setOrgForm({ ...orgForm, type: e.target.value })}>
+            {ORG_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
         </div>
-        {showChapter && (
+        <div style={{ marginBottom: '10px' }}>
+          <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+            {type === 'greek_life' ? 'Organization *' : 'Name *'}
+          </label>
+          <input style={inputStyle} type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder={type === 'greek_life' ? 'e.g. Sigma Chi' : 'e.g. Finance Club'} />
+        </div>
+        {type === 'greek_life' && (
           <div style={{ marginBottom: '10px' }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Chapter</label>
             <input style={inputStyle} type="text" value={orgForm.chapter || ''} onChange={(e) => setOrgForm({ ...orgForm, chapter: e.target.value })} />
@@ -583,25 +669,42 @@ export default function StudentProfile() {
         )}
         <div style={{ marginBottom: '10px' }}>
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Role</label>
-          <input style={inputStyle} type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} />
+          <input style={inputStyle} type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} placeholder="e.g. Treasurer, Member" />
         </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Joined</label>
             <input style={inputStyle} type="month" value={orgForm.join_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, join_date: e.target.value ? e.target.value + '-01' : '' })} />
           </div>
-          {type === 'club' && (
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>End</label>
-              <input style={inputStyle} type="month" value={orgForm.end_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, end_date: e.target.value ? e.target.value + '-01' : '' })} />
-            </div>
-          )}
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>End</label>
+            <input
+              style={{ ...inputStyle, opacity: orgForm.is_current ? 0.5 : 1 }}
+              type="month"
+              value={orgForm.end_date?.slice(0, 7) || ''}
+              onChange={(e) => setOrgForm({ ...orgForm, end_date: e.target.value ? e.target.value + '-01' : '' })}
+              disabled={orgForm.is_current}
+            />
+          </div>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', marginBottom: '10px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+          <input
+            type="checkbox"
+            checked={orgForm.is_current ?? false}
+            onChange={(e) => setOrgForm({ ...orgForm, is_current: e.target.checked, end_date: e.target.checked ? undefined : orgForm.end_date })}
+          />
+          I&apos;m still a member
+        </label>
+        <div style={{ marginBottom: '10px' }}>
+          <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description</label>
+          <textarea rows={2} value={orgForm.description || ''} onChange={(e) => setOrgForm({ ...orgForm, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="What you do there..." />
+        </div>
+        {orgError && errorBanner(orgError)}
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" onClick={() => handleSaveOrganization(type)} disabled={!orgForm.name?.trim()} style={{ ...addBtnStyle, background: 'var(--primary)', color: 'var(--on-primary)', border: '1px solid var(--primary)', opacity: orgForm.name?.trim() ? 1 : 0.5 }}>
+          <button type="button" onClick={handleSaveOrganization} disabled={!orgForm.name?.trim()} style={{ ...addBtnStyle, background: 'var(--primary)', color: 'var(--on-primary)', border: '1px solid var(--primary)', opacity: orgForm.name?.trim() ? 1 : 0.5 }}>
             {editingOrgId ? 'Update' : 'Save'}
           </button>
-          <button type="button" onClick={() => closeOrgForm(type)} style={smallBtnStyle}>Cancel</button>
+          <button type="button" onClick={closeOrgForm} style={smallBtnStyle}>Cancel</button>
         </div>
       </div>
     );
@@ -835,7 +938,7 @@ export default function StudentProfile() {
                       <input
                         style={inputStyle}
                         type="text"
-                        placeholder="Search skills..."
+                        placeholder="Browse or search skills..."
                         value={skillSearch}
                         onChange={(e) => { setSkillSearch(e.target.value); setShowSkillDropdown(true); }}
                         onFocus={() => setShowSkillDropdown(true)}
@@ -843,7 +946,7 @@ export default function StudentProfile() {
                       />
                       {showSkillDropdown && filteredSkills.length > 0 && (
                         <div style={{
-                          position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '160px',
+                          position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '240px',
                           overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)',
                           borderRadius: '8px', zIndex: 10, boxShadow: 'var(--shadow-md)',
                         }}>
@@ -855,13 +958,15 @@ export default function StudentProfile() {
                           ))}
                         </div>
                       )}
-                      {showSkillDropdown && skillQuery !== '' && filteredSkills.length === 0 && (
+                      {showSkillDropdown && filteredSkills.length === 0 && (
                         <div style={{
                           position: 'absolute', top: '100%', left: 0, right: 0,
                           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px',
                           zIndex: 10, boxShadow: 'var(--shadow-md)', padding: '8px 12px',
                           fontSize: '0.78rem', color: 'var(--text-secondary)',
-                        }}>No matching skill in our list.</div>
+                        }}>
+                          {skillCatalog.length === 0 ? 'Loading skills…' : 'No matching skill in our list.'}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -940,71 +1045,46 @@ export default function StudentProfile() {
                 )}
               </div>
 
-              {/* Organizations */}
+              {/* Organizations — Greek life, clubs, and campus involvement in one place */}
               <div style={cardStyle}>
                 <div style={cardHeader}>
                   <h3 style={sectionTitle}>Organizations</h3>
-                  <EditBtn onClick={() => setEditingOrgs(!editingOrgs)} editing={editingOrgs} />
+                  <EditBtn onClick={() => { setEditingOrgs(!editingOrgs); if (editingOrgs) closeOrgForm(); }} editing={editingOrgs} />
                 </div>
-                {(hasOrgs || editingOrgs) ? (
-                  <div>
-                    {/* Greek Life */}
-                    <div style={{ marginBottom: (clubs.length > 0 || editingOrgs) ? '14px' : 0 }}>
-                      <div style={subLabel}>
-                        <span>Greek Life</span>
-                        {editingOrgs && !showOrgForm.greek_life && (
-                          <button type="button" onClick={() => openOrgForm('greek_life')} style={addBtnStyle}>+ Add</button>
-                        )}
-                      </div>
-                      {showOrgForm.greek_life && renderOrgForm('greek_life', true)}
-                      {greekLife.map((org) => (
-                        <div key={org.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{org.name}{org.chapter ? ` — ${org.chapter}` : ''}</div>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                              {org.role && `${org.role} · `}{formatDate(org.join_date) && `Joined ${formatDate(org.join_date)}`}
-                            </div>
-                          </div>
-                          {editingOrgs && (
-                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                              <button type="button" onClick={() => openOrgForm('greek_life', org)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteOrganization('greek_life', org.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {greekLife.length === 0 && !showOrgForm.greek_life && emptyText('None added.')}
-                    </div>
 
-                    {/* Clubs */}
-                    <div>
-                      <div style={subLabel}>
-                        <span>Clubs</span>
-                        {editingOrgs && !showOrgForm.club && (
-                          <button type="button" onClick={() => openOrgForm('club')} style={addBtnStyle}>+ Add</button>
-                        )}
-                      </div>
-                      {showOrgForm.club && renderOrgForm('club', false)}
-                      {clubs.map((org) => (
-                        <div key={org.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{org.name}</div>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                              {org.role && `${org.role} · `}{formatDate(org.join_date)}{org.end_date ? ` — ${formatDate(org.end_date)}` : formatDate(org.join_date) ? ' — Present' : ''}
-                            </div>
-                          </div>
-                          {editingOrgs && (
-                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                              <button type="button" onClick={() => openOrgForm('club', org)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteOrganization('club', org.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
-                            </div>
-                          )}
+                {editingOrgs && !showOrgForm && (
+                  <button type="button" onClick={() => openOrgForm()} style={{ ...addBtnStyle, marginBottom: '10px' }}>+ Add organization</button>
+                )}
+                {showOrgForm && renderOrgForm()}
+                {orgError && !showOrgForm && errorBanner(orgError)}
+
+                {orgs.length > 0 ? (
+                  orgs.map((org) => (
+                    <div key={org.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{org.name}{org.chapter ? ` — ${org.chapter}` : ''}</span>
+                          <span style={{
+                            padding: '1px 7px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600,
+                            background: 'var(--primary-light)', color: 'var(--primary)',
+                          }}>{ORG_TYPE_LABELS[org.type] ?? org.type}</span>
                         </div>
-                      ))}
-                      {clubs.length === 0 && !showOrgForm.club && emptyText('None added.')}
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                          {org.role && `${org.role}`}
+                          {org.role && dateRange(org.join_date, org.end_date, org.is_current) && ' · '}
+                          {dateRange(org.join_date, org.end_date, org.is_current)}
+                        </div>
+                        {org.description && <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{org.description}</p>}
+                      </div>
+                      {editingOrgs && (
+                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                          <button type="button" onClick={() => openOrgForm(org)} style={smallBtnStyle}>Edit</button>
+                          <button type="button" onClick={() => handleDeleteOrganization(org.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ) : emptyText('No organizations added.')}
+                  ))
+                ) : !showOrgForm && emptyText('No organizations added — clubs, Greek life, and anything else you’re involved in on campus.')}
               </div>
             </div>
 
@@ -1021,7 +1101,7 @@ export default function StudentProfile() {
                 {(hasExperience || editingExp) ? (
                   <div>
                     {/* Internships */}
-                    <div style={{ marginBottom: (projects.length > 0 || campusInvolvements.length > 0 || editingExp) ? '14px' : 0 }}>
+                    <div style={{ marginBottom: '14px' }}>
                       <div style={subLabel}>
                         <span>Internships</span>
                         {editingExp && !showExpForm.internship && (
@@ -1052,8 +1132,40 @@ export default function StudentProfile() {
                       {internships.length === 0 && !showExpForm.internship && emptyText('None added.')}
                     </div>
 
+                    {/* Jobs — part-time and full-time work that isn't an internship */}
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={subLabel}>
+                        <span>Jobs</span>
+                        {editingExp && !showExpForm.work && (
+                          <button type="button" onClick={() => openExpForm('work')} style={addBtnStyle}>+ Add</button>
+                        )}
+                      </div>
+                      {showExpForm.work && renderExpForm('work', { showOrg: true, showLoc: true, orgLabel: 'Employer', titleLabel: 'Job Title *' })}
+                      {jobs.map((exp) => (
+                        <div key={exp.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                              <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{exp.title}</div>
+                              <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                {dateRange(exp.start_date, exp.end_date, exp.is_current)}
+                              </div>
+                            </div>
+                            {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{exp.organization}{exp.location ? ` · ${exp.location}` : ''}</div>}
+                            {exp.description && <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{exp.description}</p>}
+                          </div>
+                          {editingExp && (
+                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginTop: '2px' }}>
+                              <button type="button" onClick={() => openExpForm('work', exp)} style={smallBtnStyle}>Edit</button>
+                              <button type="button" onClick={() => handleDeleteExperience('work', exp.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {jobs.length === 0 && !showExpForm.work && emptyText('None added.')}
+                    </div>
+
                     {/* Projects */}
-                    <div style={{ marginBottom: (campusInvolvements.length > 0 || editingExp) ? '14px' : 0 }}>
+                    <div>
                       <div style={subLabel}>
                         <span>Projects</span>
                         {editingExp && !showExpForm.project && (
@@ -1088,40 +1200,9 @@ export default function StudentProfile() {
                       ))}
                       {projects.length === 0 && !showExpForm.project && emptyText('None added.')}
                     </div>
-
-                    {/* Campus Involvement */}
-                    <div>
-                      <div style={subLabel}>
-                        <span>Campus Involvement</span>
-                        {editingExp && !showExpForm.campus_involvement && (
-                          <button type="button" onClick={() => openExpForm('campus_involvement')} style={addBtnStyle}>+ Add</button>
-                        )}
-                      </div>
-                      {showExpForm.campus_involvement && renderExpForm('campus_involvement', { showOrg: true, orgLabel: 'Organization', titleLabel: 'Role / Position *' })}
-                      {campusInvolvements.map((exp) => (
-                        <div key={exp.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                              <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{exp.title}</div>
-                              <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                {formatDate(exp.start_date)} — {exp.is_current ? 'Present' : formatDate(exp.end_date)}
-                              </div>
-                            </div>
-                            {exp.organization && <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{exp.organization}</div>}
-                            {exp.description && <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{exp.description}</p>}
-                          </div>
-                          {editingExp && (
-                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginTop: '2px' }}>
-                              <button type="button" onClick={() => openExpForm('campus_involvement', exp)} style={smallBtnStyle}>Edit</button>
-                              <button type="button" onClick={() => handleDeleteExperience('campus_involvement', exp.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)' }}>Del</button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {campusInvolvements.length === 0 && !showExpForm.campus_involvement && emptyText('None added.')}
-                    </div>
                   </div>
                 ) : emptyText('No experience added yet.')}
+                {expError && !showExpForm.internship && !showExpForm.work && !showExpForm.project && errorBanner(expError)}
               </div>
             </div>
           </div>

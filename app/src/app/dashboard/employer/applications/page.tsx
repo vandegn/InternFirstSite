@@ -13,6 +13,7 @@ import {
   type VerificationStatus,
 } from '@/lib/supabase';
 import VerificationBanner from '@/components/VerificationBanner';
+import Avatar from '@/components/Avatar';
 
 type ApplicationAnswer = {
   id: string;
@@ -270,14 +271,23 @@ export default function EmployerApplications() {
                     cursor: 'pointer',
                   }}
                 >
-                  <img
-                    src={app.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                    alt={app.student.profile.full_name}
-                    style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                  />
+                  <Link
+                    href={`/dashboard/employer/students/${app.student.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View ${app.student.profile.full_name}'s profile`}
+                    style={{ display: 'flex', flexShrink: 0, textDecoration: 'none' }}
+                  >
+                    <Avatar src={app.student.profile.avatar_url} name={app.student.profile.full_name} size={44} />
+                  </Link>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{app.student.profile.full_name}</span>
+                      <Link
+                        href={`/dashboard/employer/students/${app.student.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ fontWeight: 600, fontSize: '0.95rem', color: 'inherit', textDecoration: 'none' }}
+                      >
+                        {app.student.profile.full_name}
+                      </Link>
                       <span style={{
                         fontSize: '0.7rem',
                         fontWeight: 600,

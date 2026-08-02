@@ -15,6 +15,7 @@ import {
   updateApplicationStage,
   type PipelineStage,
 } from '@/lib/supabase';
+import Avatar from '@/components/Avatar';
 
 type ApplicationAnswer = {
   id: string;
@@ -529,20 +530,26 @@ export default function EmployerPipelinePage() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          <img
-                            src={app.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                            alt={app.student.profile.full_name}
-                            style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                          />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {app.student.profile.full_name}
-                            </p>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {app.student.major || 'No major'}
-                              {app.student.graduation_year ? ` · '${String(app.student.graduation_year).slice(-2)}` : ''}
-                            </p>
-                          </div>
+                          {/* Avatar and name open the candidate's profile. The
+                              card itself is draggable and toggles details, so
+                              stop propagation to keep both gestures usable. */}
+                          <Link
+                            href={`/dashboard/employer/students/${app.student.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            draggable={false}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+                          >
+                            <Avatar src={app.student.profile.avatar_url} name={app.student.profile.full_name} size={32} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {app.student.profile.full_name}
+                              </p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {app.student.major || 'No major'}
+                                {app.student.graduation_year ? ` · '${String(app.student.graduation_year).slice(-2)}` : ''}
+                              </p>
+                            </div>
+                          </Link>
                           {app.match_score != null && (
                             <span
                               title={`${app.match_score}% match to this listing`}

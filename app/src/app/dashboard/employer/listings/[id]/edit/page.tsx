@@ -15,7 +15,7 @@ import {
   type ListingSectionInput,
   type ListingQuestionInput,
 } from '@/lib/supabase';
-import { INDUSTRIES, DURATIONS, formatCents } from '@/lib/constants';
+import { INDUSTRIES, DURATIONS } from '@/lib/constants';
 import CompensationFields, { compFromListing, compToCents, compDisplayString, EMPTY_COMPENSATION, type CompensationValue } from '@/components/CompensationFields';
 import ListingSectionsEditor from '@/components/ListingSectionsEditor';
 import ListingCoreSections, {
@@ -55,13 +55,16 @@ export default function EditListingPage() {
   const [employerId, setEmployerId] = useState<string | null>(null);
   const [sections, setSections] = useState<ListingSectionInput[]>([]);
   const [questions, setQuestions] = useState<ListingQuestionInput[]>([]);
+
+  // One set of listing_questions rows, split by the is_eeo flag for editing.
+  const screeningQuestions = questions.filter((q) => !q.is_eeo);
+  const eeoQuestions = questions.filter((q) => q.is_eeo);
+  const setScreeningQuestions = (next: ListingQuestionInput[]) => setQuestions([...next, ...eeoQuestions]);
+  const setEeoQuestions = (next: ListingQuestionInput[]) => setQuestions([...screeningQuestions, ...next]);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [accentColor, setAccentColor] = useState<string | null>(null);
   const [roleTags, setRoleTags] = useState<string[]>([]);
-  // Billing (read-only)
-  const [pricingModel, setPricingModel] = useState<'ppj' | 'ppa' | null>(null);
   const [applicantCount, setApplicantCount] = useState(0);
-  const [cpaCents, setCpaCents] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchListing() {
@@ -95,9 +98,7 @@ export default function EditListingPage() {
         setDuration(listing.duration || '');
         setStatus(listing.status || 'active');
         setApplicationDeadline(listing.application_deadline || '');
-        setPricingModel(listing.pricing_model ?? null);
         setApplicantCount(listing.applicant_count ?? 0);
-        setCpaCents(listing.cpa_cents ?? null);
         setBannerUrl(listing.banner_url ?? null);
         setAccentColor(listing.accent_color ?? null);
         setRoleTags(listing.role_tags ?? []);
@@ -115,6 +116,7 @@ export default function EditListingPage() {
           options: q.options ?? [],
           required: q.required,
           knockout_answer: q.knockout_answer,
+          is_eeo: q.is_eeo ?? false,
         })));
       } catch (err: any) {
         setError(err.message);
@@ -224,18 +226,10 @@ export default function EditListingPage() {
         <h1>Edit Listing</h1>
         <p className="auth-subtitle">Update your internship listing details.</p>
 
-        {pricingModel && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '16px' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {pricingModel === 'ppj' ? 'Pay Per Job' : 'Pay Per Applicant'}
-            </span>
-            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-              {pricingModel === 'ppa' && cpaCents != null
-                ? `${applicantCount} applications · ${formatCents(cpaCents)}/qualifying`
-                : `${applicantCount} applications`}
-            </span>
-          </div>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '16px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Applications received</span>
+          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{applicantCount}</span>
+        </div>
 
         {error && <div className="auth-error" style={{ display: 'block' }}>{error}</div>}
 
@@ -354,7 +348,8 @@ export default function EditListingPage() {
 
           <ListingSectionsEditor sections={sections} onChange={setSections} />
 
-          <ListingQuestionsEditor questions={questions} onChange={setQuestions} />
+          <ListingQuestionsEditor questions={screeningQuestions} onChange={setScreeningQuestions} />
+          <ListingQuestionsEditor questions={eeoQuestions} onChange={setEeoQuestions} mode="eeo" />
 
           <ListingBrandingFields
             employerId={employerId}

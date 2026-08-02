@@ -292,13 +292,16 @@ export async function createListing(listing: {
   // picks (max 10) that match scoring prefers over scraping the prose.
   section_order?: string[];
   preferred_skills?: string[];
-  // Billing
-  pricing_model?: 'ppj' | 'ppa';
-  applicant_quota?: number | null;   // PPJ: upper bound of the estimate (informational, no cap)
-  cpa_cents?: number;                // snapshot of the group CPA at posting time
   expires_at?: string;
   status?: string;
-  payment_status?: 'pending' | 'paid' | 'active';
+  // Set only on status='scheduled'. publish_due_listings (pg_cron, every 15
+  // min) flips the listing to active once this passes.
+  publish_at?: string | null;
+  // Billing columns (pricing_model, applicant_quota, cpa_cents,
+  // payment_status) still exist on the table but are never written during the
+  // pilot — every posting is free. Leaving pricing_model null is the existing
+  // "organic" free tier, so restoring paid plans from `payments-parked` needs
+  // no schema change.
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -325,6 +328,25 @@ export async function getEmployerListings(employerId: string, page = 1, pageSize
     .range(from, to);
   if (error) return { data: [], totalCount: 0 };
   return { data: data ?? [], totalCount: count ?? 0 };
+}
+
+// Listing counts across *every* listing, not just the page currently rendered.
+// The employer dashboard used to derive "Active Listings" from the paginated
+// result, so an employer with more than one page of postings saw a number that
+// only described page 1.
+export async function getEmployerListingCounts(employerId: string) {
+  const [{ count: total }, { count: active }] = await Promise.all([
+    supabase
+      .from('internship_listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('employer_id', employerId),
+    supabase
+      .from('internship_listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('employer_id', employerId)
+      .eq('status', 'active'),
+  ]);
+  return { total: total ?? 0, active: active ?? 0 };
 }
 
 export type ActiveListingsFilters = {
@@ -535,6 +557,11 @@ export type ListingQuestion = {
   required: boolean;
   knockout_answer: 'yes' | 'no' | null;
   position: number;
+  // Employer-added equal opportunity question. Rendered in the EEO step of the
+  // apply flow rather than alongside ordinary screening questions. The standard
+  // federal set (lib/eeo.ts) is never stored as rows, which is what makes it
+  // impossible for an employer to remove.
+  is_eeo: boolean;
 };
 
 export type ListingQuestionInput = {
@@ -545,6 +572,7 @@ export type ListingQuestionInput = {
   options?: string[];
   required?: boolean;
   knockout_answer?: 'yes' | 'no' | null;
+  is_eeo?: boolean;
 };
 
 export async function getListingQuestions(listingId: string): Promise<ListingQuestion[]> {
@@ -597,6 +625,7 @@ export async function replaceListingQuestions(listingId: string, questions: List
     required: q.required ?? false,
     // Only meaningful on yes_no; null it out otherwise so a type change clears it.
     knockout_answer: q.question_type === 'yes_no' ? q.knockout_answer ?? null : null,
+    is_eeo: q.is_eeo ?? false,
     position: i,
   });
 
@@ -753,6 +782,28 @@ export async function getStudentByUserId(userId: string) {
     .single();
   if (error || !data) return null;
   return data;
+}
+
+// Full candidate profile for the employer-facing student page. Skills,
+// experiences and organizations are gated by RLS to approved employers who
+// actually have an application from this student, so an employer who guesses a
+// student id gets the name and major and nothing else.
+export async function getStudentProfileForEmployer(studentId: string) {
+  const { data: student, error } = await supabase
+    .from('students')
+    .select('*, profile:profiles!students_user_id_fkey(full_name, email, avatar_url)')
+    .eq('id', studentId)
+    .single();
+  if (error || !student) return null;
+
+  const [skills, experiences, organizations] = await Promise.all([
+    getStudentSkills(studentId),
+    getStudentExperiences(studentId),
+    getStudentOrganizations(studentId),
+  ]);
+
+  const profile = Array.isArray(student.profile) ? student.profile[0] : student.profile;
+  return { ...student, profile, skills, experiences, organizations };
 }
 
 // Notifies the listing's employer that a new student applied. Best-effort.
@@ -1147,6 +1198,18 @@ export async function getStudentApplications(studentId: string) {
   return data ?? [];
 }
 
+// Listing IDs this student has already applied to. Kept separate from
+// getStudentApplications so the browse page can render "Applied" on a card
+// without pulling every joined listing and employer row it doesn't show.
+export async function getAppliedListingIds(studentId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('listing_id')
+    .eq('student_id', studentId);
+  if (error) return [];
+  return (data ?? []).map((r) => r.listing_id as string);
+}
+
 export async function getStudentStats(studentId: string) {
   const { data, error } = await supabase
     .from('applications')
@@ -1217,16 +1280,17 @@ export async function getListingViewCounts(employerId: string) {
 }
 
 // One view per account per listing — repeat visits are no-ops. The unique index
-// on (listing_id, viewer_id) is what actually enforces this; see
-// supabase/migrations/20260801_unique_listing_views.sql.
-export async function trackListingView(listingId: string, viewerId: string | null) {
-  await supabase.from('listing_views').upsert(
-    {
-      listing_id: listingId,
-      viewer_id: viewerId,
-    },
-    { onConflict: 'listing_id,viewer_id', ignoreDuplicates: true }
-  );
+// on (listing_id, viewer_id) enforces that; record_listing_view names the same
+// conflict target and takes the viewer from auth.uid() rather than trusting the
+// caller. Errors are logged rather than swallowed: this previously ran as a
+// client-side upsert inside an empty .catch(), which is how view counts sat at
+// zero without anything surfacing. See
+// supabase/migrations/20260802_fix_application_stage_and_views.sql.
+export async function trackListingView(listingId: string) {
+  const { error } = await supabase.rpc('record_listing_view', {
+    p_listing_id: listingId,
+  });
+  if (error) console.error('[trackListingView] failed:', error.message, error);
 }
 
 // ---- Employer Listings with full details ----
@@ -1570,6 +1634,29 @@ export async function upsertStudentEeo(studentId: string, data: StudentEeoData) 
   if (error) throw error;
 }
 
+// Snapshot the EEO answers the student confirmed for this specific
+// application. student_eeo stays the editable default that prefills the form;
+// this row is the immutable record of what was actually submitted, so later
+// edits in settings don't rewrite history on applications already sent.
+//
+// Like student_eeo, application_eeo has no employer select policy. These
+// answers are for compliance reporting and must never reach a hiring decision.
+export async function saveApplicationEeo(applicationId: string, data: StudentEeoData) {
+  const { error } = await supabase.from('application_eeo').insert({
+    application_id: applicationId,
+    ethnicity_hispanic_latino: data.ethnicity_hispanic_latino,
+    race: data.race,
+    race_declined: data.race_declined,
+    gender: data.gender,
+    gender_self_describe: data.gender_self_describe,
+    veteran_status: data.veteran_status,
+    disability_status: data.disability_status,
+    work_authorized_us: data.work_authorized_us,
+    requires_sponsorship: data.requires_sponsorship,
+  });
+  if (error) throw error;
+}
+
 // ---- Events ----
 
 export async function getEventById(eventId: string) {
@@ -1687,6 +1774,10 @@ export async function updateListing(listingId: string, fields: {
   accent_color?: string | null;
   section_order?: string[];
   preferred_skills?: string[];
+  // Publishing a draft or scheduled listing sets status, clears publish_at,
+  // and starts the posting window — see handlePublishNow on posted-jobs.
+  publish_at?: string | null;
+  expires_at?: string | null;
 }) {
   const { data, error } = await supabase
     .from('internship_listings')
@@ -1698,48 +1789,10 @@ export async function updateListing(listingId: string, fields: {
   return data;
 }
 
-// ---- Billing (Employer Payment Plans) ----
-
-export async function getEmployerBilling(employerId: string) {
-  const { data, error } = await supabase
-    .from('employer_billing')
-    .select('*')
-    .eq('employer_id', employerId)
-    .maybeSingle();
-  if (error) {
-    console.error('[getEmployerBilling]', error.message);
-    return null;
-  }
-  return data;
-}
-
-export async function getEmployerPayments(employerId: string) {
-  const { data, error } = await supabase
-    .from('listing_payments')
-    .select('*, listing:internship_listings(title)')
-    .eq('employer_id', employerId)
-    .order('created_at', { ascending: false });
-  if (error) {
-    console.error('[getEmployerPayments]', error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
-// Current applicant usage for a listing (drives the "X / Y applicants" display
-// and the auto-close state). applicant_count is maintained by a DB trigger.
-export async function getListingUsage(listingId: string) {
-  const { data, error } = await supabase
-    .from('internship_listings')
-    .select('pricing_model, applicant_quota, applicant_count, cpa_cents, payment_status, status, expires_at')
-    .eq('id', listingId)
-    .single();
-  if (error) {
-    console.error('[getListingUsage]', error.message);
-    return null;
-  }
-  return data;
-}
+// Billing helpers (getEmployerBilling / getEmployerPayments / getListingUsage)
+// were removed with the rest of the payment code for the pilot. The
+// employer_billing and listing_payments tables still exist and are untouched;
+// the readers live on the `payments-parked` branch.
 
 // ---- Interview Schedules ----
 

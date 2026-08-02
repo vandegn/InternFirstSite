@@ -35,9 +35,9 @@ function describe(status: VerificationStatus, pendingCount?: number): string {
     case 'approved':
       return 'Your company is verified. Your listings are live and you have full access to applicants.';
     case 'pending':
-      return `We review every employer before their listings go live, usually within one business day. You can create and edit listings now — students will see them, and you'll be able to see applicants, once you're approved.${waiting}`;
+      return `We review every employer before they can post, usually within one business day. Once you're approved you'll be able to publish listings and see applicants.${waiting}`;
     case 'needs_info':
-      return `We need a bit more information before approving your account. Once you've sorted it, reply to our email and we'll take another look.${waiting}`;
+      return `We need a bit more information before approving your account, so posting is on hold until then. Once you've sorted it, reply to our email and we'll take another look.${waiting}`;
     case 'rejected':
       return 'We were not able to verify this company. If you think that is a mistake, reply to our email and we will review it again.';
   }

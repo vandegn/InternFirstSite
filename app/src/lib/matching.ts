@@ -131,8 +131,11 @@ function scoreSkills(student: MatchStudentInput, foundListingSkills: string[]): 
 
 function scoreIndustry(student: MatchStudentInput, listing: MatchListingInput): number {
   if (!listing.industry) return WEIGHTS.industry * 0.5;
-  const surveyIndustries = (student.survey?.industries ?? []).map(
-    (i) => SURVEY_INDUSTRY_TO_LISTING[i] ?? i
+  // A survey pick can cover several listing industries, so flatten rather than
+  // map. Unrecognized labels fall back to themselves — a listing industry that
+  // is already spelled the survey's way still matches.
+  const surveyIndustries: string[] = (student.survey?.industries ?? []).flatMap(
+    (i) => SURVEY_INDUSTRY_TO_LISTING[i] ?? [i]
   );
   if (surveyIndustries.includes(listing.industry)) return WEIGHTS.industry;
   const majorIndustries = student.major ? MAJOR_TO_INDUSTRIES[student.major] ?? [] : [];

@@ -1,14 +1,28 @@
 'use client';
 
 import { QUESTION_TYPES, OPTION_QUESTION_TYPES, type QuestionType } from '@/lib/constants';
+import { STANDARD_EEO_QUESTIONS } from '@/lib/eeo';
 import type { ListingQuestionInput } from '@/lib/supabase';
 
-// Builder for the custom screening questions students answer when applying.
+// Builder for the questions students answer when applying.
+//
+// Renders in two modes against the same underlying listing_questions rows:
+//   mode="screening" — ordinary questions the employer asks about the role.
+//   mode="eeo"       — additional equal opportunity questions, shown after a
+//                      read-only list of the standard federal set.
+//
+// The standard set is defined in lib/eeo.ts and is never stored as rows, so an
+// employer can add to it but has nothing to delete. That's structural, not a
+// rule this component has to remember to enforce.
+//
 // Order is the array order — persisted as `position` by replaceListingQuestions.
-export default function ListingQuestionsEditor({ questions, onChange }: {
+export default function ListingQuestionsEditor({ questions, onChange, mode = 'screening' }: {
   questions: ListingQuestionInput[];
   onChange: (questions: ListingQuestionInput[]) => void;
+  mode?: 'screening' | 'eeo';
 }) {
+  const isEeo = mode === 'eeo';
+
   function update(index: number, patch: Partial<ListingQuestionInput>) {
     onChange(questions.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
@@ -37,10 +51,39 @@ export default function ListingQuestionsEditor({ questions, onChange }: {
 
   return (
     <div className="form-group" style={{ marginTop: '8px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
-      <label style={{ fontSize: '1.05rem', fontWeight: 600 }}>Screening Questions</label>
+      <label style={{ fontSize: '1.05rem', fontWeight: 600 }}>
+        {isEeo ? 'Equal Opportunity Questions' : 'Screening Questions'}
+      </label>
       <small style={{ color: 'var(--text-light)', fontSize: '0.78rem', margin: '4px 0 12px', display: 'block' }}>
-        Optional questions students answer when they apply. Answers show up with the application.
+        {isEeo
+          ? 'Every application includes the standard set below. You can add your own questions on top of it — those answers are visible to you, unlike the standard self-identification answers.'
+          : 'Optional questions students answer when they apply. Answers show up with the application.'}
       </small>
+
+      {isEeo && (
+        <div
+          style={{
+            border: '1.5px solid var(--border)',
+            borderRadius: 10,
+            padding: '14px',
+            marginBottom: '12px',
+            background: 'var(--bg-light)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 13 }}>🔒</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Standard questions — always included</span>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {STANDARD_EEO_QUESTIONS.map((q) => (
+              <li key={q.key} style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                {q.prompt}
+                <span style={{ color: 'var(--text-light)' }}> — {q.note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {questions.map((question, i) => {
         const showOptions = OPTION_QUESTION_TYPES.includes(question.question_type);
@@ -171,7 +214,7 @@ export default function ListingQuestionsEditor({ questions, onChange }: {
 
       <button
         type="button"
-        onClick={() => onChange([...questions, { prompt: '', question_type: 'short_text', options: [], required: false, knockout_answer: null }])}
+        onClick={() => onChange([...questions, { prompt: '', question_type: 'short_text', options: [], required: false, knockout_answer: null, is_eeo: isEeo }])}
         style={{
           padding: '9px 16px',
           borderRadius: 8,

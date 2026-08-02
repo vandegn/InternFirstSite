@@ -6,11 +6,13 @@ import {
   supabase,
   getEmployerByUserId,
   getEmployerListings,
+  getEmployerListingCounts,
   getEmployerStats,
   getEmployerApplications,
   getEmployerInterviews,
 } from '@/lib/supabase';
 import Pagination from '@/components/Pagination';
+import Avatar from '@/components/Avatar';
 
 type Listing = {
   id: string;
@@ -83,11 +85,15 @@ export default function EmployerDashboard() {
       setCompanyName(employer.company_name);
       setEmployerId(employer.id);
 
-      const [stats, apps, interviews] = await Promise.all([
+      const [stats, apps, interviews, counts] = await Promise.all([
         getEmployerStats(employer.id),
         getEmployerApplications(employer.id),
         getEmployerInterviews(employer.id),
+        getEmployerListingCounts(employer.id),
       ]);
+      // Counted across all listings — the paginated fetch below only ever
+      // sees one page, so it can't be the source of a headline stat.
+      setActiveCount(counts.active);
       setTotalApplicants(stats.totalApplicants);
       setInterviewCount(stats.interviewing);
       setRecentCandidates(apps.slice(0, 3));
@@ -110,7 +116,6 @@ export default function EmployerDashboard() {
       const result = await getEmployerListings(employerId!, currentPage, PAGE_SIZE);
       setListings(result.data);
       setTotalCount(result.totalCount);
-      setActiveCount(result.data.filter(l => l.status === 'active').length);
       setLoading(false);
     }
     fetchListings();
@@ -178,11 +183,7 @@ export default function EmployerDashboard() {
                   padding: '12px 14px', borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border)', background: 'var(--surface)',
                 }}>
-                  <img
-                    src={iv.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                    alt={iv.student.profile.full_name}
-                    style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                  />
+                  <Avatar src={iv.student.profile.avatar_url} name={iv.student.profile.full_name} size={36} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>
                       {iv.student.profile.full_name}
@@ -314,12 +315,18 @@ export default function EmployerDashboard() {
         ) : (
           <div className="candidate-grid">
             {recentCandidates.map((app: any) => (
-              <Link href="/dashboard/employer/posted-jobs" key={app.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Link
+                href={app.student?.id ? `/dashboard/employer/students/${app.student.id}` : '/dashboard/employer/posted-jobs'}
+                key={app.id}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
                 <div className="candidate-card" style={{ cursor: 'pointer' }}>
-                  <img
-                    src={app.student?.profile?.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                    alt={app.student?.profile?.full_name || 'Applicant'}
+                  <Avatar
+                    src={app.student?.profile?.avatar_url}
+                    name={app.student?.profile?.full_name}
+                    size={56}
                     className="candidate-avatar"
+                    style={{ margin: '0 auto 12px' }}
                   />
                   <h4>{app.student?.profile?.full_name || 'Unknown'}</h4>
                   <p>Applied for: {app.listing?.title || 'Unknown'}</p>

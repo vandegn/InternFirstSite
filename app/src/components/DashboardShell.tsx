@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase, getProfile, getUnreadCount, DASHBOARD_ROUTES } from '@/lib/supabase';
 import NotificationBell from './NotificationBell';
 import FeedbackButton from './FeedbackButton';
+import Avatar from './Avatar';
 
 type NavItem = {
   href: string;
@@ -57,11 +58,6 @@ const EMPLOYER_NAV: NavItem[] = [
     href: '/dashboard/employer/posted-jobs',
     label: 'Posted Jobs',
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
-  },
-  {
-    href: '/dashboard/employer/billing',
-    label: 'Billing',
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
   },
   {
     href: '/dashboard/employer/pipeline',
@@ -197,7 +193,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
           <div className="dash-header-right">
             <NotificationBell />
             <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
-              <img src={profileAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'} alt={profileName || 'Profile'} />
+              <Avatar src={profileAvatar} name={profileName} size={36} />
               {avatarOpen && (
                 <div className="avatar-dropdown">
                   {role !== 'intern_first_admin' && (

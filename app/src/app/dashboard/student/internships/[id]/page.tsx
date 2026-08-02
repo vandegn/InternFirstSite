@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, getStudentResumes, trackListingView, getListingSections, getListingQuestions, type ListingSection, type ListingQuestion } from '@/lib/supabase';
+import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, getStudentResumes, trackListingView, getListingSections, getListingQuestions, getStudentEeo, upsertStudentEeo, saveApplicationEeo, type ListingSection, type ListingQuestion } from '@/lib/supabase';
 import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
 import { ListingCoreSectionsView } from '@/components/ListingCoreSections';
 import ApplicationQuestionsForm, { emptyAnswers, missingRequired, toAnswerInputs, type AnswerState } from '@/components/ApplicationQuestionsForm';
+import EeoConfirmModal from '@/components/EeoConfirmModal';
+import { eeoFromRecord, eeoToData, EMPTY_EEO, type EeoValue } from '@/components/EeoFields';
 
 type Listing = {
   id: string;
@@ -69,6 +71,15 @@ export default function InternshipDetail() {
   const [questions, setQuestions] = useState<ListingQuestion[]>([]);
   const [answers, setAnswers] = useState<AnswerState>({});
   const [showAnswerErrors, setShowAnswerErrors] = useState(false);
+  // Equal opportunity step. Prefilled from the student's saved answers and
+  // confirmed explicitly before the application is created.
+  const [eeo, setEeo] = useState<EeoValue>(EMPTY_EEO);
+  const [showEeoModal, setShowEeoModal] = useState(false);
+
+  // The employer's own EEO questions render inside the confirmation modal;
+  // everything else stays on the main apply form.
+  const eeoQuestions = questions.filter((q) => q.is_eeo);
+  const screeningQuestions = questions.filter((q) => !q.is_eeo);
 
   useEffect(() => {
     async function fetchData() {
@@ -77,7 +88,7 @@ export default function InternshipDetail() {
       setCurrentUserId(user.id);
 
       // Fire-and-forget view tracking on page load
-      trackListingView(id, user.id).catch(() => {});
+      trackListingView(id).catch(() => {});
 
       const [listingData, student, listingSections, listingQuestions] = await Promise.all([
         getListingById(id),
@@ -93,13 +104,15 @@ export default function InternshipDetail() {
       if (listingData) setListing(listingData as Listing);
       if (student) {
         setStudentId(student.id);
-        const [status, studentResumes] = await Promise.all([
+        const [status, studentResumes, savedEeo] = await Promise.all([
           getApplicationStatus(student.id, id),
           getStudentResumes(student.id),
+          getStudentEeo(student.id),
         ]);
         if (status) setApplicationStatus(status);
         setResumes(studentResumes);
         if (studentResumes.length > 0) setSelectedResumeId(studentResumes[0].id);
+        setEeo(eeoFromRecord(savedEeo));
       }
       setLoading(false);
     }
@@ -129,25 +142,56 @@ export default function InternshipDetail() {
     }
   }
 
-  async function handleApply() {
+  // Step one: validate the employer's screening questions, then hand off to
+  // the EEO confirmation step. Nothing is written until that step is confirmed.
+  function handleApply() {
     if (!studentId) return;
 
-    const unanswered = missingRequired(questions, answers);
+    const unanswered = missingRequired(screeningQuestions, answers);
     if (unanswered.length > 0) {
       setShowAnswerErrors(true);
       setError(`Please answer all required questions (${unanswered.length} remaining).`);
       return;
     }
 
+    setError(null);
+    setShowEeoModal(true);
+  }
+
+  // Step two: the student has reviewed and acknowledged their EEO answers.
+  async function handleConfirmedApply() {
+    if (!studentId) return;
+
     setApplying(true);
     setError(null);
     try {
-      await applyToListingWithResume(studentId, id, selectedResumeId, toAnswerInputs(questions, answers));
+      const eeoData = eeoToData(eeo);
+      const application = await applyToListingWithResume(
+        studentId,
+        id,
+        selectedResumeId,
+        // Employer-added EEO questions are ordinary answers — the standard
+        // federal set is the part that stays out of the employer's reach.
+        toAnswerInputs(questions, answers),
+      );
+
+      // Snapshot onto the application first: that record is the one that has to
+      // exist. Refreshing the student's saved defaults is a convenience for
+      // next time and shouldn't sink a submitted application if it fails.
+      await saveApplicationEeo(application.id, eeoData);
+      try {
+        await upsertStudentEeo(studentId, eeoData);
+      } catch {
+        /* keep the application; the defaults just stay as they were */
+      }
+
       setApplicationStatus('applied');
+      setShowEeoModal(false);
       setShowApplyForm(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to apply. Please try again.';
       setError(message);
+      setShowEeoModal(false);
     } finally {
       setApplying(false);
     }
@@ -347,7 +391,7 @@ export default function InternshipDetail() {
 
                 {studentId && (
                   <ApplicationQuestionsForm
-                    questions={questions}
+                    questions={screeningQuestions}
                     answers={answers}
                     onChange={setAnswers}
                     studentId={studentId}
@@ -424,11 +468,8 @@ export default function InternshipDetail() {
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-                    Your standard application info (work authorization, voluntary self-identification)
-                    is on file and will be submitted with this application.{' '}
-                    <a href="/dashboard/student/welcome?from=settings" style={{ color: 'var(--primary)', fontWeight: 500 }}>
-                      Edit
-                    </a>
+                    Next you&apos;ll review the equal opportunity questions, prefilled from your
+                    settings. Your self-identification answers are never visible to employers.
                   </p>
                 </div>
 
@@ -439,7 +480,7 @@ export default function InternshipDetail() {
                     disabled={applying}
                     style={{ padding: '10px 28px', fontSize: '0.95rem' }}
                   >
-                    {applying ? 'Submitting...' : 'Submit Application'}
+                    {applying ? 'Submitting...' : 'Continue'}
                   </button>
                   <button
                     onClick={() => setShowApplyForm(false)}
@@ -453,6 +494,20 @@ export default function InternshipDetail() {
           </div>
         )}
       </div>
+
+      {showEeoModal && studentId && (
+        <EeoConfirmModal
+          value={eeo}
+          onChange={setEeo}
+          employerQuestions={eeoQuestions}
+          answers={answers}
+          onAnswersChange={setAnswers}
+          studentId={studentId}
+          submitting={applying}
+          onCancel={() => setShowEeoModal(false)}
+          onSubmit={handleConfirmedApply}
+        />
+      )}
     </div>
   );
 }

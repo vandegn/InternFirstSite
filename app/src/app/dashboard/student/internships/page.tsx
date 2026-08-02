@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   supabase, getActiveListings, trackListingView, getListingSections,
   getStudentByUserId, getSavedListingIds, saveListing, unsaveListing,
+  getAppliedListingIds,
   type ListingSection,
 } from '@/lib/supabase';
 import { INDUSTRIES, DURATIONS, splitCompensation } from '@/lib/constants';
@@ -54,6 +55,51 @@ function deadlineState(dateStr: string | null): 'expired' | 'soon' | 'normal' | 
 
 const PAGE_SIZE = 20;
 
+// Apply CTA for the detail pane. Rendered in two places, so it lives here to
+// stop the top and bottom buttons drifting apart. Still links through to the
+// listing once applied — that page is where the application status lives.
+function ApplyCta({
+  listingId,
+  applied,
+  showIcon = true,
+}: {
+  listingId: string;
+  applied: boolean;
+  showIcon?: boolean;
+}) {
+  return (
+    <Link
+      href={`/dashboard/student/internships/${listingId}`}
+      aria-label={applied ? 'Applied — view your application' : 'Apply to this internship'}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '11px 28px',
+        borderRadius: '10px',
+        // Transparent border on the un-applied state keeps both variants the
+        // same height, so the button doesn't shift when it flips.
+        border: `1.5px solid ${applied ? 'var(--success-border)' : 'transparent'}`,
+        background: applied ? 'var(--success-bg)' : 'var(--primary)',
+        color: applied ? 'var(--success-ink)' : 'var(--on-primary)',
+        fontWeight: 600,
+        fontSize: '0.92rem',
+        textDecoration: 'none',
+        transition: 'var(--transition)',
+      }}
+    >
+      {showIcon && (
+        applied ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+        )
+      )}
+      {applied ? 'Applied' : 'Apply Now'}
+    </Link>
+  );
+}
+
 export default function BrowseInternships() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +127,7 @@ export default function BrowseInternships() {
     const uid = userIdRef.current;
     if (uid && !viewedListingsRef.current.has(id)) {
       viewedListingsRef.current.add(id);
-      trackListingView(id, uid).catch(() => {});
+      trackListingView(id).catch(() => {});
     }
   };
 
@@ -110,6 +156,9 @@ export default function BrowseInternships() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [savedIdsLoaded, setSavedIdsLoaded] = useState(false);
   const [savedOnly, setSavedOnly] = useState(false);
+  // Listings already applied to, so the Apply CTA reads "Applied" instead of
+  // inviting a second application the DB would reject on its unique constraint.
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -148,18 +197,25 @@ export default function BrowseInternships() {
   }, [debouncedSearch, debouncedLocation, paidFilter, workModeFilter, durationFilter, selectedIndustry, savedOnly]);
 
   // Bookmarks load once; toggling a card updates the set locally afterwards.
+  // Applied listings load alongside them and are read-only here — applying
+  // happens on the listing detail page.
   useEffect(() => {
-    async function fetchSaved() {
+    async function fetchStudentListingState() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const student = await getStudentByUserId(user.id);
       if (student) {
         setStudentId(student.id);
-        setSavedIds(new Set(await getSavedListingIds(student.id)));
+        const [saved, applied] = await Promise.all([
+          getSavedListingIds(student.id),
+          getAppliedListingIds(student.id),
+        ]);
+        setSavedIds(new Set(saved));
+        setAppliedIds(new Set(applied));
       }
       setSavedIdsLoaded(true);
     }
-    fetchSaved();
+    fetchStudentListingState();
   }, []);
 
   useEffect(() => {
@@ -220,7 +276,7 @@ export default function BrowseInternships() {
       const uid = userIdRef.current;
       if (uid && !viewedListingsRef.current.has(firstId)) {
         viewedListingsRef.current.add(firstId);
-        trackListingView(firstId, uid).catch(() => {});
+        trackListingView(firstId).catch(() => {});
       }
     }
   }, [listings, selectedId]);
@@ -637,7 +693,11 @@ export default function BrowseInternships() {
                   position: 'absolute',
                   top: 'calc(100% + 6px)',
                   right: 0,
-                  width: '220px',
+                  // Wide enough for the longest taxonomy label
+                  // ("Pharmaceuticals, Biotechnology & Life Sciences") without
+                  // wrapping every option onto two lines, but capped so it
+                  // can't outgrow a narrow viewport.
+                  width: 'min(320px, calc(100vw - 48px))',
                   background: 'var(--surface)',
                   border: '1.5px solid var(--border)',
                   borderRadius: '10px',
@@ -1114,25 +1174,7 @@ export default function BrowseInternships() {
 
                 {/* Apply / Save */}
                 <div style={{ marginBottom: '24px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Link
-                    href={`/dashboard/student/internships/${selectedListing.id}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '11px 28px',
-                      borderRadius: '10px',
-                      background: 'var(--primary)',
-                      color: 'var(--on-primary)',
-                      fontWeight: 600,
-                      fontSize: '0.92rem',
-                      textDecoration: 'none',
-                      transition: 'var(--transition)',
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-                    Apply Now
-                  </Link>
+                  <ApplyCta listingId={selectedListing.id} applied={appliedIds.has(selectedListing.id)} />
                   <button
                     type="button"
                     onClick={() => toggleSaved(selectedListing.id)}
@@ -1226,24 +1268,7 @@ export default function BrowseInternships() {
                 {/* Bottom apply CTA */}
                 <div style={{ height: '1px', background: 'var(--border)', margin: '0 0 20px' }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Link
-                    href={`/dashboard/student/internships/${selectedListing.id}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '11px 28px',
-                      borderRadius: '10px',
-                      background: 'var(--primary)',
-                      color: 'var(--on-primary)',
-                      fontWeight: 600,
-                      fontSize: '0.92rem',
-                      textDecoration: 'none',
-                      transition: 'var(--transition)',
-                    }}
-                  >
-                    Apply Now
-                  </Link>
+                  <ApplyCta listingId={selectedListing.id} applied={appliedIds.has(selectedListing.id)} showIcon={false} />
                   <Link
                     href={`/dashboard/student/internships/${selectedListing.id}`}
                     style={{

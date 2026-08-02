@@ -16,6 +16,7 @@ import {
   getListingStages,
   type PipelineStage,
 } from '@/lib/supabase';
+import Avatar from '@/components/Avatar';
 import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
 import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
 
@@ -35,6 +36,9 @@ type ListingWithStats = {
   preferred_skills: string[] | null;
   application_deadline: string | null;
   created_at: string;
+  // Set only while status is 'scheduled'.
+  publish_at: string | null;
+  expires_at: string | null;
   applicant_count: number;
   view_count: number;
 };
@@ -70,6 +74,8 @@ const LISTING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   paused: { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' },
   closed: { bg: 'var(--danger-bg-strong)', color: 'var(--danger-fg)' },
   expired: { bg: 'var(--chip-orange-bg)', color: 'var(--chip-orange-ink)' },
+  draft: { bg: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)' },
+  scheduled: { bg: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)' },
 };
 
 // Active listings past their application deadline are invisible to students
@@ -148,19 +154,6 @@ export default function PostedJobsPage() {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      // Returning from PPJ Checkout: verify the session and activate the listing
-      // in case the webhook was missed (safety net). Runs before loading so the
-      // listing shows as active. Idempotent if the webhook already handled it.
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('checkout') === 'success' && params.get('session_id')) {
-        await fetch('/api/billing/verify-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: params.get('session_id') }),
-        }).catch(() => {});
-        window.history.replaceState({}, '', '/dashboard/employer/posted-jobs');
-      }
 
       const employer = await getEmployerByUserId(user.id);
       if (!employer) return;
@@ -272,6 +265,22 @@ export default function PostedJobsPage() {
     }
   }
 
+  // Publish a draft or a scheduled listing right now. expires_at is set here
+  // rather than at save time, so a draft that sat for a month still gets its
+  // full posting window.
+  async function handlePublishNow(listingId: string) {
+    setUpdatingStatus(listingId);
+    try {
+      const expiresAt = new Date(Date.now() + 30 * 86400_000).toISOString();
+      await updateListing(listingId, { status: 'active', publish_at: null, expires_at: expiresAt });
+      setListings(prev => prev.map(l =>
+        l.id === listingId ? { ...l, status: 'active', publish_at: null, expires_at: expiresAt } : l
+      ));
+    } catch { /* silently fail */ } finally {
+      setUpdatingStatus(null);
+    }
+  }
+
   async function handleCloseListing(listingId: string) {
     setUpdatingStatus(listingId);
     try {
@@ -349,7 +358,7 @@ export default function PostedJobsPage() {
             }}>+ New</Link>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
-            {['', 'active', 'expired', 'paused', 'closed'].map(s => (
+            {['', 'active', 'scheduled', 'draft', 'expired', 'paused', 'closed'].map(s => (
               <button
                 key={s}
                 onClick={() => setFilterStatus(s)}
@@ -407,6 +416,18 @@ export default function PostedJobsPage() {
                     <span>{listing.view_count} view{listing.view_count !== 1 ? 's' : ''}</span>
                     <span>{timeAgo(listing.created_at)}</span>
                   </div>
+                  {listing.status === 'scheduled' && listing.publish_at && (
+                    <p style={{ fontSize: '0.72rem', color: 'var(--chip-blue-ink)', margin: '6px 0 0', fontWeight: 500 }}>
+                      Goes live {new Date(listing.publish_at).toLocaleString('en-US', {
+                        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                      })}
+                    </p>
+                  )}
+                  {listing.status === 'draft' && (
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-light)', margin: '6px 0 0' }}>
+                      Not published — students can&apos;t see this yet
+                    </p>
+                  )}
                 </div>
               );
             })
@@ -449,7 +470,24 @@ export default function PostedJobsPage() {
                   fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none', color: 'var(--text)',
                   background: 'var(--surface)',
                 }}>Edit</Link>
-                {selectedListing.status !== 'closed' && (
+                {/* Unpublished listings get one action — publish — instead of
+                    pause/resume, which don't mean anything before going live. */}
+                {(selectedListing.status === 'draft' || selectedListing.status === 'scheduled') && (
+                  <button
+                    onClick={() => handlePublishNow(selectedListing.id)}
+                    disabled={updatingStatus === selectedListing.id}
+                    style={{
+                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none',
+                      fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                      background: 'var(--primary)', color: 'var(--on-primary)',
+                    }}
+                  >
+                    Publish now
+                  </button>
+                )}
+                {selectedListing.status !== 'closed'
+                  && selectedListing.status !== 'draft'
+                  && selectedListing.status !== 'scheduled' && (
                   <button
                     onClick={() => handleToggleStatus(selectedListing.id, selectedListing.status)}
                     disabled={updatingStatus === selectedListing.id}
@@ -565,14 +603,21 @@ export default function PostedJobsPage() {
                         border: '1px solid var(--border)', background: 'var(--bg)',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                          <img
-                            src={app.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                            alt={app.student.profile.full_name}
-                            style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                          />
+                          <Link
+                            href={`/dashboard/employer/students/${app.student.id}`}
+                            aria-label={`View ${app.student.profile.full_name}'s profile`}
+                            style={{ display: 'flex', flexShrink: 0, textDecoration: 'none' }}
+                          >
+                            <Avatar src={app.student.profile.avatar_url} name={app.student.profile.full_name} size={40} />
+                          </Link>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{app.student.profile.full_name}</span>
+                              <Link
+                                href={`/dashboard/employer/students/${app.student.id}`}
+                                style={{ fontWeight: 600, fontSize: '0.9rem', color: 'inherit', textDecoration: 'none' }}
+                              >
+                                {app.student.profile.full_name}
+                              </Link>
                               <span style={{
                                 fontSize: '0.65rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
                                 background: pillBg, color: pillColor,

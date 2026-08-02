@@ -26,12 +26,12 @@ const faqData = [
   {
     question: 'Is InternFirst free for students?',
     answer:
-      'Yes. Students apply, message, schedule interviews, and track outcomes for free. Employers and universities subscribe for posting, ATS, CRM, and analytics features.',
+      'Yes. Students apply, message, schedule interviews, and track outcomes at no cost.',
   },
   {
-    question: 'How do I get a receipt or manage billing?',
+    question: 'How are employers verified?',
     answer:
-      'Receipts are automatically emailed to the billing contact after every successful payment. You can also download past invoices anytime from the Billing section in your account settings.',
+      'Our team reviews every employer account before its listings reach students. Until that review clears, a company cannot see applicants or their information.',
   },
 ];
 

@@ -7,24 +7,24 @@ import Footer from '@/components/Footer';
 
 const faqData = [
   {
-    question: 'What methods of payments are supported?',
+    question: 'How do students apply?',
     answer:
-      'InternFirst supports all major credit and debit cards, including Visa, Mastercard, American Express, and Discover. For universities and enterprise employers, we also support ACH transfers and invoiced billing upon request.',
+      'Everything happens on InternFirst. Students apply in-platform, employers review and respond in-platform, and interviews are scheduled there too. There are no external job links and no off-platform redirects.',
   },
   {
-    question: 'Can I cancel at anytime?',
+    question: 'Do you verify employers?',
     answer:
-      'Yes. You can cancel your subscription at any time through your account settings. Your plan will remain active until the end of your current billing cycle, and you will not be charged again after cancellation.',
+      'Yes. Every employer account is reviewed by our team before its listings become visible to students, and applicant information stays hidden until that review is complete.',
   },
   {
-    question: 'How do I get a receipt for my purchase?',
+    question: 'Who can create a student account?',
     answer:
-      'Receipts are automatically emailed to the billing contact after every successful payment. You can also download past invoices and receipts anytime from the Billing section in your account settings.',
+      'Any student with a valid .edu email address. Verifying every student keeps the applicant pool high-signal for the employers posting roles.',
   },
   {
     question: 'How do I get access after signing up?',
     answer:
-      'After completing your purchase, access is granted immediately. You can find your purchased theme (or plan features) inside your account dashboard under "Purchases" or "Billing." If access does not appear within a few minutes, contact support and we\'ll resolve it promptly.',
+      'Access is granted as soon as you confirm your email address. Students land straight in their dashboard; employers can build listings immediately, which go live once their account is verified.',
   },
 ];
 
@@ -363,7 +363,7 @@ export default function Home() {
                   <circle cx="10" cy="10" r="10" fill="var(--primary)" />
                   <path d="M6 10l3 3 5-5" stroke="var(--on-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Protected Payments System
+                Verified Employers Only
               </li>
             </ul>
             <div className="cta-buttons">

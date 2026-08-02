@@ -11,6 +11,7 @@ import {
   updateApplicationStage,
   type PipelineStage,
 } from '@/lib/supabase';
+import Avatar from '@/components/Avatar';
 
 type Application = {
   id: string;
@@ -164,19 +165,21 @@ function PipelineAllInner() {
                   }}>
                     #{idx + 1}
                   </span>
-                  <img
-                    src={app.student.profile.avatar_url || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                    alt={app.student.profile.full_name}
-                    style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-                      {app.student.profile.full_name}
-                    </p>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-light)' }}>
-                      {app.student.major || 'No major'} · Applied {timeAgo(app.applied_at)}
-                    </p>
-                  </div>
+                  <Link
+                    href={`/dashboard/employer/students/${app.student.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <Avatar src={app.student.profile.avatar_url} name={app.student.profile.full_name} size={40} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 600, fontSize: '0.92rem' }}>
+                        {app.student.profile.full_name}
+                      </p>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-light)' }}>
+                        {app.student.major || 'No major'} · Applied {timeAgo(app.applied_at)}
+                      </p>
+                    </div>
+                  </Link>
                   <select
                     value={app.stage_id ?? ''}
                     onClick={(e) => e.stopPropagation()}

@@ -132,7 +132,7 @@ export default function AboutPage() {
                 <li>Employer engagement insights</li>
                 <li>Skills &amp; major demand trends</li>
                 <li>Exportable reports</li>
-                <li>Subscription-based access</li>
+                <li>Dedicated partnership support</li>
               </ul>
             </div>
 

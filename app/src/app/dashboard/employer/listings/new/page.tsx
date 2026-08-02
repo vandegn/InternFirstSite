@@ -11,18 +11,14 @@ import {
   replaceListingQuestions,
   type ListingSectionInput,
   type ListingQuestionInput,
+  type VerificationStatus,
 } from '@/lib/supabase';
+import VerificationBanner from '@/components/VerificationBanner';
 import {
   INDUSTRIES,
   DURATIONS,
   POSTING_DURATIONS,
-  PPJ_APPLICATION_RANGES,
-  PPA_MATCH_THRESHOLD,
   QUESTION_TYPES,
-  computePpjPriceCents,
-  cpaForIndustry,
-  formatCents,
-  type PricingModel,
 } from '@/lib/constants';
 import ListingCoreSections, {
   ListingCoreSectionsView,
@@ -56,6 +52,15 @@ export default function NewListingPage() {
   const [companyWebsite, setCompanyWebsite] = useState<string | null>(null);
   const [employerId, setEmployerId] = useState<string | null>(null);
 
+  // Posting is gated on human review of the company. The DB policy
+  // "Approved employers can create listings" is the real enforcement; this is
+  // here so an unapproved employer is told up front instead of filling in the
+  // whole form and hitting an opaque RLS rejection on submit.
+  const [verification, setVerification] = useState<VerificationStatus | null>(null);
+  const [verificationNote, setVerificationNote] = useState<string | null>(null);
+  const [employerLoaded, setEmployerLoaded] = useState(false);
+  const canPost = verification === 'approved';
+
   // Core section order + explicit skills. Qualifications leads by default.
   const [sectionOrder, setSectionOrder] = useState<CoreSectionKey[]>(DEFAULT_SECTION_ORDER);
   const [preferredSkills, setPreferredSkills] = useState<string[]>([]);
@@ -64,19 +69,26 @@ export default function NewListingPage() {
   // ── Customization ──
   const [sections, setSections] = useState<ListingSectionInput[]>([]);
   const [questions, setQuestions] = useState<ListingQuestionInput[]>([]);
+
+  // Screening and EEO questions are the same listing_questions rows split by
+  // the is_eeo flag, so they persist in one call. Screening comes first, which
+  // is the order replaceListingQuestions writes into `position`.
+  const screeningQuestions = questions.filter((q) => !q.is_eeo);
+  const eeoQuestions = questions.filter((q) => q.is_eeo);
+  const setScreeningQuestions = (next: ListingQuestionInput[]) => setQuestions([...next, ...eeoQuestions]);
+  const setEeoQuestions = (next: ListingQuestionInput[]) => setQuestions([...screeningQuestions, ...next]);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [accentColor, setAccentColor] = useState<string | null>(null);
   const [roleTags, setRoleTags] = useState<string[]>([]);
 
-  // ── Plan / billing ──
-  const [pricingModel, setPricingModel] = useState<PricingModel>('ppj');
+  // How long the listing stays live. Drives expires_at — not a billing input.
   const [postingDays, setPostingDays] = useState<number>(POSTING_DURATIONS[0].days);
-  const [rangeIndex, setRangeIndex] = useState<number>(2);
-  const [hasCard, setHasCard] = useState(false);
 
-  const cpaCents = cpaForIndustry(industry);
-  const selectedRange = PPJ_APPLICATION_RANGES[rangeIndex];
-  const ppjPrice = computePpjPriceCents(industry, selectedRange);
+  // Publish immediately, save without publishing, or go live at a set time.
+  // A draft is deliberately not visible to students — the DB select policy
+  // enforces that, not just this form.
+  const [publishMode, setPublishMode] = useState<'now' | 'draft' | 'schedule'>('now');
+  const [publishAt, setPublishAt] = useState('');
 
   useEffect(() => {
     async function fetchEmployer() {
@@ -88,32 +100,16 @@ export default function NewListingPage() {
         setCompanyLogo(employer.logo_url || null);
         setCompanyWebsite(employer.website || null);
         setEmployerId(employer.id);
-        // Check card status against Stripe directly (resilient to missed webhooks).
-        try {
-          const res = await fetch('/api/billing/sync', { method: 'POST' });
-          const json = await res.json();
-          setHasCard(!!json.hasCard);
-        } catch {
-          setHasCard(false);
-        }
+        setVerification((employer.verification_status as VerificationStatus) ?? 'pending');
+        setVerificationNote(employer.verification_note ?? null);
       }
+      setEmployerLoaded(true);
     }
     fetchEmployer();
   }, []);
 
-  async function startCardSetup() {
-    const res = await fetch('/api/billing/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ returnTo: '/dashboard/employer/listings/new' }),
-    });
-    const json = await res.json();
-    if (json.url) window.location.href = json.url;
-    else setError(json.error || 'Could not start card setup.');
-  }
-
   // Sections and questions are child rows, so they can only be written once the
-  // listing has an id — for both the PPJ and PPA paths.
+  // listing has an id.
   async function saveCustomization(listingId: string) {
     await replaceListingSections(listingId, sections);
     await replaceListingQuestions(listingId, questions.filter((q) => q.prompt.trim()));
@@ -127,18 +123,32 @@ export default function NewListingPage() {
     try {
       if (!employerId) throw new Error('Employer profile not found.');
 
+      if (!canPost) {
+        setLoading(false);
+        setError('Your company needs to be verified before you can publish a listing.');
+        return;
+      }
+
+      if (publishMode === 'schedule') {
+        const when = new Date(publishAt);
+        if (!publishAt || Number.isNaN(when.getTime())) {
+          setLoading(false);
+          setError('Pick a date and time for the listing to go live.');
+          return;
+        }
+        if (when.getTime() <= Date.now()) {
+          setLoading(false);
+          setError('Scheduled publish time must be in the future.');
+          return;
+        }
+      }
+
       // All three core sections are required — a listing missing any of them
       // reads as half-written to students.
       if (!description.trim() || !requirements.trim() || !keyResponsibilities.trim()) {
         setShowSectionErrors(true);
         setLoading(false);
         setError('Job Overview, Qualifications, and Key Responsibilities are all required.');
-        return;
-      }
-
-      if (pricingModel === 'ppa' && !hasCard) {
-        setLoading(false);
-        await startCardSetup();
         return;
       }
 
@@ -169,42 +179,21 @@ export default function NewListingPage() {
         accent_color: accentColor,
       };
 
-      if (pricingModel === 'ppj') {
-        // Create paused/pending, then send to Stripe Checkout. The webhook
-        // activates the listing and sets expires_at once payment succeeds.
-        const listing = await createListing({
-          ...base,
-          pricing_model: 'ppj',
-          applicant_quota: selectedRange.max,
-          cpa_cents: cpaCents,
-          status: 'paused',
-          payment_status: 'pending',
-        });
-
-        await saveCustomization(listing.id);
-
-        const res = await fetch('/api/billing/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ listingId: listing.id, durationDays: postingDays, rangeIndex }),
-        });
-        const json = await res.json();
-        if (json.url) {
-          window.location.href = json.url;
-          return;
-        }
-        throw new Error(json.error || 'Could not start checkout.');
-      }
-
-      // PPA — active immediately, billed monthly per qualifying application.
-      const expiresAt = new Date(Date.now() + postingDays * 86400_000).toISOString();
+      // Pilot phase: every posting is free. Leaving pricing_model null is the
+      // existing "organic" free tier, so nothing here needs a schema change
+      // when paid plans come back.
+      //
+      // expires_at is only set once the listing is actually live. A scheduled
+      // listing gets its window when publish_due_listings flips it to active,
+      // so scheduling three weeks out doesn't burn three weeks of run time; a
+      // draft has no window at all until it's published.
       const listing = await createListing({
         ...base,
-        pricing_model: 'ppa',
-        cpa_cents: cpaCents,
-        expires_at: expiresAt,
-        status: 'active',
-        payment_status: 'active',
+        ...(publishMode === 'now'
+          ? { status: 'active', expires_at: new Date(Date.now() + postingDays * 86400_000).toISOString() }
+          : publishMode === 'schedule'
+            ? { status: 'scheduled', publish_at: new Date(publishAt).toISOString() }
+            : { status: 'draft' }),
       });
 
       await saveCustomization(listing.id);
@@ -229,6 +218,14 @@ export default function NewListingPage() {
       </div>
 
       {error && <div className="auth-error" style={{ display: 'block', marginBottom: '16px' }}>{error}</div>}
+
+      {employerLoaded && verification && !canPost && (
+        <VerificationBanner
+          status={verification}
+          note={verificationNote}
+          style={{ marginBottom: '20px' }}
+        />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
         {/* ── Left: Form ── */}
@@ -349,7 +346,8 @@ export default function NewListingPage() {
 
             <ListingSectionsEditor sections={sections} onChange={setSections} />
 
-            <ListingQuestionsEditor questions={questions} onChange={setQuestions} />
+            <ListingQuestionsEditor questions={screeningQuestions} onChange={setScreeningQuestions} />
+            <ListingQuestionsEditor questions={eeoQuestions} onChange={setEeoQuestions} mode="eeo" />
 
             <ListingBrandingFields
               employerId={employerId}
@@ -362,37 +360,6 @@ export default function NewListingPage() {
                 if (patch.roleTags !== undefined) setRoleTags(patch.roleTags);
               }}
             />
-
-            {/* ── Posting Plan ── */}
-            <div className="form-group" style={{ marginTop: '8px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
-              <label style={{ fontSize: '1.05rem', fontWeight: 600 }}>Posting Plan</label>
-
-              <div style={{ display: 'flex', gap: 10, marginTop: '8px' }}>
-                {([
-                  { key: 'ppj', title: 'Pay Per Job', sub: 'One fixed upfront fee based on your estimate.' },
-                  { key: 'ppa', title: 'Pay Per Application', sub: 'No upfront cost. Billed monthly per qualifying application.' },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setPricingModel(opt.key)}
-                    style={{
-                      flex: 1,
-                      textAlign: 'left',
-                      padding: '14px',
-                      borderRadius: 10,
-                      border: pricingModel === opt.key ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                      background: pricingModel === opt.key ? 'var(--primary-light)' : 'var(--bg)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: pricingModel === opt.key ? 'var(--primary)' : 'var(--text-primary)' }}>{opt.title}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{opt.sub}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <div className="form-grid">
               <div className="form-group">
@@ -408,69 +375,81 @@ export default function NewListingPage() {
                   ))}
                 </select>
                 <small style={{ color: 'var(--text-light)', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
-                  How long the listing stays live. Doesn&apos;t affect price.
+                  How long the listing stays live{publishMode !== 'now' ? ', counted from when it publishes' : ''}.
                 </small>
               </div>
+            </div>
 
-              {pricingModel === 'ppj' && (
-                <div className="form-group">
-                  <label htmlFor="rangeIndex">Estimated Applications</label>
-                  <select
-                    id="rangeIndex"
-                    value={rangeIndex}
-                    onChange={(e) => setRangeIndex(Number(e.target.value))}
-                    style={{ width: '100%' }}
+            {/* ── When to publish ── */}
+            <div className="form-group" style={{ marginTop: '8px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+              <label style={{ fontSize: '1.05rem', fontWeight: 600 }}>Publishing</label>
+              <div style={{ display: 'flex', gap: 10, marginTop: '10px', flexWrap: 'wrap' }}>
+                {([
+                  { key: 'now', title: 'Publish now', sub: 'Goes live immediately.' },
+                  { key: 'schedule', title: 'Schedule', sub: 'Goes live at a time you pick.' },
+                  { key: 'draft', title: 'Save as draft', sub: 'Only you can see it.' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setPublishMode(opt.key)}
+                    style={{
+                      flex: '1 1 160px',
+                      textAlign: 'left',
+                      padding: '14px',
+                      borderRadius: 10,
+                      border: publishMode === opt.key ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                      background: publishMode === opt.key ? 'var(--primary-light)' : 'var(--bg)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
                   >
-                    {PPJ_APPLICATION_RANGES.map((r, i) => (
-                      <option key={r.label} value={i}>{r.label}</option>
-                    ))}
-                  </select>
+                    <div style={{ fontWeight: 600, color: publishMode === opt.key ? 'var(--primary)' : 'var(--text-primary)' }}>{opt.title}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{opt.sub}</div>
+                  </button>
+                ))}
+              </div>
+
+              {publishMode === 'schedule' && (
+                <div style={{ marginTop: '12px' }}>
+                  <label htmlFor="publishAt">Go live on</label>
+                  <input
+                    type="datetime-local"
+                    id="publishAt"
+                    value={publishAt}
+                    onChange={(e) => setPublishAt(e.target.value)}
+                    style={{ width: '100%' }}
+                  />
                   <small style={{ color: 'var(--text-light)', fontSize: '0.78rem', marginTop: '4px', display: 'block' }}>
-                    Fixed fee based on this estimate — you&apos;re never charged more if applications run higher.
+                    Publishes within 15 minutes of this time. Students can&apos;t see the
+                    listing until then.
                   </small>
                 </div>
               )}
             </div>
 
-            {/* Price / billing summary — both tiers anchored to the industry CPA */}
-            {pricingModel === 'ppj' ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '16px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  {selectedRange.min}–{selectedRange.max} apps · {formatCents(cpaCents)}/app{!industry && ' (blended)'}
-                </span>
-                <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{formatCents(ppjPrice)}</span>
-              </div>
-            ) : (
-              <div style={{ padding: '14px 16px', background: 'var(--bg-light)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                    Per qualifying application{!industry && ' (blended CPA)'}, billed monthly
-                  </span>
-                  <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{formatCents(cpaCents)}</span>
-                </div>
-                <div style={{ marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-light)' }}>
-                  Only applications scoring {PPA_MATCH_THRESHOLD}%+ match are billed. No cap.
-                </div>
-                {!hasCard && (
-                  <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>A card on file is required for monthly billing.</span>
-                    <button type="button" onClick={startCardSetup} style={{ padding: '8px 14px', borderRadius: 8, border: '1.5px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      Add card
-                    </button>
-                  </div>
-                )}
-                {hasCard && (
-                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>✓ Card on file</div>
-                )}
-              </div>
-            )}
-
-            <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', padding: '12px', fontSize: '1rem' }}>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading || !canPost}
+              title={canPost ? undefined : 'Your company must be verified before you can post'}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '1rem',
+                opacity: loading || !canPost ? 0.55 : 1,
+                cursor: loading || !canPost ? 'not-allowed' : 'pointer',
+              }}
+            >
               {loading
-                ? 'Posting...'
-                : pricingModel === 'ppj'
-                  ? `Continue to Payment · ${formatCents(ppjPrice)}`
-                  : 'Post Listing'}
+                ? 'Saving…'
+                : !canPost
+                  ? 'Verification required to post'
+                  : publishMode === 'draft'
+                    ? 'Save Draft'
+                    : publishMode === 'schedule'
+                      ? 'Schedule Listing'
+                      : 'Post Listing'}
             </button>
           </form>
         </div>

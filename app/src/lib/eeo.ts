@@ -41,6 +41,20 @@ export const YES_NO_OPTIONS = [
   { value: 'no', label: 'No' },
 ] as const;
 
+// The fixed set every application asks, in render order. Employers see this
+// list read-only when editing a listing so it's clear what they're adding to.
+// It lives in code rather than as employer-owned rows, which is precisely what
+// makes it un-removable — there is nothing for an employer to delete.
+export const STANDARD_EEO_QUESTIONS = [
+  { key: 'work_auth', prompt: 'Are you legally authorized to work in the United States?', note: 'required' },
+  { key: 'sponsorship', prompt: 'Will you now or in the future require sponsorship for employment visa status?', note: 'required' },
+  { key: 'ethnicity', prompt: 'Are you Hispanic or Latino?', note: 'voluntary, not shown to employers' },
+  { key: 'race', prompt: 'Race (select all that apply)', note: 'voluntary, not shown to employers' },
+  { key: 'gender', prompt: 'How do you identify?', note: 'voluntary, not shown to employers' },
+  { key: 'veteran', prompt: 'Do you identify as a protected veteran?', note: 'voluntary, not shown to employers' },
+  { key: 'disability', prompt: 'Do you have a disability, or have you ever had one? (Form CC-305)', note: 'voluntary, not shown to employers' },
+] as const;
+
 // Standard disclosure shown above the voluntary self-id section.
 export const VOLUNTARY_DISCLOSURE = `Completion of the following questions is voluntary. Your answers will not affect any application or hiring decision and are not visible to employers on InternFirst. The information is collected so you do not need to re-enter it on every application.`;
 

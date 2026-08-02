@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase, getConversations, getMessagesWith, sendMessage, markMessagesAsRead } from '@/lib/supabase';
+import Avatar from '@/components/Avatar';
 
 type Conversation = {
   otherUserId: string;
@@ -189,11 +190,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <img
-                        src={conv.otherAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                        alt={conv.otherName}
-                        style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
-                      />
+                      <Avatar src={conv.otherAvatar} name={conv.otherName} size={40} />
                       {conv.unreadCount > 0 && (
                         <span style={{
                           position: 'absolute', top: -2, right: -2,
@@ -244,10 +241,10 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
               <>
                 {/* Thread header */}
                 <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <img
-                    src={selectedConv?.otherAvatar || 'https://internfirst-demo.com/wp-content/uploads/2026/02/Ellipse-1.png'}
-                    alt={selectedConv?.otherName || ''}
-                    style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
+                  <Avatar
+                    src={selectedConv?.otherAvatar}
+                    name={selectedConv?.otherName ?? pendingRecipient?.name}
+                    size={36}
                   />
                   <div>
                     <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>

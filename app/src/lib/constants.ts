@@ -1,48 +1,99 @@
+// The 25 user-facing industry classifications, from the taxonomy in
+// context/industry-list.pdf. The backbone is NAICS 2022 / ISIC Rev. 5, with
+// deliberate front-end splits where employers and students search differently
+// from how a statistical agency classifies: Healthcare apart from Social
+// Services & Nonprofit, Technology apart from Telecommunications and from
+// Media, and Environmental Services as its own option.
+//
+// Order is the taxonomy's own, which runs roughly primary industry → goods →
+// services rather than alphabetically. Keep it: it groups related choices
+// next to each other in the dropdown.
 export const INDUSTRIES = [
-  'Technology',
-  'Finance',
+  'Agriculture, Forestry, Fishing & Aquaculture',
+  'Energy, Mining & Utilities',
+  'Environmental Services & Sustainability',
+  'Construction & Building Services',
+  'Manufacturing & Industrial Production',
+  'Transportation, Logistics & Warehousing',
+  'Automotive & Mobility',
+  'Wholesale & Distribution',
+  'Retail & E-commerce',
   'Healthcare',
-  'Marketing',
+  'Social Services & Nonprofit',
+  'Pharmaceuticals, Biotechnology & Life Sciences',
+  'Education & Training',
+  'Government & Public Administration',
+  'Aerospace, Defense & Public Safety',
+  'Financial Services & Insurance',
+  'Real Estate, Property & Facilities',
   'Legal',
-  'Engineering',
-  'Education',
-  'Media',
-  'Nonprofit',
-  'Government',
-  'Retail',
-  'Other',
+  'Consulting, Professional & Business Services',
+  'Technology, Software & IT Services',
+  'Telecommunications & Network Infrastructure',
+  'Media, Publishing & Entertainment',
+  'Advertising, Marketing & Public Relations',
+  'Hospitality, Travel & Tourism',
+  'Consumer Services & Personal Services',
 ] as const;
 
 export type Industry = (typeof INDUSTRIES)[number];
+
+// Maps every industry value that existed before the taxonomy swap onto its
+// closest replacement. Read by the data migration that rewrites existing
+// listing rows, and kept here so the mapping is reviewable in one place
+// alongside the list it targets.
+//
+// 'Engineering' and 'Other' have no clean single successor: engineering is a
+// job category in the new taxonomy rather than an industry, and 'Other' was
+// always a catch-all. Both land on Consulting, Professional & Business
+// Services, which is where standalone engineering and multi-industry firms
+// sit, and affected listings are worth an employer revisiting.
+export const LEGACY_INDUSTRY_MAP: Record<string, Industry> = {
+  'Technology': 'Technology, Software & IT Services',
+  'Finance': 'Financial Services & Insurance',
+  'Healthcare': 'Healthcare',
+  'Marketing': 'Advertising, Marketing & Public Relations',
+  'Legal': 'Legal',
+  'Engineering': 'Consulting, Professional & Business Services',
+  'Education': 'Education & Training',
+  'Media': 'Media, Publishing & Entertainment',
+  'Nonprofit': 'Social Services & Nonprofit',
+  'Government': 'Government & Public Administration',
+  'Retail': 'Retail & E-commerce',
+  'Other': 'Consulting, Professional & Business Services',
+};
 
 // The career survey offers a broader, student-facing industry vocabulary than
 // the values employers pick from above ("Finance & Banking" vs. "Finance").
 // Anything a student selects has to be translated before it can be compared to
 // a listing's `industry`, or it silently matches nothing.
 //
-// Picks with no counterpart (e.g. Consulting) map to nothing on purpose.
-export const SURVEY_INDUSTRY_TO_LISTING: Record<string, string> = {
-  'Technology': 'Technology',
-  'Finance & Banking': 'Finance',
-  'Healthcare': 'Healthcare',
-  'Marketing & Advertising': 'Marketing',
-  'Media & Entertainment': 'Media',
-  'Education': 'Education',
-  'Government & Policy': 'Government',
-  'Engineering': 'Engineering',
-  'Nonprofit & Social Impact': 'Nonprofit',
-  'Real Estate': 'Finance',
-  'Energy & Sustainability': 'Engineering',
+// A survey pick can now map to several listing industries — "Engineering"
+// legitimately spans manufacturing, construction and aerospace, and matching
+// against only one of them would hide most of what the student asked for.
+export const SURVEY_INDUSTRY_TO_LISTING: Record<string, Industry[]> = {
+  'Technology': ['Technology, Software & IT Services', 'Telecommunications & Network Infrastructure'],
+  'Finance & Banking': ['Financial Services & Insurance'],
+  'Healthcare': ['Healthcare', 'Pharmaceuticals, Biotechnology & Life Sciences'],
+  'Marketing & Advertising': ['Advertising, Marketing & Public Relations'],
+  'Consulting': ['Consulting, Professional & Business Services'],
+  'Media & Entertainment': ['Media, Publishing & Entertainment'],
+  'Education': ['Education & Training'],
+  'Government & Policy': ['Government & Public Administration', 'Aerospace, Defense & Public Safety'],
+  'Engineering': [
+    'Manufacturing & Industrial Production',
+    'Construction & Building Services',
+    'Aerospace, Defense & Public Safety',
+  ],
+  'Nonprofit & Social Impact': ['Social Services & Nonprofit'],
+  'Real Estate': ['Real Estate, Property & Facilities'],
+  'Energy & Sustainability': ['Energy, Mining & Utilities', 'Environmental Services & Sustainability'],
 };
 
 // Translate survey industry labels to listing industries, dropping unmapped
 // picks and duplicates (two survey picks can share one listing industry).
 export function surveyIndustriesToListingIndustries(industries: string[]): string[] {
-  return [...new Set(
-    industries
-      .map((i) => SURVEY_INDUSTRY_TO_LISTING[i])
-      .filter((i): i is string => Boolean(i)),
-  )];
+  return [...new Set(industries.flatMap((i) => SURVEY_INDUSTRY_TO_LISTING[i] ?? []))];
 }
 
 export const DURATIONS = [
@@ -178,95 +229,20 @@ export function splitCompensation(compensation: string | null | undefined): {
 }
 
 // ============================================
-// Employer payment plans (PPJ / PPA)
+// Posting duration
 // ============================================
-// All prices are in US cents. CPA (Cost-Per-Application) is the per–occupation-
-// group benchmark that anchors both paid tiers; it is the single source of
-// truth here. Tiers, anchored to a listing's `industry`:
-//   PPA (Pay-Per-Application): billed the group CPA for each *completed,
-//        qualifying* application (match >= PPA_MATCH_THRESHOLD), invoiced
-//        monthly, no ceiling.
-//   PPJ (Pay-Per-Job): employer picks an estimated application range; the
-//        median of that range × the group CPA is one fixed upfront fee,
-//        regardless of how many applications actually arrive (no cap).
-// Both sit above the free "organic" tier (a listing with pricing_model = null).
-//
-// Benchmarks are recalibrated monthly via exponential smoothing
-//   Updated CPA = Old CPA + α(Observed CPA − Old CPA), α ∈ [0.1, 0.3]
-// which is an ops/admin process, not performed in this code.
-
-// How long a posting stays live, in days. Does NOT affect price — PPJ pricing is
-// driven solely by the application-range estimate and the group CPA.
+// How long a listing stays live once published, in days. Drives expires_at.
+// Free for the pilot — the paid Pay-Per-Job / Pay-Per-Application tiers and
+// their CPA benchmark tables live on the `payments-parked` branch and are not
+// part of main while there is no billing.
 export const POSTING_DURATIONS = [
   { days: 30, label: '30 days' },
   { days: 60, label: '60 days' },
   { days: 90, label: '90 days' },
 ] as const;
 
-export type PricingModel = 'ppj' | 'ppa';
-
-// Blended weighted-average CPA across all occupation groups (fallback default).
-export const BLENDED_CPA_CENTS = 1609; // $16.09
-
-// Real CPA benchmark table (Appendix D.2): median CPA per occupation group, in
-// cents. This is the verbatim source of truth from the InternFirst pricing doc.
-export const CPA_BY_OCCUPATION_GROUP: Record<string, number> = {
-  'Administration': 1188,                 // $11.88
-  'Business and Consumer Services': 1017, // $10.17
-  'Construction and Skilled Trades': 1737,// $17.37
-  'Consulting': 1297,                     // $12.97
-  'Customer Services': 1167,              // $11.67
-  'Education': 2236,                       // $22.36
-  'Finance': 1487,                         // $14.87
-  'Food Service': 1174,                    // $11.74
-  'Healthcare': 3500,                      // $35.00
-  'Hospitality': 1316,                     // $13.16
-  'Human Resources': 1229,                 // $12.29
-  'Insurance': 1474,                       // $14.74
-  'Legal': 1682,                           // $16.82
-  'Management': 1506,                      // $15.06
-  'Manufacturing': 1426,                   // $14.26
-  'Marketing and Advertising': 1453,       // $14.53
-  'Real Estate': 1298,                     // $12.98
-  'Retail': 1393,                          // $13.93
-  'Sales': 1382,                           // $13.82
-  'Science and Engineering': 2079,         // $20.79
-  'Security': 1202,                        // $12.02
-  'Technology': 1555,                      // $15.55
-  'Transportation': 1151,                  // $11.51
-  'Warehousing and Logistics': 1478,       // $14.78
-};
-
-// Listings are categorized by `industry` (12 values) while pricing is defined
-// per occupation group (24). Each industry maps to the closest group's CPA;
-// the four with no clean match fall back to the blended average ($16.09).
-// TODO: add a true occupation-group field on listings for exact 1:1 parity.
-export const CPA_BY_INDUSTRY: Record<string, number> = {
-  Technology: CPA_BY_OCCUPATION_GROUP['Technology'],                // $15.55
-  Finance: CPA_BY_OCCUPATION_GROUP['Finance'],                      // $14.87
-  Healthcare: CPA_BY_OCCUPATION_GROUP['Healthcare'],                // $35.00
-  Marketing: CPA_BY_OCCUPATION_GROUP['Marketing and Advertising'],  // $14.53
-  Legal: CPA_BY_OCCUPATION_GROUP['Legal'],                          // $16.82
-  Engineering: CPA_BY_OCCUPATION_GROUP['Science and Engineering'],  // $20.79
-  Education: CPA_BY_OCCUPATION_GROUP['Education'],                  // $22.36
-  Retail: CPA_BY_OCCUPATION_GROUP['Retail'],                        // $13.93
-  // No clean occupation-group match → blended weighted average:
-  Media: BLENDED_CPA_CENTS,
-  Nonprofit: BLENDED_CPA_CENTS,
-  Government: BLENDED_CPA_CENTS,
-  Other: BLENDED_CPA_CENTS,
-};
-
-// CPA for a listing's industry, falling back to the blended average.
-export function cpaForIndustry(industry?: string | null): number {
-  return (industry && CPA_BY_INDUSTRY[industry]) || BLENDED_CPA_CENTS;
-}
-
-// PPA only bills applications scoring at or above this match percentage.
-export const PPA_MATCH_THRESHOLD = 70;
-
 // Max number of skills a student can attach to their profile. Enforced in the
-// UI, in addStudentSkill, and by an enforce_skill_limit DB trigger — keep these
+// UI, in addStudentSkill, and by an enforce_skill_limit DB trigger -- keep these
 // in sync (see supabase/migrations/20260731_student_skill_limit.sql).
 export const MAX_STUDENT_SKILLS = 10;
 
@@ -275,151 +251,158 @@ export const MAX_STUDENT_SKILLS = 10;
 // enforced by a check constraint on internship_listings.preferred_skills.
 export const MAX_LISTING_SKILLS = 10;
 
-// PPJ application-range bands the employer picks from. The band's median drives
-// the fixed fee (no cap on actual applications).
-export const PPJ_APPLICATION_RANGES = [
-  { label: '5–10 applications', min: 5, max: 10 },
-  { label: '10–20 applications', min: 10, max: 20 },
-  { label: '20–35 applications', min: 20, max: 35 },
-  { label: '35–50 applications', min: 35, max: 50 },
-  { label: '50–75 applications', min: 50, max: 75 },
-] as const;
+// Shorthand so the ~115 rows below stay scannable — the taxonomy's labels are
+// long by design, and spelling each one out turns this map into a wall.
+const I = {
+  AGRI: 'Agriculture, Forestry, Fishing & Aquaculture',
+  ENERGY: 'Energy, Mining & Utilities',
+  ENV: 'Environmental Services & Sustainability',
+  CONSTR: 'Construction & Building Services',
+  MFG: 'Manufacturing & Industrial Production',
+  LOGISTICS: 'Transportation, Logistics & Warehousing',
+  AUTO: 'Automotive & Mobility',
+  WHOLESALE: 'Wholesale & Distribution',
+  RETAIL: 'Retail & E-commerce',
+  HEALTH: 'Healthcare',
+  NONPROFIT: 'Social Services & Nonprofit',
+  LIFESCI: 'Pharmaceuticals, Biotechnology & Life Sciences',
+  EDU: 'Education & Training',
+  GOV: 'Government & Public Administration',
+  AERO: 'Aerospace, Defense & Public Safety',
+  FIN: 'Financial Services & Insurance',
+  REALESTATE: 'Real Estate, Property & Facilities',
+  LEGAL: 'Legal',
+  CONSULTING: 'Consulting, Professional & Business Services',
+  TECH: 'Technology, Software & IT Services',
+  TELECOM: 'Telecommunications & Network Infrastructure',
+  MEDIA: 'Media, Publishing & Entertainment',
+  MARKETING: 'Advertising, Marketing & Public Relations',
+  HOSPITALITY: 'Hospitality, Travel & Tourism',
+  CONSUMER: 'Consumer Services & Personal Services',
+} satisfies Record<string, Industry>;
 
-export type ApplicationRange = { min: number; max: number };
-
-export function rangeMedian(range: ApplicationRange): number {
-  return (range.min + range.max) / 2;
-}
-
-// Fixed upfront PPJ fee: median of the chosen range × the group CPA.
-export function computePpjPriceCents(industry: string | null | undefined, range: ApplicationRange): number {
-  return Math.round(rangeMedian(range) * cpaForIndustry(industry));
-}
-
-// Format cents as a USD string, e.g. 1487 -> "$14.87".
-export function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
+// A secondary matching signal (see lib/matching.ts) — the career survey's
+// stated industries are the primary one. Each major lists industries in
+// rough order of how commonly its graduates land there.
 export const MAJOR_TO_INDUSTRIES: Record<string, string[]> = {
-  'Accounting': ['Finance', 'Government'],
-  'Actuarial Science': ['Finance', 'Technology'],
-  'Advertising': ['Marketing', 'Media'],
-  'Aerospace Engineering': ['Engineering', 'Technology', 'Government'],
-  'African American Studies': ['Education', 'Nonprofit', 'Government'],
-  'Agricultural Science': ['Healthcare', 'Government'],
-  'American Studies': ['Education', 'Government'],
-  'Animal Science': ['Healthcare'],
-  'Anthropology': ['Education', 'Nonprofit'],
-  'Applied Mathematics': ['Technology', 'Finance', 'Engineering'],
-  'Architecture': ['Engineering'],
-  'Art History': ['Education', 'Media'],
-  'Astronomy': ['Technology', 'Education'],
-  'Biochemistry': ['Healthcare', 'Technology'],
-  'Biomedical Engineering': ['Healthcare', 'Engineering', 'Technology'],
-  'Biology': ['Healthcare', 'Education'],
-  'Business Administration': ['Finance', 'Marketing', 'Retail'],
-  'Chemical Engineering': ['Engineering', 'Healthcare'],
-  'Chemistry': ['Healthcare', 'Engineering'],
-  'Civil Engineering': ['Engineering', 'Government'],
-  'Classics': ['Education'],
-  'Cognitive Science': ['Technology', 'Healthcare'],
-  'Communications': ['Media', 'Marketing'],
-  'Computer Engineering': ['Technology', 'Engineering'],
-  'Computer Science': ['Technology', 'Finance', 'Engineering'],
-  'Construction Management': ['Engineering'],
-  'Criminal Justice': ['Government', 'Legal'],
-  'Cybersecurity': ['Technology', 'Government'],
-  'Dance': ['Media', 'Education'],
-  'Data Science': ['Technology', 'Finance', 'Healthcare'],
-  'Dentistry (Pre-Dental)': ['Healthcare'],
-  'Early Childhood Education': ['Education'],
-  'Earth Science': ['Engineering', 'Government'],
-  'Economics': ['Finance', 'Government'],
-  'Education': ['Education', 'Nonprofit'],
-  'Electrical Engineering': ['Engineering', 'Technology'],
-  'Elementary Education': ['Education'],
-  'English': ['Media', 'Education'],
-  'Entrepreneurship': ['Technology', 'Finance', 'Marketing'],
-  'Environmental Engineering': ['Engineering', 'Government'],
-  'Environmental Science': ['Government', 'Nonprofit'],
-  'Exercise Science': ['Healthcare'],
-  'Fashion Design': ['Retail', 'Media'],
-  'Film Studies': ['Media'],
-  'Finance': ['Finance'],
-  'Food Science': ['Healthcare', 'Retail'],
-  'Foreign Languages': ['Education', 'Government'],
-  'Forensic Science': ['Legal', 'Government'],
-  'Forestry': ['Government', 'Nonprofit'],
-  'Gender Studies': ['Nonprofit', 'Education'],
-  'Genetics': ['Healthcare', 'Technology'],
-  'Geography': ['Government', 'Education'],
-  'Geology': ['Engineering', 'Government'],
-  'Graphic Design': ['Media', 'Marketing', 'Technology'],
-  'Health Administration': ['Healthcare', 'Government'],
-  'Health Sciences': ['Healthcare'],
-  'History': ['Education', 'Government'],
-  'Hospitality Management': ['Retail'],
-  'Human Resources': ['Finance', 'Retail'],
-  'Industrial Engineering': ['Engineering', 'Technology'],
-  'Information Systems': ['Technology', 'Finance'],
-  'Information Technology': ['Technology'],
-  'Interior Design': ['Retail', 'Media'],
-  'International Business': ['Finance', 'Government'],
-  'International Relations': ['Government', 'Nonprofit'],
-  'Journalism': ['Media'],
-  'Kinesiology': ['Healthcare'],
-  'Law (Pre-Law)': ['Legal', 'Government'],
-  'Liberal Arts': ['Education'],
-  'Linguistics': ['Technology', 'Education'],
-  'Management': ['Finance', 'Retail'],
-  'Marine Biology': ['Healthcare', 'Government'],
-  'Marketing': ['Marketing', 'Media', 'Retail'],
-  'Materials Science': ['Engineering', 'Technology'],
-  'Mathematics': ['Technology', 'Finance', 'Education'],
-  'Mechanical Engineering': ['Engineering', 'Technology'],
-  'Media Studies': ['Media', 'Marketing'],
-  'Medicine (Pre-Med)': ['Healthcare'],
-  'Meteorology': ['Government', 'Media'],
-  'Microbiology': ['Healthcare'],
-  'Military Science': ['Government'],
-  'Music': ['Media', 'Education'],
-  'Music Education': ['Education'],
-  'Neuroscience': ['Healthcare', 'Technology'],
-  'Nuclear Engineering': ['Engineering', 'Government'],
-  'Nursing': ['Healthcare'],
-  'Nutrition': ['Healthcare'],
-  'Occupational Therapy': ['Healthcare'],
-  'Oceanography': ['Government'],
-  'Operations Management': ['Finance', 'Retail'],
-  'Optometry (Pre-Optometry)': ['Healthcare'],
-  'Pharmacy (Pre-Pharmacy)': ['Healthcare'],
-  'Philosophy': ['Education', 'Legal'],
-  'Photography': ['Media'],
-  'Physical Therapy': ['Healthcare'],
-  'Physics': ['Technology', 'Engineering'],
-  'Political Science': ['Government', 'Legal', 'Nonprofit'],
-  'Psychology': ['Healthcare', 'Education'],
-  'Public Health': ['Healthcare', 'Government', 'Nonprofit'],
-  'Public Policy': ['Government', 'Nonprofit'],
-  'Public Relations': ['Marketing', 'Media'],
-  'Real Estate': ['Finance'],
-  'Religious Studies': ['Education', 'Nonprofit'],
-  'Social Work': ['Nonprofit', 'Healthcare', 'Government'],
-  'Sociology': ['Nonprofit', 'Education', 'Government'],
-  'Software Engineering': ['Technology'],
-  'Spanish': ['Education'],
-  'Special Education': ['Education'],
-  'Speech Pathology': ['Healthcare', 'Education'],
-  'Sports Management': ['Marketing', 'Media'],
-  'Statistics': ['Technology', 'Finance'],
-  'Studio Art': ['Media'],
-  'Supply Chain Management': ['Retail', 'Finance'],
-  'Theater': ['Media', 'Education'],
-  'Urban Planning': ['Government'],
-  'Veterinary Science (Pre-Vet)': ['Healthcare'],
-  'Web Development': ['Technology'],
-  'Zoology': ['Healthcare', 'Education'],
+  'Accounting': [I.FIN, I.CONSULTING, I.GOV],
+  'Actuarial Science': [I.FIN, I.CONSULTING],
+  'Advertising': [I.MARKETING, I.MEDIA],
+  'Aerospace Engineering': [I.AERO, I.MFG, I.GOV],
+  'African American Studies': [I.NONPROFIT, I.EDU, I.GOV],
+  'Agricultural Science': [I.AGRI, I.GOV, I.ENV],
+  'American Studies': [I.EDU, I.GOV, I.NONPROFIT],
+  'Animal Science': [I.AGRI, I.HEALTH, I.LIFESCI],
+  'Anthropology': [I.EDU, I.NONPROFIT, I.GOV],
+  'Applied Mathematics': [I.TECH, I.FIN, I.CONSULTING],
+  'Architecture': [I.CONSTR, I.REALESTATE, I.CONSULTING],
+  'Art History': [I.MEDIA, I.EDU, I.NONPROFIT],
+  'Astronomy': [I.AERO, I.EDU, I.TECH],
+  'Biochemistry': [I.LIFESCI, I.HEALTH, I.ENV],
+  'Biomedical Engineering': [I.LIFESCI, I.HEALTH, I.MFG],
+  'Biology': [I.LIFESCI, I.HEALTH, I.EDU],
+  'Business Administration': [I.CONSULTING, I.FIN, I.RETAIL],
+  'Chemical Engineering': [I.MFG, I.ENERGY, I.LIFESCI],
+  'Chemistry': [I.LIFESCI, I.MFG, I.ENV],
+  'Civil Engineering': [I.CONSTR, I.GOV, I.CONSULTING],
+  'Classics': [I.EDU, I.MEDIA],
+  'Cognitive Science': [I.TECH, I.HEALTH, I.CONSULTING],
+  'Communications': [I.MARKETING, I.MEDIA, I.CONSULTING],
+  'Computer Engineering': [I.TECH, I.TELECOM, I.MFG],
+  'Computer Science': [I.TECH, I.FIN, I.TELECOM],
+  'Construction Management': [I.CONSTR, I.REALESTATE],
+  'Criminal Justice': [I.AERO, I.GOV, I.LEGAL],
+  'Cybersecurity': [I.TECH, I.AERO, I.FIN],
+  'Dance': [I.MEDIA, I.EDU, I.HOSPITALITY],
+  'Data Science': [I.TECH, I.FIN, I.CONSULTING],
+  'Dentistry (Pre-Dental)': [I.HEALTH],
+  'Early Childhood Education': [I.EDU, I.CONSUMER],
+  'Earth Science': [I.ENERGY, I.ENV, I.GOV],
+  'Economics': [I.FIN, I.CONSULTING, I.GOV],
+  'Education': [I.EDU, I.NONPROFIT],
+  'Electrical Engineering': [I.MFG, I.ENERGY, I.TELECOM],
+  'Elementary Education': [I.EDU],
+  'English': [I.MEDIA, I.EDU, I.MARKETING],
+  'Entrepreneurship': [I.CONSULTING, I.TECH, I.RETAIL],
+  'Environmental Engineering': [I.ENV, I.ENERGY, I.CONSTR],
+  'Environmental Science': [I.ENV, I.GOV, I.NONPROFIT],
+  'Exercise Science': [I.HEALTH, I.CONSUMER],
+  'Fashion Design': [I.RETAIL, I.MEDIA, I.MFG],
+  'Film Studies': [I.MEDIA],
+  'Finance': [I.FIN, I.CONSULTING, I.REALESTATE],
+  'Food Science': [I.AGRI, I.MFG, I.RETAIL],
+  'Foreign Languages': [I.EDU, I.GOV, I.HOSPITALITY],
+  'Forensic Science': [I.AERO, I.GOV, I.LEGAL],
+  'Forestry': [I.AGRI, I.ENV, I.GOV],
+  'Gender Studies': [I.NONPROFIT, I.EDU, I.GOV],
+  'Genetics': [I.LIFESCI, I.HEALTH],
+  'Geography': [I.GOV, I.ENV, I.EDU],
+  'Geology': [I.ENERGY, I.ENV, I.GOV],
+  'Graphic Design': [I.MARKETING, I.MEDIA, I.TECH],
+  'Health Administration': [I.HEALTH, I.CONSULTING, I.GOV],
+  'Health Sciences': [I.HEALTH, I.LIFESCI],
+  'History': [I.EDU, I.GOV, I.NONPROFIT],
+  'Hospitality Management': [I.HOSPITALITY, I.CONSUMER, I.RETAIL],
+  'Human Resources': [I.CONSULTING, I.RETAIL, I.HEALTH],
+  'Industrial Engineering': [I.MFG, I.LOGISTICS, I.CONSULTING],
+  'Information Systems': [I.TECH, I.FIN, I.CONSULTING],
+  'Information Technology': [I.TECH, I.TELECOM],
+  'Interior Design': [I.REALESTATE, I.CONSTR, I.RETAIL],
+  'International Business': [I.FIN, I.WHOLESALE, I.CONSULTING],
+  'International Relations': [I.GOV, I.NONPROFIT, I.CONSULTING],
+  'Journalism': [I.MEDIA, I.MARKETING],
+  'Kinesiology': [I.HEALTH, I.CONSUMER],
+  'Law (Pre-Law)': [I.LEGAL, I.GOV, I.CONSULTING],
+  'Liberal Arts': [I.EDU, I.NONPROFIT, I.MEDIA],
+  'Linguistics': [I.TECH, I.EDU, I.MEDIA],
+  'Management': [I.CONSULTING, I.RETAIL, I.FIN],
+  'Marine Biology': [I.AGRI, I.ENV, I.LIFESCI],
+  'Marketing': [I.MARKETING, I.RETAIL, I.MEDIA],
+  'Materials Science': [I.MFG, I.AERO, I.ENERGY],
+  'Mathematics': [I.TECH, I.FIN, I.EDU],
+  'Mechanical Engineering': [I.MFG, I.AUTO, I.AERO],
+  'Media Studies': [I.MEDIA, I.MARKETING],
+  'Medicine (Pre-Med)': [I.HEALTH, I.LIFESCI],
+  'Meteorology': [I.GOV, I.ENV, I.MEDIA],
+  'Microbiology': [I.LIFESCI, I.HEALTH],
+  'Military Science': [I.AERO, I.GOV],
+  'Music': [I.MEDIA, I.EDU],
+  'Music Education': [I.EDU, I.MEDIA],
+  'Neuroscience': [I.LIFESCI, I.HEALTH, I.TECH],
+  'Nuclear Engineering': [I.ENERGY, I.AERO, I.GOV],
+  'Nursing': [I.HEALTH],
+  'Nutrition': [I.HEALTH, I.CONSUMER, I.AGRI],
+  'Occupational Therapy': [I.HEALTH],
+  'Oceanography': [I.ENV, I.GOV, I.AGRI],
+  'Operations Management': [I.LOGISTICS, I.MFG, I.RETAIL],
+  'Optometry (Pre-Optometry)': [I.HEALTH],
+  'Pharmacy (Pre-Pharmacy)': [I.LIFESCI, I.HEALTH, I.RETAIL],
+  'Philosophy': [I.EDU, I.LEGAL, I.NONPROFIT],
+  'Photography': [I.MEDIA, I.MARKETING],
+  'Physical Therapy': [I.HEALTH],
+  'Physics': [I.AERO, I.TECH, I.ENERGY],
+  'Political Science': [I.GOV, I.LEGAL, I.NONPROFIT],
+  'Psychology': [I.HEALTH, I.NONPROFIT, I.EDU],
+  'Public Health': [I.HEALTH, I.GOV, I.NONPROFIT],
+  'Public Policy': [I.GOV, I.NONPROFIT, I.CONSULTING],
+  'Public Relations': [I.MARKETING, I.MEDIA],
+  'Real Estate': [I.REALESTATE, I.FIN, I.CONSTR],
+  'Religious Studies': [I.NONPROFIT, I.EDU],
+  'Social Work': [I.NONPROFIT, I.HEALTH, I.GOV],
+  'Sociology': [I.NONPROFIT, I.GOV, I.EDU],
+  'Software Engineering': [I.TECH, I.TELECOM],
+  'Spanish': [I.EDU, I.GOV, I.NONPROFIT],
+  'Special Education': [I.EDU, I.NONPROFIT],
+  'Speech Pathology': [I.HEALTH, I.EDU],
+  'Sports Management': [I.MEDIA, I.MARKETING, I.HOSPITALITY],
+  'Statistics': [I.TECH, I.FIN, I.CONSULTING],
+  'Studio Art': [I.MEDIA, I.MARKETING],
+  'Supply Chain Management': [I.LOGISTICS, I.WHOLESALE, I.MFG],
+  'Theater': [I.MEDIA, I.EDU, I.HOSPITALITY],
+  'Urban Planning': [I.GOV, I.REALESTATE, I.CONSTR],
+  'Veterinary Science (Pre-Vet)': [I.HEALTH, I.AGRI],
+  'Web Development': [I.TECH, I.MARKETING],
+  'Zoology': [I.AGRI, I.LIFESCI, I.EDU],
   'Undecided': [],
   'Other': [],
 };

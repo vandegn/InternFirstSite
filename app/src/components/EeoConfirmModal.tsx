@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import EeoFields, { missingRequiredEeo, type EeoValue } from '@/components/EeoFields';
 import ApplicationQuestionsForm, {
   missingRequired,
@@ -24,6 +25,18 @@ import type { ListingQuestion } from '@/lib/supabase';
  *
  * Editing here updates both the student's saved defaults and this
  * application's own immutable snapshot — see saveApplicationEeo.
+ *
+ * Rendered through a portal onto document.body. Inline, its `position: fixed`
+ * resolved against `.page-transition` — that wrapper carries `will-change:
+ * transform`, which makes it a containing block for fixed descendants — so the
+ * overlay was centred on the main content column (offset by the sidebar and the
+ * 64px header, sized to the whole scrollable page) and hung off the viewport.
+ *
+ * It is also a hard modal: no backdrop-click, no Escape, and focus is trapped.
+ * The student is mid-application with unsaved answers on screen, so a stray
+ * click outside must not throw the form away. The "Back" button stays because
+ * this disclosure is legally voluntary — there has to be a way out that isn't
+ * "submit the application".
  */
 export default function EeoConfirmModal({
   value,
@@ -49,6 +62,56 @@ export default function EeoConfirmModal({
   const [acknowledged, setAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Freeze the page behind the overlay so scrolling inside the dialog can't
+  // fall through to the listing underneath.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, []);
+
+  // Move focus off whatever launched the dialog, so the first Tab lands inside.
+  useEffect(() => {
+    cardRef.current?.focus();
+  }, []);
+
+  // Swallow Escape, and keep Tab inside the dialog.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.key !== 'Tab' || !cardRef.current) return;
+
+      const focusable = Array.from(
+        cardRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.offsetParent !== null);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      // The card itself holds focus on open; treat that like "outside" so the
+      // first Tab in either direction is steered into the list.
+      const outside = active === cardRef.current || !cardRef.current.contains(active);
+
+      if (e.shiftKey && (active === first || outside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || outside)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, []);
 
   function handleSubmit() {
     const missingEeo = missingRequiredEeo(value);
@@ -74,12 +137,15 @@ export default function EeoConfirmModal({
     onSubmit();
   }
 
-  return (
+  // Only ever mounted from a click, so `document` is always there — the guard
+  // is just so a render on the server can't throw.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Equal opportunity questions"
-      onClick={submitting ? undefined : onCancel}
       style={{
         position: 'fixed',
         inset: 0,
@@ -87,20 +153,27 @@ export default function EeoConfirmModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 100,
+        // Above .dash-header, which sits at z-index 100.
+        zIndex: 1000,
         padding: '20px',
+        overscrollBehavior: 'contain',
       }}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
+        ref={cardRef}
+        tabIndex={-1}
         style={{
+          outline: 'none',
           background: 'var(--surface)',
           borderRadius: 'var(--radius, 12px)',
           width: 'min(680px, 100%)',
-          maxHeight: '88vh',
+          // dvh, not vh: on mobile the browser chrome is excluded from vh only
+          // once it retracts, which pushed the footer buttons below the fold.
+          maxHeight: 'calc(100dvh - 40px)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(15,23,42,0.28)',
         }}
       >
         <div style={{ padding: '22px 24px 14px', borderBottom: '1px solid var(--border)' }}>
@@ -206,6 +279,7 @@ export default function EeoConfirmModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

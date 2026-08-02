@@ -7,14 +7,19 @@
 -- script, NOT a migration: it is destructive, not idempotent, and must never
 -- be moved into supabase/migrations/.
 --
--- TAKE A BACKUP FIRST. Supabase -> Database -> Backups, or a pg_dump. There
--- is no undo. This deletes ~21,000 rows including 21 real student signups.
+-- Run once, on 2026-08-02, ahead of launch. Kept in the repo as the record of
+-- what was removed and why, not as something to run again.
+--
+-- There is no undo. Every account on the platform at the time of writing was
+-- a test account, confirmed by the team, so nothing here was backed up. That
+-- will not be true the next time — if this script is ever reached for again,
+-- take a pg_dump first.
 --
 -- WHAT GOES
 --   - All 223 internship_listings
 --   - All ~21,124 applications, plus pipeline stages, views, sections,
 --     questions, saved listings, interviews (all by cascade)
---   - All 121 student accounts, including the 21 real signups
+--   - All 121 student accounts
 --   - All 38 employer accounts
 --   - All 18 messages
 --

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PasswordInput from '@/components/PasswordInput';
+import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
+import { validatePassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
 import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordPage() {
@@ -34,8 +36,9 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -127,12 +130,13 @@ export default function ResetPasswordPage() {
                 <label htmlFor="password">New Password</label>
                 <PasswordInput
                   id="password"
-                  placeholder="At least 6 characters"
+                  placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
                 />
+                <PasswordStrengthMeter password={password} />
               </div>
               <div className="form-group" style={{ marginTop: '16px' }}>
                 <label htmlFor="confirm">Confirm Password</label>

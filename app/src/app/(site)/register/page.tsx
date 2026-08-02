@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
 import PasswordInput from '@/components/PasswordInput';
+import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
 import { supabase, isEduEmail, EMPLOYER_EMAIL_ERROR } from '@/lib/supabase';
 import { isFreeEmailProvider, normalizeDomain } from '@/lib/domain-signals';
+import { validatePassword } from '@/lib/password';
 import { MAJORS } from '@/lib/constants';
 
 type Role = 'student' | 'employer';
@@ -50,6 +52,12 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match!');
@@ -173,10 +181,16 @@ export default function RegisterPage() {
             <div className="form-group">
               <label htmlFor="password">Password</label>
               <PasswordInput id="password" placeholder="Create a password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
+              <PasswordStrengthMeter password={password} />
             </div>
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirm Password</label>
               <PasswordInput id="confirmPassword" placeholder="Confirm your password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+              {confirmPassword && confirmPassword !== password && (
+                <p style={{ marginTop: '6px', fontSize: '0.72rem', color: 'var(--danger-accent)' }}>
+                  Passwords do not match.
+                </p>
+              )}
             </div>
 
             {/* Student fields */}

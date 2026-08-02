@@ -50,7 +50,11 @@ npm run lint     # ESLint
 
 **Auth flow:** Supabase Auth (email/password + Google OAuth) → email verification required (Supabase built-in, skipped for OAuth) → `/auth/callback` server route creates profile + role data from `user_metadata` → role-based redirect to dashboard. Unverified users are redirected to `/verify-email`. `.edu` email required for students. Key auth helpers are in `src/lib/supabase.ts` (`getProfile`, `createProfileAndRoleData`, `isEduEmail`).
 
-**Database:** Supabase PostgreSQL with RLS enabled on all tables. Core tables: `profiles`, `students`, `employers`, `internship_listings`, `applications`, `messages`, `student_skills`, `student_experiences`, `student_organizations`, `student_resumes`, `listing_views`, `career_survey_responses`. Schema is in `supabase/schema.sql`.
+**Database:** Supabase PostgreSQL with RLS enabled on all tables. Core tables: `profiles`, `students`, `employers`, `internship_listings`, `applications`, `messages`, `student_skills`, `student_experiences`, `student_organizations`, `student_resumes`, `listing_views`, `saved_listings`, `career_survey_responses`. Schema is in `supabase/schema.sql`.
+
+**Student profile split:** `student_experiences` is professional only (`internship`, `work`, `project`). Everything campus-side — Greek life, clubs, campus involvement — lives in `student_organizations`, which has an `is_current` flag so members don't have to invent an end date. Work experience is edited on `/dashboard/student/profile`, never in settings.
+
+**Listing sections:** the three core sections (Job Overview, Qualifications, Key Responsibilities) are all required, and their render order is stored in `internship_listings.section_order` (Qualifications first by default). `components/ListingCoreSections.tsx` owns both the editor and the read-only renderer — use `ListingCoreSectionsView` anywhere a listing is displayed so the employer preview can't drift from the real page.
 
 **Styling:** Global CSS variables in `globals.css` (primary color `#7B61FF`), Tailwind CSS utilities, and custom component classes (`.btn-*`, `.card-*`, `.stat-card`, `.dash-*`, `.listing-card`, `.avatar-dropdown`). Font: DM Sans.
 
@@ -87,7 +91,9 @@ All applications are in-platform: student clicks "Apply Now" → creates row in 
 
 The student dashboard shows a banner prompting students to complete a 5-step career goals survey (industries, work environment, duration, skills, career goals). Answers are stored in `career_survey_responses` (one row per student, upserted on retake). The banner hides when `completed_at` exists. Students can retake the survey from the "Career Preferences" section on the settings page, which pre-fills the modal with existing answers.
 
-The `industries` column (`text[]`) is designed to eventually replace `MAJOR_TO_INDUSTRIES` in `getRecommendedListings` for more accurate internship matching. See `docs/superpowers/specs/2026-03-28-career-survey-storage-design.md` for full design.
+"Recommended for You" on the student dashboard is driven by the survey's `industries` column — not by `MAJOR_TO_INDUSTRIES`, and not hardcoded. Survey labels use a broader vocabulary than listing industries ("Finance & Banking" vs. "Finance"), so they must be translated through `surveyIndustriesToListingIndustries` in `constants.ts` before being compared to a listing. `MAJOR_TO_INDUSTRIES` remains a secondary signal inside `lib/matching.ts`. See `docs/superpowers/specs/2026-03-28-career-survey-storage-design.md` for full design.
+
+Work environment and internship length are **ranked multi-selects** (`work_environments`, `preferred_durations` — ordered arrays, strongest first). The legacy scalar columns are kept in sync with element 1 by a DB trigger. Match scoring discounts each successive pick by 15% (floored at 0.4), so breadth doesn't inflate a score.
 
 **Important:** This is the platform-owned career goals survey. It is separate from the university survey builder (a future feature where universities create custom surveys with targeting, scheduling, and analytics). The two systems are intentionally decoupled.
 
@@ -109,6 +115,7 @@ The `industries` column (`text[]`) is designed to eventually replace `MAJOR_TO_I
 - **Resumes:** `uploadResume`, `getStudentResumes`, `deleteResume`
 - **Listings:** `createListing`, `updateListing`, `getActiveListings`, `getListingById`, `getRecommendedListings`, `getListingViewCounts`, `trackListingView`
 - **Applications:** `applyToListing`, `applyToListingWithResume`, `getApplicationStatus`
+- **Saved listings (bookmarks):** `getSavedListingIds`, `saveListing`, `unsaveListing` — private to the student; saving never creates an application
 - **Career Survey:** `getCareerSurvey`, `upsertCareerSurvey`
 - **Messaging:** `getConversations`, `getMessagesWith`, `sendMessage`, `markMessagesAsRead`, `getUnreadCount`
 - **Constants** (`src/lib/constants.ts`): `INDUSTRIES`, `MAJORS`, `MAJOR_TO_INDUSTRIES`, `SKILLS`
@@ -126,4 +133,3 @@ The `industries` column (`text[]`) is designed to eventually replace `MAJOR_TO_I
 See `docs/ROADMAP.md` for the spec alignment roadmap and deferred items. See `docs/UNIVERSITY_PORTAL_ARCHIVE.md` for documentation of the removed university portal (halted per leadership decision 2026-03-27). Key items:
 - Supabase Storage bucket for image uploads needs setup (`images` bucket, public)
 - Employer model is 1:1 (one account = one company); a `companies` table is planned
-- Career survey `industries` column is ready to power recommendations but `getRecommendedListings` still uses `MAJOR_TO_INDUSTRIES` — wiring is a future task

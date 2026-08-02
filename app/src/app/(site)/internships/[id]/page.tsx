@@ -6,9 +6,9 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import TestPostingBadge from '@/components/TestPostingBadge';
 import { supabase, getListingById, getProfile, getListingSections, type ListingSection } from '@/lib/supabase';
 import { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
+import { normalizeSectionOrder, CORE_SECTIONS } from '@/components/ListingCoreSections';
 
 type Listing = {
   id: string;
@@ -23,6 +23,8 @@ type Listing = {
   created_at: string;
   application_deadline: string | null;
   key_responsibilities: string | null;
+  section_order: string[] | null;
+  preferred_skills: string[] | null;
   duration: string | null;
   role_tags: string[] | null;
   banner_url: string | null;
@@ -186,7 +188,6 @@ export default function PublicListingDetailPage() {
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ marginBottom: 10 }}><TestPostingBadge /></div>
                 <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--dark)', marginBottom: 6 }}>
                   {listing.title}
                 </h1>
@@ -229,25 +230,30 @@ export default function PublicListingDetailPage() {
             </div>
           </div>
 
-          {/* Body sections */}
-          <Section title="Job Overview">
-            <div className="markdown-content">
-              <ReactMarkdown>{listing.description}</ReactMarkdown>
-            </div>
-          </Section>
+          {/* Body sections, in the order the employer arranged them. This page
+              wraps each one in its own card, so it maps the order itself
+              rather than using the shared ListingCoreSectionsView. */}
+          {normalizeSectionOrder(listing.section_order).map((key) => {
+            const body = listing[key];
+            if (!body) return null;
+            return (
+              <Section key={key} title={CORE_SECTIONS[key].label}>
+                <div className="markdown-content">
+                  <ReactMarkdown>{body}</ReactMarkdown>
+                </div>
+              </Section>
+            );
+          })}
 
-          {listing.key_responsibilities && (
-            <Section title="Key Responsibilities">
-              <div className="markdown-content">
-                <ReactMarkdown>{listing.key_responsibilities}</ReactMarkdown>
-              </div>
-            </Section>
-          )}
-
-          {listing.requirements && (
-            <Section title="Qualifications">
-              <div className="markdown-content">
-                <ReactMarkdown>{listing.requirements}</ReactMarkdown>
+          {listing.preferred_skills && listing.preferred_skills.length > 0 && (
+            <Section title="Preferred Skills">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {listing.preferred_skills.map((skill) => (
+                  <span key={skill} style={{
+                    padding: '4px 12px', borderRadius: 6, fontSize: '0.8rem',
+                    background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500,
+                  }}>{skill}</span>
+                ))}
               </div>
             </Section>
           )}

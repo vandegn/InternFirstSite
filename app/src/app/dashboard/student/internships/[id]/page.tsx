@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, sendMessage, getStudentResumes, trackListingView, getListingSections, getListingQuestions, type ListingSection, type ListingQuestion } from '@/lib/supabase';
-import TestPostingBadge from '@/components/TestPostingBadge';
-import ReactMarkdown from 'react-markdown';
+import { supabase, getListingById, getStudentByUserId, applyToListingWithResume, getApplicationStatus, getEmployerUserIdByListingId, getStudentResumes, trackListingView, getListingSections, getListingQuestions, type ListingSection, type ListingQuestion } from '@/lib/supabase';
 import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
+import { ListingCoreSectionsView } from '@/components/ListingCoreSections';
 import ApplicationQuestionsForm, { emptyAnswers, missingRequired, toAnswerInputs, type AnswerState } from '@/components/ApplicationQuestionsForm';
 
 type Listing = {
@@ -20,6 +19,8 @@ type Listing = {
   compensation: string | null;
   requirements: string | null;
   key_responsibilities: string | null;
+  section_order: string[] | null;
+  preferred_skills: string[] | null;
   industry: string;
   status: string;
   created_at: string;
@@ -105,17 +106,25 @@ export default function InternshipDetail() {
     fetchData();
   }, [id]);
 
+  // Opens the inbox with the employer selected and an intro line already in
+  // the composer. Nothing is sent until the student presses Send — the button
+  // used to fire off a canned message on click, which meant employers received
+  // identical form-letter openers nobody had chosen to write.
   async function handleMessageEmployer() {
     if (!currentUserId) return;
     setMessageSending(true);
     try {
       const employerUserId = await getEmployerUserIdByListingId(id);
       if (!employerUserId) throw new Error('Employer not found');
-      // Send an intro message so the conversation appears in inbox
-      await sendMessage(currentUserId, employerUserId, `Hi! I'm interested in the "${listing?.title}" position.`);
-      router.push('/dashboard/student/inbox');
+      const draft = `Hi! I'm interested in the "${listing?.title}" position.`;
+      const params = new URLSearchParams({
+        to: employerUserId,
+        name: listing?.employers?.company_name ?? 'Employer',
+        draft,
+      });
+      router.push(`/dashboard/student/inbox?${params.toString()}`);
     } catch {
-      setError('Failed to start conversation.');
+      setError('Failed to open the conversation.');
       setMessageSending(false);
     }
   }
@@ -189,7 +198,6 @@ export default function InternshipDetail() {
             </div>
           )}
           <div>
-            <div style={{ marginBottom: '8px' }}><TestPostingBadge /></div>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{listing.title}</h2>
             <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0' }}>{listing.employers?.company_name}</p>
           </div>
@@ -248,25 +256,20 @@ export default function InternshipDetail() {
 
         <div className="sidebar-divider" style={{ margin: '24px 0' }}></div>
 
-        {/* Qualifications */}
-        {listing.requirements && (
-          <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Qualifications</h3>
-            <div className="markdown-content"><ReactMarkdown>{listing.requirements}</ReactMarkdown></div>
-          </div>
-        )}
+        {/* Core sections, in the order the employer arranged them */}
+        <ListingCoreSectionsView listing={listing} />
 
-        {/* Job Overview */}
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Job Overview</h3>
-          <div className="markdown-content"><ReactMarkdown>{listing.description}</ReactMarkdown></div>
-        </div>
-
-        {/* Key Responsibilities */}
-        {listing.key_responsibilities && (
+        {listing.preferred_skills && listing.preferred_skills.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Key Responsibilities</h3>
-            <div className="markdown-content"><ReactMarkdown>{listing.key_responsibilities || ''}</ReactMarkdown></div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px' }}>Preferred Skills</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {listing.preferred_skills.map((skill) => (
+                <span key={skill} style={{
+                  padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem',
+                  background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500,
+                }}>{skill}</span>
+              ))}
+            </div>
           </div>
         )}
 

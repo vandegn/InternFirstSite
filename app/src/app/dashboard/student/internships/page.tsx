@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { supabase, getActiveListings, trackListingView, getListingSections, type ListingSection } from '@/lib/supabase';
-import { INDUSTRIES, DURATIONS } from '@/lib/constants';
+import {
+  supabase, getActiveListings, trackListingView, getListingSections,
+  getStudentByUserId, getSavedListingIds, saveListing, unsaveListing,
+  type ListingSection,
+} from '@/lib/supabase';
+import { INDUSTRIES, DURATIONS, splitCompensation } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
-import TestPostingBadge from '@/components/TestPostingBadge';
-import ReactMarkdown from 'react-markdown';
 import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
+import { ListingCoreSectionsView } from '@/components/ListingCoreSections';
 
 type Listing = {
   id: string;
@@ -22,6 +25,8 @@ type Listing = {
   created_at: string;
   application_deadline: string | null;
   key_responsibilities: string | null;
+  section_order: string[] | null;
+  preferred_skills: string[] | null;
   duration: string | null;
   role_tags: string[] | null;
   banner_url: string | null;
@@ -98,6 +103,14 @@ export default function BrowseInternships() {
   const [durationOpen, setDurationOpen] = useState(false);
   const durationRef = useRef<HTMLDivElement>(null);
 
+  // Saved (bookmarked) listings. Held as a Set for O(1) lookups while
+  // rendering every card; savedIdsLoaded gates the first fetch so the
+  // "Saved" filter doesn't briefly show an empty list.
+  const [studentId, setStudentId] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savedIdsLoaded, setSavedIdsLoaded] = useState(false);
+  const [savedOnly, setSavedOnly] = useState(false);
+
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   // Debounce search and location to avoid spamming the API on every keystroke
@@ -132,10 +145,28 @@ export default function BrowseInternships() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedId(null);
-  }, [debouncedSearch, debouncedLocation, paidFilter, workModeFilter, durationFilter, selectedIndustry]);
+  }, [debouncedSearch, debouncedLocation, paidFilter, workModeFilter, durationFilter, selectedIndustry, savedOnly]);
+
+  // Bookmarks load once; toggling a card updates the set locally afterwards.
+  useEffect(() => {
+    async function fetchSaved() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const student = await getStudentByUserId(user.id);
+      if (student) {
+        setStudentId(student.id);
+        setSavedIds(new Set(await getSavedListingIds(student.id)));
+      }
+      setSavedIdsLoaded(true);
+    }
+    fetchSaved();
+  }, []);
 
   useEffect(() => {
     async function fetchListings() {
+      // Filtering by saved needs the bookmark set first, or the query would
+      // run with an empty allow-list and render "no results" for a beat.
+      if (savedOnly && !savedIdsLoaded) return;
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -147,13 +178,38 @@ export default function BrowseInternships() {
         paid: paidFilter,
         mode: workModeFilter,
         duration: durationFilter || undefined,
+        onlyIds: savedOnly ? Array.from(savedIds) : undefined,
       });
       setListings(result.data as Listing[]);
       setTotalCount(result.totalCount);
       setLoading(false);
     }
     fetchListings();
-  }, [currentPage, selectedIndustry, debouncedSearch, debouncedLocation, paidFilter, workModeFilter, durationFilter]);
+    // savedIds is intentionally not a dependency: un-saving a listing while
+    // the Saved filter is on shouldn't yank the card out from under the click.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, selectedIndustry, debouncedSearch, debouncedLocation, paidFilter, workModeFilter, durationFilter, savedOnly, savedIdsLoaded]);
+
+  async function toggleSaved(listingId: string) {
+    if (!studentId) return;
+    const wasSaved = savedIds.has(listingId);
+    // Optimistic — a bookmark toggle should feel instant.
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (wasSaved) next.delete(listingId); else next.add(listingId);
+      return next;
+    });
+    try {
+      if (wasSaved) await unsaveListing(studentId, listingId);
+      else await saveListing(studentId, listingId);
+    } catch {
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        if (wasSaved) next.add(listingId); else next.delete(listingId);
+        return next;
+      });
+    }
+  }
 
   // Auto-select first listing when listings change
   useEffect(() => {
@@ -249,6 +305,42 @@ export default function BrowseInternships() {
           gap: '8px',
           flexShrink: 0,
         }}>
+          {/* All / Saved toggle — every other filter still applies on top */}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {([
+              { value: false, label: 'All jobs' },
+              { value: true, label: `Saved${savedIds.size > 0 ? ` (${savedIds.size})` : ''}` },
+            ] as const).map((opt) => {
+              const active = savedOnly === opt.value;
+              return (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  onClick={() => setSavedOnly(opt.value)}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: active ? 600 : 500,
+                    cursor: 'pointer',
+                    border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                    background: active ? 'var(--primary-light)' : 'var(--bg)',
+                    color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                  }}
+                >
+                  {opt.value && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                  )}
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Search input */}
           <div style={{ position: 'relative' }}>
             <svg
@@ -729,8 +821,14 @@ export default function BrowseInternships() {
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '12px', opacity: 0.5 }}>
                 <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z" />
               </svg>
-              <p style={{ fontSize: '1rem', fontWeight: 500 }}>No internships found</p>
-              <p style={{ fontSize: '0.85rem', marginTop: '6px' }}>Try adjusting your search or filters.</p>
+              <p style={{ fontSize: '1rem', fontWeight: 500 }}>
+                {savedOnly && savedIds.size === 0 ? 'No saved jobs yet' : 'No internships found'}
+              </p>
+              <p style={{ fontSize: '0.85rem', marginTop: '6px' }}>
+                {savedOnly && savedIds.size === 0
+                  ? 'Tap the bookmark on any job to save it here — no application needed.'
+                  : 'Try adjusting your search or filters.'}
+              </p>
             </div>
           ) : (
             listings.map((listing) => (
@@ -790,17 +888,36 @@ export default function BrowseInternships() {
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 6px' }}>
                       {listing.employers?.company_name}
                     </p>
-                    <div style={{ marginBottom: '6px' }}><TestPostingBadge compact /></div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                         {listing.is_remote ? 'Remote' : listing.is_hybrid ? `Hybrid${listing.location ? ` · ${listing.location}` : ''}` : listing.location || 'Not specified'}
                       </span>
-                      {listing.compensation && (
-                        <span style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 500 }}>
-                          {listing.compensation}
-                        </span>
-                      )}
+                      {(() => {
+                        // Only the figure fits here; the employer's note lives
+                        // on the detail pane behind a "more details" hint.
+                        const { summary, note } = splitCompensation(listing.compensation);
+                        if (!summary) return null;
+                        return (
+                          <>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 500 }}>
+                              {summary}
+                            </span>
+                            {note && (
+                              <span
+                                title="This listing has extra compensation details — open it to read them"
+                                style={{
+                                  fontSize: '0.7rem', color: 'var(--text-secondary)',
+                                  display: 'inline-flex', alignItems: 'center', gap: '3px',
+                                }}
+                              >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                more details
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                       {(() => {
                         const state = deadlineState(listing.application_deadline);
                         if (state !== 'soon' && state !== 'expired') return null;
@@ -819,9 +936,29 @@ export default function BrowseInternships() {
                       })()}
                     </div>
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '2px' }}>
-                    {timeAgo(listing.created_at)}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                      {timeAgo(listing.created_at)}
+                    </span>
+                    <button
+                      type="button"
+                      // Stop the click from also selecting the card.
+                      onClick={(e) => { e.stopPropagation(); toggleSaved(listing.id); }}
+                      disabled={!studentId}
+                      aria-pressed={savedIds.has(listing.id)}
+                      aria-label={savedIds.has(listing.id) ? 'Remove bookmark' : 'Save this job'}
+                      title={savedIds.has(listing.id) ? 'Saved — click to remove' : 'Save for later'}
+                      style={{
+                        background: 'none', border: 'none', padding: '2px',
+                        cursor: studentId ? 'pointer' : 'default', lineHeight: 0,
+                        color: savedIds.has(listing.id) ? 'var(--primary)' : 'var(--text-light)',
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill={savedIds.has(listing.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             )))}
@@ -878,7 +1015,6 @@ export default function BrowseInternships() {
                     </div>
                   )}
                   <div style={{ flex: 1 }}>
-                    <div style={{ marginBottom: '8px' }}><TestPostingBadge /></div>
                     <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 4px' }}>
                       {selectedListing.title}
                     </h2>
@@ -976,8 +1112,8 @@ export default function BrowseInternships() {
 
                 <RoleTagPills tags={selectedListing.role_tags} />
 
-                {/* Apply button */}
-                <div style={{ marginBottom: '24px' }}>
+                {/* Apply / Save */}
+                <div style={{ marginBottom: '24px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <Link
                     href={`/dashboard/student/internships/${selectedListing.id}`}
                     style={{
@@ -997,41 +1133,49 @@ export default function BrowseInternships() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
                     Apply Now
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => toggleSaved(selectedListing.id)}
+                    disabled={!studentId}
+                    aria-pressed={savedIds.has(selectedListing.id)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '8px',
+                      padding: '11px 20px', borderRadius: '10px',
+                      border: `1.5px solid ${savedIds.has(selectedListing.id) ? 'var(--primary)' : 'var(--border)'}`,
+                      background: savedIds.has(selectedListing.id) ? 'var(--primary-light)' : 'transparent',
+                      color: savedIds.has(selectedListing.id) ? 'var(--primary)' : 'var(--text-secondary)',
+                      fontWeight: 600, fontSize: '0.92rem',
+                      cursor: studentId ? 'pointer' : 'default',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill={savedIds.has(selectedListing.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    {savedIds.has(selectedListing.id) ? 'Saved' : 'Save'}
+                  </button>
                 </div>
 
                 {/* Divider */}
                 <div style={{ height: '1px', background: 'var(--border)', margin: '0 0 24px' }} />
 
-                {/* Qualifications */}
-                {selectedListing.requirements && (
+                {/* Core sections, in the order the employer arranged them */}
+                <ListingCoreSectionsView
+                  listing={selectedListing}
+                  headingStyle={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}
+                />
+
+                {selectedListing.preferred_skills && selectedListing.preferred_skills.length > 0 && (
                   <div style={{ marginBottom: '24px' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}>
-                      Qualifications
+                      Preferred Skills
                     </h3>
-                    <div className="markdown-content">
-                      <ReactMarkdown>{selectedListing.requirements}</ReactMarkdown>
-                    </div>
-                  </div>
-                )}
-
-                {/* Job Overview */}
-                <div style={{ marginBottom: '24px' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}>
-                    Job Overview
-                  </h3>
-                  <div className="markdown-content">
-                    <ReactMarkdown>{selectedListing.description}</ReactMarkdown>
-                  </div>
-                </div>
-
-                {/* Key Responsibilities */}
-                {selectedListing.key_responsibilities && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '10px', color: 'var(--text-primary)' }}>
-                      Key Responsibilities
-                    </h3>
-                    <div className="markdown-content">
-                      <ReactMarkdown>{selectedListing.key_responsibilities || ''}</ReactMarkdown>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {selectedListing.preferred_skills.map((skill) => (
+                        <span key={skill} style={{
+                          padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem',
+                          background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 500,
+                        }}>{skill}</span>
+                      ))}
                     </div>
                   </div>
                 )}

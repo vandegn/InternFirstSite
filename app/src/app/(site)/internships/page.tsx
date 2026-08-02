@@ -6,7 +6,6 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getActiveListings } from '@/lib/supabase';
 import { INDUSTRIES } from '@/lib/constants';
-import TestPostingBadge from '@/components/TestPostingBadge';
 import Pagination from '@/components/Pagination';
 
 type Listing = {
@@ -256,7 +255,6 @@ export default function PublicInternshipsPage() {
                       </div>
                     </div>
                     <div className="internship-body">
-                      <div style={{ marginBottom: '8px' }}><TestPostingBadge compact /></div>
                       <h3>{l.title}</h3>
                       <p className="location">
                         {l.is_remote

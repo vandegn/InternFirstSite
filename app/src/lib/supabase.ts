@@ -902,7 +902,7 @@ export async function getEmployerApplications(employerId: string) {
         question:listing_questions(id, prompt, question_type, position)
       ),
       listing:internship_listings!inner(id, title, employer_id),
-      stage:pipeline_stages(id, label, color_bg, color_text, position, stage_type),
+      stage:pipeline_stages!applications_stage_id_fkey(id, label, color_bg, color_text, position, stage_type),
       student:students!inner(
         id,
         major,
@@ -966,7 +966,7 @@ export async function getEmployerStats(employerId: string) {
   const listingIds = listings.map(l => l.id);
   const { data: apps } = await supabase
     .from('applications')
-    .select('stage:pipeline_stages(stage_type)')
+    .select('stage:pipeline_stages!applications_stage_id_fkey(stage_type)')
     .in('listing_id', listingIds);
   if (!apps) return { totalApplicants: 0, interviewing: 0, offered: 0 };
 
@@ -1095,7 +1095,7 @@ export async function updateApplicationStage(applicationId: string, stageId: str
     .from('applications')
     .update({ stage_id: stageId })
     .eq('id', applicationId)
-    .select('*, student:students!inner(user_id), listing:internship_listings!inner(title), stage:pipeline_stages(label)')
+    .select('*, student:students!inner(user_id), listing:internship_listings!inner(title), stage:pipeline_stages!applications_stage_id_fkey(label)')
     .single();
   if (error) throw error;
 
@@ -1176,6 +1176,10 @@ export async function deleteResume(resumeId: string) {
 
 // ---- Student Applications ----
 
+// The stage embed must name applications_stage_id_fkey. `applications` has two
+// foreign keys into pipeline_stages — stage_id and previous_stage_id — so a
+// bare `pipeline_stages(...)` is ambiguous and PostgREST rejects the whole
+// request with PGRST201 (HTTP 300) instead of returning rows.
 export async function getStudentApplications(studentId: string) {
   const { data, error } = await supabase
     .from('applications')
@@ -1186,7 +1190,7 @@ export async function getStudentApplications(studentId: string) {
       applied_at,
       updated_at,
       resume_id,
-      stage:pipeline_stages(label, color_bg, color_text, stage_type),
+      stage:pipeline_stages!applications_stage_id_fkey(label, color_bg, color_text, stage_type),
       listing:internship_listings!inner(
         id, title, location, is_remote, is_hybrid, compensation, industry, application_deadline,
         employers:employers!inner(company_name, logo_url)
@@ -1194,7 +1198,12 @@ export async function getStudentApplications(studentId: string) {
     `)
     .eq('student_id', studentId)
     .order('applied_at', { ascending: false });
-  if (error) return [];
+  // Logged, not silent: this returning [] on error is what made a hard schema
+  // rejection look like "you haven't applied to anything yet".
+  if (error) {
+    console.error('[getStudentApplications] Error:', error.message, error);
+    return [];
+  }
   return data ?? [];
 }
 

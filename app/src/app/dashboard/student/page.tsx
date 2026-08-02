@@ -535,7 +535,9 @@ export default function StudentDashboard() {
                 color: 'var(--primary)',
                 textDecoration: 'none',
               }}>
-                View All &rarr;
+                {/* The list below is capped at 5, so the total is the only cue
+                    that there is more behind the link. */}
+                View All{studentApplications.length > 0 ? ` (${studentApplications.length})` : ''} &rarr;
               </Link>
             </div>
             {studentApplications.length === 0 ? (

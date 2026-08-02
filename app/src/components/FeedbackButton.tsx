@@ -12,8 +12,8 @@ const CATEGORIES: { value: Category; label: string }[] = [
 ];
 
 // Persistent floating trigger on every dashboard page. Submissions go to
-// /api/feedback, which drops them into the InternFirst admin's inbox as a
-// message — see that route for why the recipient is resolved server-side.
+// /api/feedback, which records them in feedback_submissions for review on the
+// admin-only Feedback tab (/dashboard/admin/feedback).
 export default function FeedbackButton() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -104,7 +104,7 @@ export default function FeedbackButton() {
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 8 }}>Thanks — got it</h3>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 20 }}>
                   Your feedback went straight to the InternFirst team. If we need more
-                  detail we&apos;ll reply in your Messages.
+                  detail, we&apos;ll reach out by email.
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={close} className="btn-primary" style={{ padding: '9px 20px' }}>

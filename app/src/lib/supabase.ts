@@ -2077,3 +2077,57 @@ async function studentUserId(studentId: string): Promise<string | undefined> {
   const { data } = await supabase.from('students').select('user_id').eq('id', studentId).single();
   return (data as any)?.user_id;
 }
+
+// ---- Feedback (admin-only queue) ----
+//
+// Submitted via /api/feedback, reviewed at /dashboard/admin/feedback. RLS
+// restricts SELECT/UPDATE to intern_first_admin, so these helpers return
+// nothing useful for any other role.
+
+export type FeedbackSubmission = {
+  id: string;
+  user_id: string | null;
+  submitter_email: string | null;
+  submitter_name: string | null;
+  submitter_role: string | null;
+  category: 'bug' | 'idea' | 'other';
+  message: string;
+  page_path: string | null;
+  status: 'new' | 'reviewed' | 'resolved';
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+export async function getFeedbackSubmissions(): Promise<FeedbackSubmission[]> {
+  const { data, error } = await supabase
+    .from('feedback_submissions')
+    .select('id, user_id, submitter_email, submitter_name, submitter_role, category, message, page_path, status, admin_note, created_at, resolved_at')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to load feedback:', error);
+    return [];
+  }
+  return (data as FeedbackSubmission[]) || [];
+}
+
+export async function updateFeedbackStatus(
+  id: string,
+  status: 'new' | 'reviewed' | 'resolved',
+) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('feedback_submissions')
+    .update({
+      status,
+      // Stamp who closed it and when, cleared if it's reopened.
+      resolved_at: status === 'resolved' ? new Date().toISOString() : null,
+      resolved_by: status === 'resolved' ? user?.id ?? null : null,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as FeedbackSubmission;
+}

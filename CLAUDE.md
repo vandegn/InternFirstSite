@@ -46,6 +46,8 @@ npm run lint     # ESLint
 
 **Public pages:** `/about`, `/blog`, `/career-resources`, `/contact`, `/home` — marketing and informational pages outside the dashboard.
 
+**Feedback:** the floating Feedback button on every student/employer dashboard page posts to `/api/feedback`, which writes a row to `feedback_submissions`. Admins review it at `/dashboard/admin/feedback` and mark items new → reviewed → resolved. Submitter email/name/role are snapshotted onto the row so feedback survives account deletion. RLS restricts reads to `intern_first_admin`; there is no recipient lookup and no email routing.
+
 **Route protection:** `src/app/dashboard/layout.tsx` wraps all dashboard routes with client-side auth checks. It verifies the user is logged in, has a profile, and is accessing the correct dashboard for their role. Unauthorized users get redirected to `/login`, `/register`, or their correct dashboard. There is no middleware — all checks run in a `useEffect`.
 
 **Auth flow:** Supabase Auth (email/password + Google OAuth) → email verification required (Supabase built-in, skipped for OAuth) → `/auth/callback` server route creates profile + role data from `user_metadata` → role-based redirect to dashboard. Unverified users are redirected to `/verify-email`. `.edu` email required for students. Key auth helpers are in `src/lib/supabase.ts` (`getProfile`, `createProfileAndRoleData`, `isEduEmail`).

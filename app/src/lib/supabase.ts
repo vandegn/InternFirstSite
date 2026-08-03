@@ -1006,6 +1006,31 @@ export async function getListingStages(listingId: string): Promise<PipelineStage
   return (data ?? []) as PipelineStage[];
 }
 
+// Stages for several listings at once, grouped by listing_id. Students can
+// read stages for listings they've applied to (RLS policy "Students read
+// stages for own applications"), so the student dashboard uses this to draw
+// each application's progress against the employer's real columns instead of
+// a hardcoded five-step track.
+export async function getStagesForListings(
+  listingIds: string[],
+): Promise<Record<string, PipelineStage[]>> {
+  if (listingIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from('pipeline_stages')
+    .select('*')
+    .in('listing_id', listingIds)
+    .order('position', { ascending: true });
+  if (error) {
+    console.error('[getStagesForListings] Error:', error.message);
+    return {};
+  }
+  const byListing: Record<string, PipelineStage[]> = {};
+  for (const stage of (data ?? []) as PipelineStage[]) {
+    (byListing[stage.listing_id] ??= []).push(stage);
+  }
+  return byListing;
+}
+
 export async function createStage(opts: {
   listingId: string;
   label: string;
@@ -1240,14 +1265,19 @@ export async function getAppliedListingIds(studentId: string): Promise<string[]>
 }
 
 export async function getStudentStats(studentId: string) {
+  // Offers come off the pipeline stage, not the status text: status mirrors
+  // the employer's column label ("Offered", or whatever they renamed it to),
+  // so the old `status === 'offered'` test counted zero on every custom board.
   const { data, error } = await supabase
     .from('applications')
-    .select('status')
+    .select('status, stage:pipeline_stages!applications_stage_id_fkey(stage_type)')
     .eq('student_id', studentId);
   if (error || !data) return { total: 0, offers: 0 };
+  const stageType = (a: any) =>
+    Array.isArray(a.stage) ? a.stage[0]?.stage_type : a.stage?.stage_type;
   return {
     total: data.length,
-    offers: data.filter(a => a.status === 'offered').length,
+    offers: data.filter(a => stageType(a) === 'offered' || a.status === 'offered').length,
   };
 }
 

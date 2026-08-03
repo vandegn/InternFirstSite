@@ -14,7 +14,9 @@ import {
   respondToInterview,
   sendRescheduleRequestMessage,
   getRecommendedListings,
+  getStagesForListings,
 } from '@/lib/supabase';
+import type { PipelineStage } from '@/lib/supabase';
 import Calendar from '@/components/Calendar';
 import type { CalendarEvent } from '@/components/Calendar';
 import CareerSurveyModal from '@/components/CareerSurveyModal';
@@ -48,6 +50,13 @@ function useCountUp(target: number, duration = 1200) {
 type StudentApplication = {
   id: string;
   status: string;
+  stage_id: string | null;
+  stage: {
+    label: string;
+    color_bg: string;
+    color_text: string;
+    stage_type: 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+  } | null;
   applied_at: string;
   updated_at: string;
   resume_id: string | null;
@@ -65,8 +74,6 @@ type StudentApplication = {
     };
   };
 };
-
-const ACTIVE_APP_STATUSES = new Set(['applied', 'under_review', 'reviewing', 'reviewed', 'interviewing', 'interview_scheduled', 'offered']);
 
 type RecommendedListing = {
   id: string;
@@ -99,20 +106,61 @@ function joinWindowStatus(scheduledAt: string, durationMinutes: number): 'too_ea
   return 'open';
 }
 
-const ATS_STAGES = ['applied', 'under_review', 'interviewing', 'interview_scheduled', 'offered'] as const;
-const ATS_LABELS: Record<string, string> = {
-  applied: 'Applied',
-  under_review: 'Review',
-  interviewing: 'Interview',
-  interview_scheduled: 'Scheduled',
-  offered: 'Offered',
+// Track drawn when a listing has no readable pipeline_stages rows (legacy
+// listings seeded before the stages table existed). Real listings always have
+// employer-owned columns, and those win.
+const FALLBACK_TRACK = ['Applied', 'Review', 'Interview', 'Offered'];
+const FALLBACK_INDEX: Record<string, number> = {
+  applied: 0,
+  under_review: 1,
+  reviewing: 1,
+  reviewed: 1,
+  interviewing: 2,
+  interview_scheduled: 2,
+  offered: 3,
 };
 const REJECTED_STATUSES = new Set(['rejected', 'closed', 'not_selected']);
 
-function getStageIndex(status: string): number {
-  if (status === 'reviewed' || status === 'reviewing') return 1;
-  const idx = ATS_STAGES.indexOf(status as typeof ATS_STAGES[number]);
-  return idx >= 0 ? idx : 0;
+// applications.status mirrors the employer's stage label ("Not Selected"),
+// while the legacy statuses it replaced were snake_case — normalize before
+// matching either one.
+function legacyStatus(status: string | null | undefined): string {
+  return (status ?? '').toLowerCase().replace(/\s+/g, '_');
+}
+
+// Still in the running. Checked by exclusion rather than against a list of
+// active statuses: employers name their own columns, so "Screening" or
+// "Take-home" can't be enumerated ahead of time — only the rejection ones,
+// which carry stage_type 'rejected'.
+function isApplicationActive(app: StudentApplication): boolean {
+  if (app.stage) return app.stage.stage_type !== 'rejected';
+  return !REJECTED_STATUSES.has(legacyStatus(app.status));
+}
+
+// The dots an application is drawn against: the employer's own columns for
+// that listing, ordered as they appear on the pipeline board. Rejection
+// columns are left off the track — a rejected candidate didn't advance
+// through them, so the whole track renders in the rejected style instead.
+function buildTrack(app: StudentApplication, stages: PipelineStage[] | undefined) {
+  const rejected = !isApplicationActive(app);
+
+  if (stages && stages.length > 0) {
+    const track = stages.filter((s) => s.stage_type !== 'rejected');
+    const currentIdx = track.findIndex((s) => s.id === app.stage_id);
+    return {
+      labels: track.map((s) => s.label),
+      // A rejected candidate has no place on the track; an application whose
+      // stage was deleted falls back to the first column.
+      currentIdx: rejected ? -1 : currentIdx >= 0 ? currentIdx : 0,
+      rejected,
+    };
+  }
+
+  return {
+    labels: FALLBACK_TRACK,
+    currentIdx: rejected ? -1 : FALLBACK_INDEX[legacyStatus(app.status)] ?? 0,
+    rejected,
+  };
 }
 
 export default function StudentDashboard() {
@@ -123,6 +171,7 @@ export default function StudentDashboard() {
   const animatedApplications = useCountUp(applicationCount);
   const animatedOffers = useCountUp(offerCount);
   const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
+  const [stagesByListing, setStagesByListing] = useState<Record<string, PipelineStage[]>>({});
   const [studentInterviews, setStudentInterviews] = useState<StudentInterview[]>([]);
   const [recommended, setRecommended] = useState<RecommendedListing[]>([]);
   const [profileName, setProfileName] = useState('');
@@ -145,7 +194,7 @@ export default function StudentDashboard() {
 
   const calendarEvents = useMemo<CalendarEvent[]>(() => {
     const deadlines = studentApplications
-      .filter((app) => app.listing?.application_deadline && ACTIVE_APP_STATUSES.has(app.status))
+      .filter((app) => app.listing?.application_deadline && isApplicationActive(app))
       .map((app) => ({
         id: `deadline-${app.id}`,
         title: `${app.listing.title} — ${app.listing.employers.company_name}`,
@@ -207,9 +256,24 @@ export default function StudentDashboard() {
         ]);
         setApplicationCount(stats.total);
         setOfferCount(stats.offers);
-        setStudentApplications(apps as unknown as StudentApplication[]);
+
+        // PostgREST hands back to-one embeds as objects, but returns arrays
+        // for some join shapes — flatten before the UI reads .stage_type.
+        type RawApp = Omit<StudentApplication, 'stage'> & {
+          stage: StudentApplication['stage'] | StudentApplication['stage'][];
+        };
+        const normalizedApps = (apps as unknown as RawApp[]).map((app) => ({
+          ...app,
+          stage: Array.isArray(app.stage) ? app.stage[0] ?? null : app.stage ?? null,
+        })) as StudentApplication[];
+        setStudentApplications(normalizedApps);
         setStudentInterviews(interviews as unknown as StudentInterview[]);
         setRecommended(recs as unknown as RecommendedListing[]);
+
+        const listingIds = Array.from(
+          new Set(normalizedApps.map((a) => a.listing?.id).filter(Boolean) as string[]),
+        );
+        setStagesByListing(await getStagesForListings(listingIds));
       }
     }
     fetchUserData();
@@ -572,13 +636,18 @@ export default function StudentDashboard() {
                     closed: { label: 'Closed', color: '#6b7280', bg: '#f3f4f6' },
                     not_selected: { label: 'Not Selected', color: 'var(--danger-accent)', bg: 'var(--danger-bg)' },
                   };
-                  const status = statusConfig[app.status] || { label: app.status, color: '#6b7280', bg: '#f3f4f6' };
+                  // The employer's own column wins — label and colors come
+                  // straight off the stage the candidate sits in. statusConfig
+                  // only covers legacy rows with no stage joined.
+                  const status = app.stage
+                    ? { label: app.stage.label, color: app.stage.color_text, bg: app.stage.color_bg }
+                    : statusConfig[app.status] || { label: app.status, color: '#6b7280', bg: '#f3f4f6' };
                   const listing = app.listing;
                   const employer = listing?.employers;
                   const appliedDate = new Date(app.applied_at);
                   const dateStr = appliedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  const isRejected = REJECTED_STATUSES.has(app.status);
-                  const stageIdx = getStageIndex(app.status);
+                  const track = buildTrack(app, listing?.id ? stagesByListing[listing.id] : undefined);
+                  const { rejected: isRejected, currentIdx: stageIdx } = track;
 
                   return (
                     <Link
@@ -628,15 +697,15 @@ export default function StudentDashboard() {
                             {dateStr}
                           </span>
                         </div>
-                        {/* ATS Progress Stepper */}
+                        {/* Pipeline stepper — one dot per employer column */}
                         <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: '8px', marginLeft: '48px', gap: '0' }}>
-                          {ATS_STAGES.map((stage, si) => {
+                          {track.labels.map((stage, si) => {
                             const isCompleted = !isRejected && si <= stageIdx;
                             const isCurrent = !isRejected && si === stageIdx;
                             const filledColor = isRejected ? '#f87171' : 'var(--accent, #9FC63C)';
                             const emptyColor = isRejected ? 'var(--danger-border)' : '#e5e7eb';
                             return (
-                              <div key={stage} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                              <div key={`${stage}-${si}`} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
                                   <div style={{
                                     width: isCurrent ? 8 : 6,
@@ -647,17 +716,26 @@ export default function StudentDashboard() {
                                     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                                     boxShadow: isCurrent ? `0 0 0 3px ${isRejected ? 'rgba(248,113,113,0.2)' : 'rgba(159,198,60,0.2)'}` : 'none',
                                   }} />
-                                  <span style={{
-                                    fontSize: '0.6rem',
-                                    color: isCurrent ? (isRejected ? '#f87171' : 'var(--accent-dark, #8ab32e)') : isCompleted ? 'var(--text-secondary)' : '#c0c4cc',
-                                    fontWeight: isCurrent ? 600 : 400,
-                                    marginTop: '3px',
-                                    whiteSpace: 'nowrap',
-                                  }}>
-                                    {ATS_LABELS[stage]}
+                                  <span
+                                    title={stage}
+                                    style={{
+                                      fontSize: '0.6rem',
+                                      color: isCurrent ? (isRejected ? '#f87171' : 'var(--accent-dark, #8ab32e)') : isCompleted ? 'var(--text-secondary)' : '#c0c4cc',
+                                      fontWeight: isCurrent ? 600 : 400,
+                                      marginTop: '3px',
+                                      // Employer-authored labels can be long, and a
+                                      // listing can have many columns — clip instead
+                                      // of blowing out the row.
+                                      maxWidth: '80px',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {stage}
                                   </span>
                                 </div>
-                                {si < ATS_STAGES.length - 1 && (
+                                {si < track.labels.length - 1 && (
                                   <div style={{
                                     flex: 1,
                                     height: 2,

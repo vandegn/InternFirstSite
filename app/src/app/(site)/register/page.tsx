@@ -12,6 +12,7 @@ import { validatePassword } from '@/lib/password';
 import { MAJORS } from '@/lib/constants';
 import SchoolPicker, { EMPTY_SCHOOL, type SchoolValue } from '@/components/SchoolPicker';
 import PolicyAgreementModal from '@/components/PolicyAgreementModal';
+import { getPolicyVersions } from '@/lib/policies';
 
 type Role = 'student' | 'employer';
 
@@ -114,6 +115,14 @@ export default function RegisterPage() {
     try {
       // Build user_metadata with role-specific fields
       const metadata: Record<string, string> = { role, fullName, phone };
+
+      // Which document versions were on screen when the user clicked I Agree.
+      // /auth/callback turns this into a durable policy_acceptances row once
+      // the email is verified.
+      const policyVersions = getPolicyVersions(role);
+      metadata.termsVersion = policyVersions.terms;
+      metadata.privacyVersion = policyVersions.privacy;
+      metadata.policyAcceptedAt = new Date().toISOString();
 
       if (role === 'student') {
         metadata.major = major;

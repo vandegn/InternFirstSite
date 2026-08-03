@@ -66,3 +66,15 @@ export type PolicyRole = 'student' | 'employer';
 export function getPoliciesForRole(role: PolicyRole): PolicyDoc[] {
   return [DOCS[`${role}_terms`], DOCS[`${role}_privacy`]].filter(Boolean);
 }
+
+export type PolicyKind = 'terms' | 'privacy';
+
+export function getPolicyDoc(role: PolicyRole, kind: PolicyKind): PolicyDoc {
+  return DOCS[`${role}_${kind}`];
+}
+
+// Version pair a user accepts at signup. Stamped into user_metadata by the
+// register page and recorded to policy_acceptances by /auth/callback.
+export function getPolicyVersions(role: PolicyRole): { terms: string; privacy: string } {
+  return { terms: DOCS[`${role}_terms`].version, privacy: DOCS[`${role}_privacy`].version };
+}

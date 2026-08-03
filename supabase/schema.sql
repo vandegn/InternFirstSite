@@ -1201,3 +1201,32 @@ create policy "Students upload own applicant docs"
       select id::text from students where user_id = auth.uid()
     )
   );
+
+-- ============================================
+-- 23. POLICY ACCEPTANCES
+-- ============================================
+-- Durable record of who accepted which version of the Terms & Conditions and
+-- Privacy Policy (content in app/src/lib/policies). Written by /auth/callback
+-- (service role) from versions stamped into user_metadata at registration.
+-- accepted_at is the client's claim; recorded_at is server time. Append-only:
+-- a version bump produces a second row, never an overwrite.
+
+create table policy_acceptances (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  role text not null check (role in ('student', 'employer')),
+  terms_version text not null,
+  privacy_version text not null,
+  accepted_at timestamptz not null,
+  recorded_at timestamptz default now() not null,
+  unique (user_id, role, terms_version, privacy_version)
+);
+
+create index idx_policy_acceptances_user on policy_acceptances(user_id);
+
+alter table policy_acceptances enable row level security;
+
+-- Only the service-role callback writes; users may read their own history.
+create policy "Users read own policy acceptances"
+  on policy_acceptances for select to authenticated
+  using (user_id = auth.uid());

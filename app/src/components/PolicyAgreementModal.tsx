@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { getPoliciesForRole, type PolicyRole, type PolicyBlock } from '@/lib/policies';
+import { getPoliciesForRole, type PolicyRole } from '@/lib/policies';
+import PolicyBlocksView from '@/components/PolicyBlocks';
 
 /**
  * Signup-time legal acknowledgement.
@@ -97,9 +98,7 @@ export default function PolicyAgreementModal({
               <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
                 Pilot Version {doc.version} · Effective {doc.effectiveDate}
               </p>
-              {doc.blocks.map((b, i) => (
-                <PolicyLine key={i} block={b} />
-              ))}
+              <PolicyBlocksView blocks={doc.blocks} />
             </section>
           ))}
           <div style={{ height: '4px' }} aria-hidden />
@@ -144,19 +143,4 @@ export default function PolicyAgreementModal({
     </div>,
     document.body,
   );
-}
-
-function PolicyLine({ block }: { block: PolicyBlock }) {
-  if (block.type === 'h') {
-    return <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '18px 0 6px' }}>{block.text}</h4>;
-  }
-  if (block.type === 'li') {
-    return (
-      <div style={{ display: 'flex', gap: '8px', margin: '4px 0 4px 4px' }}>
-        <span aria-hidden style={{ color: 'var(--primary)', lineHeight: 1.6 }}>•</span>
-        <span>{block.text}</span>
-      </div>
-    );
-  }
-  return <p style={{ margin: '0 0 10px' }}>{block.text}</p>;
 }

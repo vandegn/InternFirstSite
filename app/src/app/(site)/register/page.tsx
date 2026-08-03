@@ -11,6 +11,7 @@ import { isFreeEmailProvider, normalizeDomain } from '@/lib/domain-signals';
 import { validatePassword } from '@/lib/password';
 import { MAJORS } from '@/lib/constants';
 import SchoolPicker, { EMPTY_SCHOOL, type SchoolValue } from '@/components/SchoolPicker';
+import PolicyAgreementModal from '@/components/PolicyAgreementModal';
 
 type Role = 'student' | 'employer';
 
@@ -34,8 +35,13 @@ export default function RegisterPage() {
   const [website, setWebsite] = useState('');
   const [companyDescription, setCompanyDescription] = useState('');
   const [terms, setTerms] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // The two roles have distinct Terms & Privacy documents, so any prior
+  // acceptance is void once the role changes — force a fresh acknowledgement.
+  useEffect(() => { setTerms(false); }, [role]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -93,6 +99,13 @@ export default function RegisterPage() {
     // id means nothing was actually selected.
     if (role === 'student' && !school.id) {
       setError('Please select your school from the list.');
+      return;
+    }
+
+    // The checkbox is disabled until acceptance, so native `required` can't
+    // enforce this — guard explicitly.
+    if (!terms) {
+      setError('Please review and accept the Terms & Conditions and Privacy Policy.');
       return;
     }
 
@@ -316,11 +329,41 @@ export default function RegisterPage() {
           </div>
 
           <div className="checkbox-group">
-            <input type="checkbox" id="terms" required checked={terms} onChange={e => setTerms(e.target.checked)} />
-            <label htmlFor="terms">I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a></label>
+            {/* Checking the box requires reading the policy first — an unchecked
+                click opens the modal instead of toggling; only the modal's
+                "I Agree" sets `terms`. Unchecking is always allowed. */}
+            <input
+              type="checkbox"
+              id="terms"
+              checked={terms}
+              onChange={e => { if (e.target.checked) setPolicyOpen(true); else setTerms(false); }}
+            />
+            <label htmlFor="terms">
+              I agree to the{' '}
+              <button
+                type="button"
+                onClick={() => setPolicyOpen(true)}
+                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--primary)', font: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}
+              >
+                Terms &amp; Conditions and Privacy Policy
+              </button>
+            </label>
           </div>
 
-          <button type="submit" className="btn-auth" disabled={loading}>
+          {policyOpen && (
+            <PolicyAgreementModal
+              role={role}
+              onAgree={() => setTerms(true)}
+              onClose={() => setPolicyOpen(false)}
+            />
+          )}
+
+          <button
+            type="submit"
+            className="btn-auth"
+            disabled={loading || !terms}
+            style={{ opacity: loading || !terms ? 0.5 : 1, cursor: loading || !terms ? 'not-allowed' : 'pointer' }}
+          >
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>

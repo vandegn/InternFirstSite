@@ -1,0 +1,2050 @@
+{
+ "student_terms": {
+  "title": "Student Terms & Conditions",
+  "version": "1.3",
+  "effectiveDate": "August 3, 2026",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "Student Terms and Conditions"
+   },
+   {
+    "type": "p",
+    "text": "IMPORTANT: These Student Terms contain disclaimers, limitations of liability, and terms governing disputes. Please read them carefully. Agreement and Acceptance These Student Terms and Conditions (“Student Terms”) form a binding agreement between you and InternFirst Inc. By creating a Student Account, checking the acceptance box, accessing authenticated student features, applying to an opportunity, purchasing a service, or otherwise using the student-facing Platform, you agree to these Student Terms and acknowledge the Student Privacy Policy. If you do not agree, do not use the Student Services. Marketing consent and consent to voluntary self-identification data are separate from acceptance of these Student Terms."
+   },
+   {
+    "type": "h",
+    "text": "1. Company Information and Contact"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Registered Agent: United States Corporation Agents, Inc. Email: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   },
+   {
+    "type": "h",
+    "text": "2. Definitions"
+   },
+   {
+    "type": "p",
+    "text": "“Platform” means InternFirst’s websites, authenticated portals, applications, communications features, recruiting tools, and related services. “Student” means a natural person who is pursuing higher education at an accredited college or university and has a valid .edu email address that the institution currently authorizes that person to use. “Student Services” means the student-facing portions of the Platform, including job discovery, applications, messaging, interview scheduling, profile tools, matching information, career resources, and any paid student offerings. “Employer” means an organization and its authorized representatives using the Platform to recruit or engage students."
+   },
+   {
+    "type": "h",
+    "text": "3. Eligibility and Student Verification"
+   },
+   {
+    "type": "li",
+    "text": "You must be at least 18 years old and legally able to enter a contract."
+   },
+   {
+    "type": "li",
+    "text": "You must be pursuing higher education at an accredited college or university."
+   },
+   {
+    "type": "li",
+    "text": "You must use a valid .edu email address that your institution authorizes you to use."
+   },
+   {
+    "type": "li",
+    "text": "You must be located in the United States during the pilot unless InternFirst expressly approves"
+   },
+   {
+    "type": "p",
+    "text": "otherwise."
+   },
+   {
+    "type": "li",
+    "text": "You must not be prohibited from using the Platform by law or a prior suspension."
+   },
+   {
+    "type": "p",
+    "text": "Student eligibility ends when you are no longer authorized to use your institution’s .edu email address. InternFirst may periodically require re-verification and may suspend or close an account that no longer meets the eligibility requirements. Losing eligibility does not eliminate obligations or records that must reasonably be retained under these Student Terms or the Student Privacy Policy. Email-domain verification confirms only that the supplied email satisfied InternFirst’s process. It is not a guarantee of identity, enrollment, graduation, accreditation status, qualifications, or endorsement by a school."
+   },
+   {
+    "type": "h",
+    "text": "4. Pilot Status and Changes to Features"
+   },
+   {
+    "type": "p",
+    "text": "The Platform is being offered during a pilot phase. Features may be incomplete, changed, tested, limited, unavailable, or discontinued. Pilot participation does not guarantee continued access to any feature, pricing, or future version. InternFirst may impose reasonable limits to protect security, capacity, and integrity."
+   },
+   {
+    "type": "h",
+    "text": "5. InternFirst’s Role"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst provides recruiting technology that helps students discover opportunities, submit applications, communicate with employers, schedule interviews, and manage recruiting activity. InternFirst is not the employer, does not supervise internships, does not control workplace conditions, and is not a party to an internship, employment, volunteer, contractor, or other working relationship merely because the parties met or communicated through the Platform. InternFirst’s Employer verification process may compare an Employer user’s work-email domain with the domain associated with the company website submitted during signup. Accounts with nonmatching or inconclusive domains are flagged for manual review and remain pending until that review is complete, and InternFirst may manually review any account. However, InternFirst does not guarantee that an Employer, representative, listing, event, communication, or opportunity is genuine, lawful, safe, current, or suitable. InternFirst does not guarantee that you will receive a response, interview, offer, internship, compensation, academic credit, sponsorship, or future employment."
+   },
+   {
+    "type": "h",
+    "text": "6. Account Registration, Credentials, and Security"
+   },
+   {
+    "type": "li",
+    "text": "Provide complete, accurate, and current information."
+   },
+   {
+    "type": "li",
+    "text": "Maintain only one Student Account unless InternFirst gives written approval."
+   },
+   {
+    "type": "li",
+    "text": "Keep credentials confidential and use a strong, unique password."
+   },
+   {
+    "type": "li",
+    "text": "Do not share your account or permit another person to act through it."
+   },
+   {
+    "type": "li",
+    "text": "Promptly report suspected unauthorized access or credential compromise to lukebaltzell@intern-"
+   },
+   {
+    "type": "p",
+    "text": "first.com."
+   },
+   {
+    "type": "li",
+    "text": "Keep your .edu email and other contact information current."
+   },
+   {
+    "type": "p",
+    "text": "You are responsible for activity through your account to the extent permitted by law. InternFirst may require password resets, reauthentication, additional verification, or other security measures."
+   },
+   {
+    "type": "h",
+    "text": "7. Identity, Profile Accuracy, and Impersonation"
+   },
+   {
+    "type": "p",
+    "text": "You must represent yourself truthfully. You may not misrepresent yourself as another student or person, use another person’s name, photograph, video, resume, education, experience, credentials, or contact information without authorization, or permit another person to apply, communicate, interview, or complete an assessment while pretending to be you. You may not falsely claim enrollment, graduation, academic affiliation, degree status, work authorization, sponsorship status, skills, certifications, projects, accomplishments, or employment history. A material misrepresentation may result in immediate suspension, cancellation of applications, notice to an affected Employer or institution where appropriate, preservation of relevant records, and referral to law enforcement."
+   },
+   {
+    "type": "h",
+    "text": "8. Student Profile and Student Content"
+   },
+   {
+    "type": "p",
+    "text": "“Student Content” includes your profile, biography, major, graduation year, skills, experience history, projects, organizations, career goals, avatar, resume, application materials, messages, videos, links, and feedback. You retain ownership of your original Student Content. You grant InternFirst a nonexclusive, worldwide, royalty-free license to host, store, copy, format, transmit, display, and process Student Content as reasonably necessary to provide, secure, support, analyze, and improve the Platform; submit applications at your direction; facilitate messages and interviews; generate match scores and recommendations; prevent fraud; enforce policies; and comply with law. You represent that you own or have permission to provide Student Content and that it does not infringe privacy, publicity, intellectual-property, confidentiality, or other rights. Do not upload Social Security numbers, government-identification numbers, payment-card information, passwords, detailed medical records, or confidential third-party information unless the Platform expressly requests it for a legitimate purpose."
+   },
+   {
+    "type": "h",
+    "text": "9. Resumes, Files, and Employer Downloads"
+   },
+   {
+    "type": "p",
+    "text": "When you apply to an Employer’s listing, you direct InternFirst to make your application, permitted profile information, resume, and match score available to authorized users associated with that Employer. Employers may download your resume and retain a copy in their own recruiting or recordkeeping systems. InternFirst cannot automatically delete or control a copy that an Employer has lawfully downloaded. Employers are contractually restricted to legitimate recruiting and hiring uses, but you should review your resume and avoid including unnecessary sensitive information. Account deletion or application withdrawal may stop future Platform access, but may not require an Employer to delete information it must lawfully retain or has another legitimate basis to keep. InternFirst stores uploaded resumes, avatars, and other files in private, access-controlled storage. The Platform may provide authorized access through authenticated requests or private, short-lived file URLs that expire after a limited period. These access controls do not prevent an Employer from retaining a resume it lawfully downloads after you apply."
+   },
+   {
+    "type": "h",
+    "text": "10. Applications and Employer Access"
+   },
+   {
+    "type": "p",
+    "text": "Submitting an application authorizes InternFirst to provide the application and permitted profile information to the Employer that owns the listing. Authorized Employer users may review the application, download the resume, create internal notes, move the application through recruiting stages, send messages, and schedule interviews. Withdrawing an application may stop active consideration within the Platform but will not necessarily erase records already created or downloaded. Employers are responsible for their own recruiting records and legal retention obligations."
+   },
+   {
+    "type": "h",
+    "text": "11. Voluntary Self-Identification Information"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may offer an optional questionnaire concerning ethnicity, race, gender, veteran status, disability status, work authorization, and sponsorship needs. Participation is voluntary, each question may be declined, and the information is visible only to you through the ordinary Platform interface."
+   },
+   {
+    "type": "li",
+    "text": "Employers cannot view the self-identification record."
+   },
+   {
+    "type": "li",
+    "text": "The information is not used to calculate match scores, rank applicants, rank listings, or determine"
+   },
+   {
+    "type": "p",
+    "text": "access to opportunities."
+   },
+   {
+    "type": "li",
+    "text": "The information is not included in Employer or university reports during the current pilot."
+   },
+   {
+    "type": "li",
+    "text": "InternFirst will not begin demographic or diversity reporting based on this information without updating"
+   },
+   {
+    "type": "p",
+    "text": "the applicable Terms and Privacy Policy, implementing appropriate controls, and obtaining any consent required by law."
+   },
+   {
+    "type": "h",
+    "text": "12. Match Scores, Explanations, and Job Ranking"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may calculate a match score using job-related profile and listing information, such as skills, major, experience, education level, location, availability, and stated requirements. A match score is an informational estimate, not a certification, consumer report, final employment decision, or guarantee of an interview or offer. The detailed matching formula, source code, exact weights, anti-fraud controls, and proprietary methodology are confidential and accessible only to authorized InternFirst personnel. You may request a high-level explanation of the principal factors affecting a particular match score or request correction of inaccurate profile information by emailing lukebaltzell@intern-first.com. InternFirst may provide an explanation without disclosing trade secrets or information that would undermine platform integrity. Job listings may be ranked using relevance, engagement, quality, pricing or promotion tier, freshness, and integrity or operational factors. Paid placement may affect visibility but is not an endorsement or guarantee."
+   },
+   {
+    "type": "h",
+    "text": "13. Messaging, Interviews, and Appointments"
+   },
+   {
+    "type": "p",
+    "text": "The Platform may provide messaging, reminders, calendar tools, and interview scheduling. Messages are ordinarily visible to the sender and recipient. InternFirst and its service providers may access communications when reasonably necessary for support, security, abuse investigation, policy enforcement, or legal compliance. InternFirst is not responsible for a missed interview, late arrival, scheduling conflict, technical problem, or failure by either party to attend. A missed interview must be rescheduled and addressed between you and the Employer. InternFirst does not guarantee that an Employer will agree to reschedule."
+   },
+   {
+    "type": "h",
+    "text": "14. Paid Services, Subscriptions, Stripe, and Refunds"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may offer paid student services, subscriptions, coaching, resume review, interview preparation, or other offerings. The price, term, included features, and any additional service-specific terms will be shown before purchase. Payments may be processed by Stripe, including Link. InternFirst does not store full payment-card numbers or card-security codes. InternFirst may store Stripe customer, payment-method, transaction, invoice, amount, status, and billing references. If a subscription automatically renews, the checkout will disclose the renewal frequency and price. You may cancel through the “Cancel Subscription” button in account settings. Cancellation takes effect at the end of the current paid period unless the checkout states otherwise or law requires a different result. Except where required by law or expressly stated at checkout, fees are nonrefundable and no prorated refund is provided after cancellation. InternFirst’s C-Suite, or an authorized designee, may approve a special-case refund, credit, or accommodation in its discretion and subject to applicable law. A discretionary exception does not create a right to future exceptions."
+   },
+   {
+    "type": "h",
+    "text": "15. Prohibited Conduct"
+   },
+   {
+    "type": "li",
+    "text": "Impersonate another student or person, or permit another person to impersonate you."
+   },
+   {
+    "type": "li",
+    "text": "Misrepresent identity, education, affiliation, qualifications, work authorization, experience, or authority."
+   },
+   {
+    "type": "li",
+    "text": "Access another user’s account or bypass .edu verification, rate limits, or security controls."
+   },
+   {
+    "type": "li",
+    "text": "Scrape, crawl, bulk download, harvest, or systematically extract Platform data."
+   },
+   {
+    "type": "li",
+    "text": "Use bots, scripts, or automated access without written authorization."
+   },
+   {
+    "type": "li",
+    "text": "Reverse engineer, probe, scan, or test the Platform except where law expressly permits."
+   },
+   {
+    "type": "li",
+    "text": "Upload malware or interfere with Platform operation."
+   },
+   {
+    "type": "li",
+    "text": "Harass, threaten, stalk, discriminate against, exploit, or defraud another person."
+   },
+   {
+    "type": "li",
+    "text": "Send spam or unrelated commercial solicitations."
+   },
+   {
+    "type": "li",
+    "text": "Manipulate applications, engagement metrics, recommendations, or rankings."
+   },
+   {
+    "type": "li",
+    "text": "Use Platform data to train an external artificial-intelligence model without InternFirst’s and the affected"
+   },
+   {
+    "type": "p",
+    "text": "person’s express written authorization."
+   },
+   {
+    "type": "li",
+    "text": "Violate law, intellectual-property rights, privacy rights, confidentiality obligations, or these Student"
+   },
+   {
+    "type": "p",
+    "text": "Terms."
+   },
+   {
+    "type": "h",
+    "text": "16. InternFirst Intellectual Property"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst and its licensors own the Platform and associated software, databases, interfaces, designs, graphics, text created by InternFirst, workflows, compilations, matching and ranking systems, reports, trademarks, logos, and other proprietary materials, excluding User Content. Subject to these Student Terms, InternFirst grants you a limited, personal, revocable, nonexclusive, nontransferable license to use the Student Services for legitimate educational and career purposes."
+   },
+   {
+    "type": "h",
+    "text": "17. Third-Party Services and Content"
+   },
+   {
+    "type": "p",
+    "text": "The Platform may use or link to third-party services, including Supabase and Stripe. Third parties have their own terms and privacy practices. InternFirst is not responsible for third-party services, outages, content, or security except to the extent applicable law provides otherwise."
+   },
+   {
+    "type": "h",
+    "text": "18. Copyright and Intellectual-Property Complaints"
+   },
+   {
+    "type": "p",
+    "text": "Copyright or other intellectual-property complaints may be sent to lukebaltzell@intern-first.com or mailed to 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County. The notice should identify the protected work, the challenged material and its location, the complainant’s contact information, a good-faith statement, a statement of accuracy and authority, and a signature."
+   },
+   {
+    "type": "h",
+    "text": "19. Privacy"
+   },
+   {
+    "type": "p",
+    "text": "The Student Privacy Policy explains how InternFirst collects, uses, discloses, secures, and retains student personal information. The Privacy Policy is incorporated for notice purposes but does not convert every statement into a contractual warranty beyond applicable law."
+   },
+   {
+    "type": "h",
+    "text": "20. Account Deletion, Suspension, and Termination"
+   },
+   {
+    "type": "p",
+    "text": "You may initiate account deletion using the “Delete Account” button. Deletion removes your account from active use and schedules profile information for deletion. InternFirst may retain profile information in restricted form for up to six months to permit restoration if you re-enroll or regain eligibility. You may request earlier permanent deletion by emailing lukebaltzell@intern-first.com, subject to legal, security, transaction, dispute, and backup exceptions. InternFirst may restrict, suspend, or terminate an account, remove content, cancel applications, or preserve records if it reasonably believes there has been fraud, impersonation, data misuse, security risk, nonpayment, ineligibility, a material violation, or a need to protect users or comply with law. When appropriate, an appeal may be submitted to lukebaltzell@intern-first.com."
+   },
+   {
+    "type": "h",
+    "text": "21. Disclaimers"
+   },
+   {
+    "type": "p",
+    "text": "TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE PLATFORM AND STUDENT SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” INTERNFIRST DISCLAIMS EXPRESS, IMPLIED, AND STATUTORY WARRANTIES, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, AVAILABILITY, SECURITY, AND RESULTS."
+   },
+   {
+    "type": "p",
+    "text": "INTERNFIRST DOES NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED OR ERROR-FREE; THAT DATA WILL NEVER BE LOST OR ACCESSED WITHOUT AUTHORIZATION; THAT LISTINGS, EMPLOYERS, USERS, MATCH SCORES, OR STATUS UPDATES ARE ACCURATE; THAT A STUDENT WILL SECURE AN INTERNSHIP, INTERVIEW, OFFER, OR EMPLOYMENT; OR THAT ANY EMPLOYER-STUDENT INTERACTION OR WORKING RELATIONSHIP WILL BE SAFE, SATISFACTORY, OR SUCCESSFUL."
+   },
+   {
+    "type": "h",
+    "text": "22. No Liability for Employer-Student Outcomes"
+   },
+   {
+    "type": "p",
+    "text": "To the maximum extent permitted by law, InternFirst is not liable for whether a Student secures an internship; whether an Employer responds or finds a qualified intern; or the acts, omissions, representations, harassment, discrimination, safety practices, payment practices, work conditions, supervision, termination decisions, or other conduct arising from any Employer-Student interaction or working relationship. Nothing in these Student Terms waives liability that cannot lawfully be waived."
+   },
+   {
+    "type": "h",
+    "text": "23. Limitation of Liability"
+   },
+   {
+    "type": "p",
+    "text": "TO THE MAXIMUM EXTENT PERMITTED BY LAW, INTERNFIRST AND ITS OFFICERS, DIRECTORS, EMPLOYEES, CONTRACTORS, AFFILIATES, LICENSORS, AND SERVICE PROVIDERS WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL DAMAGES; LOST PROFITS, OPPORTUNITIES, DATA, OR REPUTATION; BUSINESS INTERRUPTION; OR DAMAGES ARISING FROM AN EMPLOYER-STUDENT INTERACTION OR WORKING RELATIONSHIP. TO THE MAXIMUM EXTENT PERMITTED BY LAW, INTERNFIRST’S TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO THE STUDENT SERVICES OR THESE STUDENT TERMS WILL NOT EXCEED THE GREATER OF THE AMOUNT YOU PAID DIRECTLY TO INTERNFIRST FOR STUDENT SERVICES DURING THE TWELVE MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM OR ONE HUNDRED U.S. DOLLARS. The limitations do not apply to liability that cannot lawfully be limited."
+   },
+   {
+    "type": "h",
+    "text": "24. Student Indemnification"
+   },
+   {
+    "type": "p",
+    "text": "To the maximum extent permitted by law, you will defend, indemnify, and hold harmless InternFirst and its officers, directors, employees, and agents from third-party claims, damages, penalties, costs, and reasonable attorneys’ fees arising from your fraud, impersonation, unlawful use, intentional misconduct, infringement of another person’s rights, violation of privacy or confidentiality, or material breach of these Student Terms. InternFirst will provide reasonable notice and may control the defense."
+   },
+   {
+    "type": "h",
+    "text": "25. Governing Law and Disputes"
+   },
+   {
+    "type": "p",
+    "text": "These Student Terms are governed by Delaware law, without regard to conflict-of-law principles, except that mandatory consumer-protection and privacy laws of your state of residence remain applicable to the extent they cannot lawfully be waived. Subject to applicable law and an eligible small-claims right, disputes may be brought in the state courts located in New Castle County, Delaware, or the United States District Court for the District of Delaware. A consumer may bring a claim in another court where mandatory law requires or permits that forum and the forum-selection provision cannot lawfully be enforced. Either party may seek injunctive relief in a court with jurisdiction to address unauthorized access, impersonation, data misuse, or intellectual-property infringement. These Student Terms do not shorten any statute of limitations or other filing period provided by applicable law."
+   },
+   {
+    "type": "h",
+    "text": "26. Changes to These Student Terms"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may update these Student Terms prospectively. Material changes will be communicated by email, in-product notice, or another conspicuous method before taking effect. InternFirst may require affirmative reacceptance for material changes involving payments, dispute terms, content rights, or datause obligations. InternFirst will not rely on a general amendment clause to retroactively authorize materially different uses of previously collected personal information where notice or consent is required."
+   },
+   {
+    "type": "h",
+    "text": "27. Electronic Communications"
+   },
+   {
+    "type": "p",
+    "text": "You consent to receive transactional communications electronically, including verification, security, application, interview, billing, policy, and legal notices. Promotional communications are subject to applicable consent and unsubscribe rights."
+   },
+   {
+    "type": "h",
+    "text": "28. Miscellaneous"
+   },
+   {
+    "type": "p",
+    "text": "You may not assign these Student Terms or transfer your account without InternFirst’s written consent. InternFirst may assign these Student Terms in connection with a merger, financing, reorganization, or sale of the Platform, subject to applicable privacy obligations. If a provision is unenforceable, it will be enforced to the maximum lawful extent and the remainder will remain effective. Failure to enforce a provision is not a waiver. These Student Terms, applicable checkout terms, and incorporated policies constitute the agreement concerning the Student Services."
+   },
+   {
+    "type": "h",
+    "text": "29. Contact"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Registered Agent: United States Corporation Agents, Inc. Email: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   }
+  ]
+ },
+ "student_privacy": {
+  "title": "Student Privacy Policy",
+  "version": "1.3",
+  "effectiveDate": "August 3, 2026",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "This Student Privacy Policy explains how InternFirst Inc. collects, uses, discloses, secures, and retains personal information in connection with Student Accounts and student-facing Platform features."
+   },
+   {
+    "type": "h",
+    "text": "1. Company Information and Contact"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Email: lukebaltzell@intern-first.com Privacy, security, trust and safety, and privacy appeals: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   },
+   {
+    "type": "h",
+    "text": "2. Scope and Key Commitments"
+   },
+   {
+    "type": "p",
+    "text": "This Policy applies to Students and prospective Students using the Platform. It does not govern an Employer’s independent systems after an Employer lawfully downloads a resume or otherwise receives information outside InternFirst’s control. InternFirst does not sell Student personal information and does not include identifiable Student personal information in Employer or university reports. Authorized Employers may receive identifiable information after a Student applies, may communicate with the Student, and may download the Student’s resume. Supabase, Stripe, and other service providers also process information to provide Platform services. InternFirst’s Employer verification process may compare an Employer representative’s work-email domain with the domain associated with the company website submitted during signup. If the domains do not match or the available information is inconclusive, the Employer Account is flagged for manual review and remains pending until the review is complete. This process is intended to reduce impersonation and false-affiliation risk but does not guarantee the identity, conduct, legitimacy, or legal compliance of an Employer or its users."
+   },
+   {
+    "type": "h",
+    "text": "3. Information We Collect"
+   },
+   {
+    "type": "p",
+    "text": "Account and Verification Information"
+   },
+   {
+    "type": "li",
+    "text": "Full name"
+   },
+   {
+    "type": "li",
+    "text": ".edu email address"
+   },
+   {
+    "type": "li",
+    "text": "Optional phone number"
+   },
+   {
+    "type": "li",
+    "text": "Password or authentication credentials handled through Supabase Auth"
+   },
+   {
+    "type": "li",
+    "text": "Google or other social-login identifier if enabled"
+   },
+   {
+    "type": "li",
+    "text": "Email-verification status"
+   },
+   {
+    "type": "li",
+    "text": "Account role"
+   },
+   {
+    "type": "li",
+    "text": "Creation and update timestamps"
+   },
+   {
+    "type": "li",
+    "text": "Support and verification communications"
+   },
+   {
+    "type": "p",
+    "text": "Academic and Profile Information"
+   },
+   {
+    "type": "li",
+    "text": "College or university"
+   },
+   {
+    "type": "li",
+    "text": "Major or field of study"
+   },
+   {
+    "type": "li",
+    "text": "Graduation year"
+   },
+   {
+    "type": "li",
+    "text": "Biography"
+   },
+   {
+    "type": "li",
+    "text": "Profile image or avatar"
+   },
+   {
+    "type": "li",
+    "text": "Skills"
+   },
+   {
+    "type": "li",
+    "text": "Experience history"
+   },
+   {
+    "type": "li",
+    "text": "Projects and portfolios"
+   },
+   {
+    "type": "li",
+    "text": "Organizations, clubs, and campus involvement"
+   },
+   {
+    "type": "li",
+    "text": "Career interests, goals, preferred industries, work environment, duration, and skills of interest"
+   },
+   {
+    "type": "li",
+    "text": "Location and work preferences"
+   },
+   {
+    "type": "li",
+    "text": "External links and other information you add"
+   },
+   {
+    "type": "p",
+    "text": "Resume and Application Information"
+   },
+   {
+    "type": "li",
+    "text": "Resume file, display name, file reference, and upload time"
+   },
+   {
+    "type": "li",
+    "text": "Application answers and attachments"
+   },
+   {
+    "type": "li",
+    "text": "Listing applied to and submission date"
+   },
+   {
+    "type": "li",
+    "text": "Application status and pipeline stage"
+   },
+   {
+    "type": "li",
+    "text": "Match score"
+   },
+   {
+    "type": "li",
+    "text": "Withdrawal, interview, offer, and disposition information"
+   },
+   {
+    "type": "p",
+    "text": "Voluntary Self-Identification Information"
+   },
+   {
+    "type": "li",
+    "text": "Ethnicity and race"
+   },
+   {
+    "type": "li",
+    "text": "Gender and optional self-description"
+   },
+   {
+    "type": "li",
+    "text": "Veteran status"
+   },
+   {
+    "type": "li",
+    "text": "Disability status"
+   },
+   {
+    "type": "li",
+    "text": "U.S. work authorization"
+   },
+   {
+    "type": "li",
+    "text": "Present or future sponsorship needs"
+   },
+   {
+    "type": "li",
+    "text": "A declined response for each question"
+   },
+   {
+    "type": "p",
+    "text": "Self-identification is optional, is visible only to you through the ordinary interface, and is not available to Employers. It is not used in matching, ranking, or current reports. InternFirst will not begin demographic reporting without updated Terms and Privacy disclosures, appropriate safeguards, and any required consent. Messages, Interviews, and Activity"
+   },
+   {
+    "type": "li",
+    "text": "Messages, sender and recipient, read status, attachments, and timestamps"
+   },
+   {
+    "type": "li",
+    "text": "Interview dates, times, participants, status, duration, reminders, cancellation details, and meeting"
+   },
+   {
+    "type": "p",
+    "text": "links"
+   },
+   {
+    "type": "li",
+    "text": "Listings viewed, searches, filters, clicks, applications, status changes, messages, events,"
+   },
+   {
+    "type": "p",
+    "text": "RSVPs, notifications, and feature interactions"
+   },
+   {
+    "type": "li",
+    "text": "Employer-created internal notes and feedback, which are not ordinarily visible to you"
+   },
+   {
+    "type": "p",
+    "text": "Technical, Security, and Support Information"
+   },
+   {
+    "type": "li",
+    "text": "IP address"
+   },
+   {
+    "type": "li",
+    "text": "Browser, device, and operating-system information"
+   },
+   {
+    "type": "li",
+    "text": "Session or device identifiers"
+   },
+   {
+    "type": "li",
+    "text": "Approximate location derived from IP address"
+   },
+   {
+    "type": "li",
+    "text": "Authentication, access, error, security, and fraud-prevention logs"
+   },
+   {
+    "type": "li",
+    "text": "Cookie and local-storage identifiers"
+   },
+   {
+    "type": "li",
+    "text": "Support requests, complaints, appeals, privacy requests, and integrity reports"
+   },
+   {
+    "type": "p",
+    "text": "Payment Information"
+   },
+   {
+    "type": "li",
+    "text": "Paid service or subscription purchased"
+   },
+   {
+    "type": "li",
+    "text": "Amount and date"
+   },
+   {
+    "type": "li",
+    "text": "Billing contact information"
+   },
+   {
+    "type": "li",
+    "text": "Stripe customer and payment-method reference"
+   },
+   {
+    "type": "li",
+    "text": "Charge, invoice, receipt, payment status, refund, and dispute records"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst does not store full payment-card numbers or card-security codes. Stripe and Link process payment credentials."
+   },
+   {
+    "type": "h",
+    "text": "4. Sources of Information"
+   },
+   {
+    "type": "li",
+    "text": "Directly from you"
+   },
+   {
+    "type": "li",
+    "text": "From your device and use of the Platform"
+   },
+   {
+    "type": "li",
+    "text": "From Employers when they update applications, schedule interviews, send messages, or report"
+   },
+   {
+    "type": "p",
+    "text": "concerns"
+   },
+   {
+    "type": "li",
+    "text": "From Supabase, Stripe, and other service providers"
+   },
+   {
+    "type": "li",
+    "text": "From public educational-domain or verification sources"
+   },
+   {
+    "type": "li",
+    "text": "From other users reporting suspected fraud or abuse"
+   },
+   {
+    "type": "li",
+    "text": "From lawful legal or governmental sources"
+   },
+   {
+    "type": "h",
+    "text": "5. How We Use Information"
+   },
+   {
+    "type": "li",
+    "text": "Create, authenticate, verify, maintain, and secure your Student Account."
+   },
+   {
+    "type": "li",
+    "text": "Confirm .edu eligibility and periodically re-verify access."
+   },
+   {
+    "type": "li",
+    "text": "Provide profiles, applications, messaging, interviews, calendars, events, notifications, and career"
+   },
+   {
+    "type": "p",
+    "text": "resources."
+   },
+   {
+    "type": "li",
+    "text": "Provide your application and authorized profile information to an Employer when you apply."
+   },
+   {
+    "type": "li",
+    "text": "Generate recommendations, match scores, and job ranking or personalization."
+   },
+   {
+    "type": "li",
+    "text": "Process paid services, subscriptions, refunds, and accounting records."
+   },
+   {
+    "type": "li",
+    "text": "Provide support and communicate security, application, billing, policy, and service updates."
+   },
+   {
+    "type": "li",
+    "text": "Prevent impersonation, fraud, scraping, harassment, discrimination, and security incidents."
+   },
+   {
+    "type": "li",
+    "text": "Investigate complaints, enforce Terms, and establish or defend legal claims."
+   },
+   {
+    "type": "li",
+    "text": "Maintain, test, analyze, and improve the Platform."
+   },
+   {
+    "type": "li",
+    "text": "Create aggregate or de-identified analytics and reports concerning internship opportunity and"
+   },
+   {
+    "type": "p",
+    "text": "recruiting activity."
+   },
+   {
+    "type": "li",
+    "text": "Comply with law and complete a financing, merger, acquisition, or asset transfer subject to"
+   },
+   {
+    "type": "p",
+    "text": "appropriate safeguards."
+   },
+   {
+    "type": "h",
+    "text": "6. Matching, Ranking, and Explanations"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may analyze profile and listing information to estimate relevance or compatibility. Inputs may include skills, major, experience, education, location, availability, and listing requirements. Selfidentification data is not used. Detailed formulas, exact weights, source code, integrity controls, and proprietary methodology are accessible only to authorized InternFirst personnel. You may request a high-level explanation of principal factors affecting a match score or correction of inaccurate profile information by emailing lukebaltzell@intern-first.com. An explanation may omit trade secrets and security-sensitive details. Listings may be ranked using relevance, engagement, quality, pricing or promotion tier, freshness, performance, and integrity or operational factors. Paid placement may affect visibility."
+   },
+   {
+    "type": "h",
+    "text": "7. Who Can See or Receive Student Information"
+   },
+   {
+    "type": "p",
+    "text": "You You can view and edit information available in your account, subject to technical and legal limitations. Employers Before You Apply Under the current design, an Employer cannot view your full Student profile merely because you created it. Employers After You Apply After you apply, authorized users associated with that Employer may view your identity, contact information, academic profile, skills, experience, organizations, resume, application materials, match score, messages, and interview information. Employers may download and retain your resume in their own systems. Employers cannot view your voluntary self-identification record through the Platform. Universities Verified universities may receive institution-level dashboards and purchased reports containing aggregate or de-identified internship-opportunity information, such as counts of registered or active students, number of applications, time to interview, time to offer, application and outcome trends, and similar recruiting metrics. Universities do not receive individual profiles, resumes, messages, applications, self-identification responses, or other identifiable Student information through these reports. Current reports do not segment or report based on race, ethnicity, gender, veteran status, disability status, work authorization, or other self-identification data. InternFirst will update this Policy and obtain any consent required before introducing demographic reporting. InternFirst Personnel and Service Providers Authorized InternFirst personnel may access information on a need-to-know basis for operations, support, verification, matching review, security, trust and safety, billing, legal compliance, and policy enforcement."
+   },
+   {
+    "type": "li",
+    "text": "Supabase, for authentication, PostgreSQL database infrastructure, file storage, and related"
+   },
+   {
+    "type": "p",
+    "text": "services"
+   },
+   {
+    "type": "li",
+    "text": "Stripe and Link, for payment processing, payment-method storage, authentication, fraud"
+   },
+   {
+    "type": "p",
+    "text": "prevention, and transactions"
+   },
+   {
+    "type": "li",
+    "text": "[Email or SMTP Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Hosting or Deployment Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Analytics or Error Monitoring Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Customer Support Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Calendar or Video Provider]"
+   },
+   {
+    "type": "li",
+    "text": "Professional advisers, auditors, insurers, and security providers"
+   },
+   {
+    "type": "p",
+    "text": "Legal, Safety, and Business Transfers InternFirst may disclose information to comply with valid legal process; investigate fraud, security incidents, threats, or Terms violations; protect users or the public; obtain professional advice; or complete a merger, financing, reorganization, bankruptcy, acquisition, or asset transfer. InternFirst may also disclose information at your direction or consent."
+   },
+   {
+    "type": "h",
+    "text": "8. No Sale, No Cross-Context Behavioral Advertising, and Aggregate Reporting"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst does not currently sell Student personal information for monetary or other valuable consideration and does not currently share Student personal information for cross-context behavioral advertising. InternFirst does not include identifiable Student personal information in Employer or university reports. Authorized disclosure of an application to the Employer you selected, processing by service providers, or an Employer’s permitted resume download is not an external aggregate report and is separately described in this Policy. InternFirst may retain and use aggregate or de-identified information that is not reasonably linkable to an individual. InternFirst will take reasonable measures designed to prevent reidentification and may contractually prohibit recipients from reidentifying such information."
+   },
+   {
+    "type": "h",
+    "text": "9. Uploaded File Storage and Access Controls"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst stores resumes, profile avatars, company logos, and other uploaded files using private, access-controlled storage, currently through Supabase Storage. Files are not maintained in a publicly accessible storage bucket. InternFirst limits access according to account permissions and may deliver files through authenticated requests or private, short-lived URLs that expire after a limited period. You should avoid placing unnecessary sensitive information in a resume or uploaded file. After you apply, authorized Employer users may access your resume through the Platform and may download and retain copies in Employer-controlled systems outside InternFirst’s access controls."
+   },
+   {
+    "type": "h",
+    "text": "10. Cookies and Similar Technologies"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst and its providers may use cookies, local storage, session identifiers, and similar technologies to authenticate users, remember preferences, secure accounts, prevent fraud, process payments, diagnose errors, measure performance, and understand feature use. Stripe and Link may use cookies and device or interaction information for payment, authentication, fraud prevention, and Link functionality."
+   },
+   {
+    "type": "h",
+    "text": "11. Retention"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst retains personal information only as long as reasonably necessary for the purposes described in this Policy, subject to legal, security, fraud-prevention, accounting, dispute, and backup needs."
+   },
+   {
+    "type": "li",
+    "text": "Active account and profile information: while the account is active."
+   },
+   {
+    "type": "li",
+    "text": "After use of the “Delete Account” button: profile information may be retained in restricted form for"
+   },
+   {
+    "type": "p",
+    "text": "up to six months to permit restoration if you re-enroll or regain eligibility, unless earlier deletion is requested and no exception applies."
+   },
+   {
+    "type": "li",
+    "text": "Applications, status history, interview records, and recruiting communications: generally up to"
+   },
+   {
+    "type": "p",
+    "text": "three years after the last relevant activity, subject to confirmation by counsel and engineering."
+   },
+   {
+    "type": "li",
+    "text": "Voluntary self-identification information: while the account is active or until consent is withdrawn,"
+   },
+   {
+    "type": "p",
+    "text": "then deleted or de-identified from active systems within a reasonable period."
+   },
+   {
+    "type": "li",
+    "text": "Security and access logs: generally up to twenty-four months."
+   },
+   {
+    "type": "li",
+    "text": "Payment, tax, and accounting records: generally seven years."
+   },
+   {
+    "type": "li",
+    "text": "Support, complaint, fraud, and enforcement records: for the period reasonably necessary to"
+   },
+   {
+    "type": "p",
+    "text": "address the matter and protect users."
+   },
+   {
+    "type": "li",
+    "text": "Backups: deleted or overwritten on a rolling schedule."
+   },
+   {
+    "type": "li",
+    "text": "Aggregate or de-identified information: may be retained without a fixed period where it no longer"
+   },
+   {
+    "type": "p",
+    "text": "reasonably identifies you."
+   },
+   {
+    "type": "h",
+    "text": "12. Account Deletion"
+   },
+   {
+    "type": "p",
+    "text": "You may initiate deletion through the “Delete Account” button. This deactivates the account and removes it from active use. InternFirst may retain profile information in restricted form for up to six months for restoration. You may request earlier permanent deletion by emailing lukebaltzell@intern-first.com, subject to legal and operational exceptions. Deletion may not remove Employer-held resume copies, lawful recruiting records, transaction records, security or fraud records, records needed for disputes or legal obligations, temporary backups, or aggregate and de-identified information."
+   },
+   {
+    "type": "h",
+    "text": "13. Security"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst uses administrative, technical, and physical safeguards intended to protect information, including Supabase authentication, password hashing, database Row-Level Security, access controls, and logging. No system can guarantee absolute security. Report suspected compromise to lukebaltzell@intern-first.com. InternFirst will investigate suspected incidents and provide notices required by applicable law."
+   },
+   {
+    "type": "h",
+    "text": "14. Your Privacy Choices and Rights"
+   },
+   {
+    "type": "li",
+    "text": "Access or confirm processing"
+   },
+   {
+    "type": "li",
+    "text": "Correct inaccurate information"
+   },
+   {
+    "type": "li",
+    "text": "Delete information"
+   },
+   {
+    "type": "li",
+    "text": "Obtain a portable copy where technically feasible"
+   },
+   {
+    "type": "li",
+    "text": "Withdraw consent for voluntary self-identification processing"
+   },
+   {
+    "type": "li",
+    "text": "Opt out of sale, targeted advertising, or certain profiling if such processing begins and the right"
+   },
+   {
+    "type": "p",
+    "text": "applies"
+   },
+   {
+    "type": "li",
+    "text": "Appeal a denied request where applicable"
+   },
+   {
+    "type": "li",
+    "text": "Receive non-discriminatory treatment for exercising a legal right"
+   },
+   {
+    "type": "p",
+    "text": "Submit a request or appeal to lukebaltzell@intern-first.com. InternFirst may verify identity, request proof of authorization for an agent, and deny or limit a request where required to protect another person, preserve security, comply with law, retain transaction or legal records, defend claims, or protect trade secrets. InternFirst will explain denials and appeal options where required. California Privacy Rights This section applies to California residents to the extent the California Consumer Privacy Act, as amended by the California Privacy Rights Act (collectively, the “CCPA”), applies to InternFirst and the information at issue. California privacy rights may extend to students, job applicants, employees, independent contractors, and business contacts when the statutory requirements are met. Categories of Personal Information"
+   },
+   {
+    "type": "li",
+    "text": "Identifiers, such as name, .edu email address, optional phone number, account identifiers, IP"
+   },
+   {
+    "type": "p",
+    "text": "address, and profile image."
+   },
+   {
+    "type": "li",
+    "text": "Customer-record information, such as contact details and payment transaction references."
+   },
+   {
+    "type": "li",
+    "text": "Protected-classification and sensitive personal information that you voluntarily provide through"
+   },
+   {
+    "type": "p",
+    "text": "self-identification, including race, ethnicity, gender, veteran status, disability status, citizenship or immigration-related work-authorization information, and sponsorship needs."
+   },
+   {
+    "type": "li",
+    "text": "Commercial information, such as paid-service purchases, subscription status, and transaction"
+   },
+   {
+    "type": "p",
+    "text": "history."
+   },
+   {
+    "type": "li",
+    "text": "Internet or electronic-network activity, such as logins, listing views, searches, clicks, applications,"
+   },
+   {
+    "type": "p",
+    "text": "messages, and feature use."
+   },
+   {
+    "type": "li",
+    "text": "Professional, employment, and education information, such as school, major, graduation year,"
+   },
+   {
+    "type": "p",
+    "text": "skills, experience, projects, organizations, resume, and application history."
+   },
+   {
+    "type": "li",
+    "text": "Audio, electronic, visual, or similar information, such as profile images, uploaded files, or an"
+   },
+   {
+    "type": "p",
+    "text": "elevator-pitch video if that feature is enabled."
+   },
+   {
+    "type": "li",
+    "text": "Approximate geolocation derived from IP address and location preferences supplied for job"
+   },
+   {
+    "type": "p",
+    "text": "matching."
+   },
+   {
+    "type": "li",
+    "text": "Inferences, such as career interests, recommendations, match scores, and engagement or job-"
+   },
+   {
+    "type": "p",
+    "text": "relevance indicators. InternFirst collects and uses these categories for the business and commercial purposes described in this Policy, including providing accounts and recruiting services; verification; security and fraud prevention; analytics; communications; payments; customer support; legal compliance; and aggregate or de-identified reporting. Categories of recipients may include authorized users, Supabase, Stripe and Link, other service providers listed in this Policy, professional advisers, and government authorities when legally required. InternFirst has not sold personal information for monetary or other valuable consideration during the preceding twelve months and has not shared personal information for cross-context behavioral advertising during the preceding twelve months, based on the current pilot configuration. InternFirst does not knowingly sell or share the personal information of consumers under 16. California Rights"
+   },
+   {
+    "type": "li",
+    "text": "Right to know the categories and specific pieces of personal information collected, sources,"
+   },
+   {
+    "type": "p",
+    "text": "purposes, and recipient categories."
+   },
+   {
+    "type": "li",
+    "text": "Right to delete personal information, subject to legal exceptions."
+   },
+   {
+    "type": "li",
+    "text": "Right to correct inaccurate personal information."
+   },
+   {
+    "type": "li",
+    "text": "Right to opt out of sale or sharing for cross-context behavioral advertising."
+   },
+   {
+    "type": "li",
+    "text": "Right to limit certain uses or disclosures of sensitive personal information when that right applies."
+   },
+   {
+    "type": "li",
+    "text": "Right to non-discrimination for exercising CCPA rights."
+   },
+   {
+    "type": "p",
+    "text": "Requests may be submitted by email to lukebaltzell@intern-first.com. Because InternFirst operates exclusively online and has a direct relationship with account holders, InternFirst currently designates email and in-account controls as its request methods. InternFirst may verify identity and authority before acting on a request. InternFirst will honor a legally recognized opt-out preference signal, including Global Privacy Control, for processing to which the signal applies. InternFirst does not currently display a “Do Not Sell or Share My Personal Information” link because it does not currently sell or share personal information as those terms are defined by the CCPA. Other U.S. State Privacy Rights Depending on your state of residence and whether a particular law applies to InternFirst and the information involved, you may have rights to confirm processing; access; correct; delete; obtain a portable copy; opt out of targeted advertising, sale, or certain profiling; withdraw consent to sensitive-data processing; designate an authorized agent; appeal a denied request; and receive non-discriminatory treatment. InternFirst intends this request process to accommodate applicable rights under laws such as the Texas Data Privacy and Security Act, Virginia Consumer Data Protection Act, Colorado Privacy Act, Florida Digital Bill of Rights, Delaware Personal Data Privacy Act, and similar comprehensive state privacy laws, subject to each law’s scope, thresholds, exemptions, and exceptions. Submit a request or appeal to lukebaltzell@intern-first.com. InternFirst generally aims to respond within 45 days and may extend the response period when permitted. If a request is denied, InternFirst will explain the reason and provide appeal or regulator-complaint information when applicable law requires it. Children and Minors The Student Services are intended for users at least 18 years old. InternFirst does not knowingly permit a person under 18 to create a Student Account. Contact lukebaltzell@intern-first.com if you believe a minor has created an account. International Users The pilot is intended for users located in the United States. International users should not create an account unless InternFirst expressly authorizes access and provides any required supplemental notice. Changes to This Policy InternFirst may update this Policy prospectively. For material changes, InternFirst will provide reasonable notice by email, in-product notice, or another conspicuous method. If a change materially expands use of sensitive information or introduces an incompatible purpose, InternFirst will obtain consent where required. Prior versions will be retained internally or at [Policy Archive URL]. Contact and Complaints InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Email: lukebaltzell@intern-first.com Privacy, security, trust and safety, and privacy appeals: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   }
+  ]
+ },
+ "employer_terms": {
+  "title": "Employer Terms & Conditions",
+  "version": "1.4",
+  "effectiveDate": "August 3, 2026",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "Employer Terms and Conditions"
+   },
+   {
+    "type": "p",
+    "text": "IMPORTANT: These Employer Terms contain payment obligations, data-use restrictions, indemnities, warranty disclaimers, and limitations of liability. Agreement and Authority These Employer Terms and Conditions (“Employer Terms”) form a binding agreement between InternFirst Inc. and the company, organization, institution, or other legal entity identified in the Employer Account. By accepting these Employer Terms, creating an Employer Account, posting a listing, accessing applicant information, purchasing services, or using Employer Services, the accepting individual represents that the individual has authority to bind the entity and that the entity agrees to these Employer Terms."
+   },
+   {
+    "type": "h",
+    "text": "1. Company Information and Contact"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Registered Agent: United States Corporation Agents, Inc. Email: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   },
+   {
+    "type": "h",
+    "text": "2. Definitions"
+   },
+   {
+    "type": "p",
+    "text": "“Employer” means the entity identified in the Employer Account and each authorized representative using the account. “Employer Services” means company verification, company profiles, listings, applicant access, matching information, applicant tracking, team collaboration, messaging, interviews, recruiting analytics, billing, and related Platform features. “Student Information” means personal information, profiles, resumes, applications, messages, interview information, and related records concerning a Student."
+   },
+   {
+    "type": "h",
+    "text": "3. Employer Eligibility and Verification"
+   },
+   {
+    "type": "p",
+    "text": "Employer Accounts are available only to legitimate organizations and authorized representatives using the Platform for lawful recruiting and related business purposes. During signup, InternFirst may require a verified work email address, company name, company website link, company description, representative identity and authority information, and supporting information reasonably requested during a manual review. InternFirst compares the domain of the Employer user’s work email address with the domain associated with the company website submitted during signup. If the domains do not match, or if the available information is inconclusive, the Employer Account is flagged for manual review and remains pending until InternFirst completes that review. InternFirst may request evidence of the user’s affiliation with, and authority to act for, the company. While an account is pending, InternFirst may restrict job posting, applicant access, messaging, billing, or other Employer Services. A domain match does not guarantee approval, and InternFirst may manually review any account. Verification confirms only that the account satisfied InternFirst’s process at the time; it is not a certification of solvency, legal compliance, workplace safety, or the authenticity of every user."
+   },
+   {
+    "type": "h",
+    "text": "4. Prohibition on Impersonation and False Affiliation"
+   },
+   {
+    "type": "p",
+    "text": "Employer and its users must not impersonate an employee, officer, recruiter, hiring manager, agent, or representative of a company for which the user does not work or lacks authority to represent. Employer must not claim affiliation with a company that does not exist or falsely claim that an account, listing, event, or opportunity is affiliated with a real company when it is not. Employer must not use another company’s name, email domain, website domain, logo, website, address, or representative information without authorization; submit a company website link that is unrelated to the organization represented; create a fictitious or misleading company profile to collect Student Information; or allow a former employee or unauthorized person to retain account access. A violation may result in immediate suspension, removal of listings, preservation of evidence, notice to affected users or the impersonated organization, denial of refunds, and referral to law enforcement."
+   },
+   {
+    "type": "h",
+    "text": "5. Organization Accounts, Users, and Message Privacy"
+   },
+   {
+    "type": "p",
+    "text": "An Employer Account may have multiple individual users. Each user must use a separate login and may not share credentials. The primary administrator is responsible for inviting authorized users, assigning appropriate permissions, removing users promptly, maintaining accurate billing and company information, and ensuring all users comply with these Employer Terms. Company-level data may include company profiles, listings, applicants, pipeline stages, events, tasks, analytics, and internal notes, subject to permissions. Individual messages are ordinarily visible only to the participating sender and recipient, not the entire company account. InternFirst and its service providers may access messages when reasonably necessary for support, security, abuse investigation, policy enforcement, or legal compliance."
+   },
+   {
+    "type": "h",
+    "text": "6. Account Security"
+   },
+   {
+    "type": "li",
+    "text": "Maintain confidential, unique credentials for each user."
+   },
+   {
+    "type": "li",
+    "text": "Use reasonable password, device, and endpoint-security practices."
+   },
+   {
+    "type": "li",
+    "text": "Enable multifactor authentication when available."
+   },
+   {
+    "type": "li",
+    "text": "Limit Student Information access to personnel with a legitimate recruiting need."
+   },
+   {
+    "type": "li",
+    "text": "Remove access promptly when a user changes roles or leaves."
+   },
+   {
+    "type": "li",
+    "text": "Notify InternFirst promptly at lukebaltzell@intern-first.com of suspected unauthorized access"
+   },
+   {
+    "type": "p",
+    "text": "or disclosure."
+   },
+   {
+    "type": "h",
+    "text": "7. Listings and Recruiting Representations"
+   },
+   {
+    "type": "p",
+    "text": "Employer is solely responsible for each listing and represents that it describes a genuine, currently available opportunity; accurately identifies the hiring entity; accurately describes responsibilities, qualifications, location, work arrangement, dates, hours, compensation, and deadlines; clearly identifies lawful unpaid work; and does not omit information in a misleading manner. Employer must comply with wage, hour, internship, employment, immigration, accessibility, antidiscrimination, consumer-protection, and advertising laws. Employer must not post illegal, deceptive, unsafe, discriminatory, multi-level-marketing, pyramid, check-cashing, money-transfer, or similar opportunities, and must not charge Students an undisclosed recruiting, placement, training, or application fee."
+   },
+   {
+    "type": "h",
+    "text": "8. Employment and Nondiscrimination Compliance"
+   },
+   {
+    "type": "p",
+    "text": "Employer is solely responsible for recruiting and employment decisions and must not discriminate, harass, retaliate, classify, screen, rank, or reject in violation of applicable law. Employer must not ask InternFirst to reveal voluntary self-identification data, use protected characteristics in matching, honor unlawful preferences, or circumvent accommodation obligations. Employer must independently validate the job-relatedness and legality of its criteria and provide reasonable accommodations in application and interview processes where required."
+   },
+   {
+    "type": "h",
+    "text": "9. InternFirst’s Role and No Recruiting Guarantee"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst provides recruiting technology and information. InternFirst does not employ or jointly employ Students merely by operating the Platform, control Employer’s hiring or workplace decisions, conduct background checks unless separately agreed, or guarantee Student identity, qualifications, work authorization, references, or suitability. InternFirst does not guarantee that Employer will receive any applicant, a qualified intern, a particular number of views, clicks, applications, interviews, or hires, or that a Student will accept, begin, perform, or complete a role."
+   },
+   {
+    "type": "h",
+    "text": "10. Applicant Access and Resume Downloads"
+   },
+   {
+    "type": "p",
+    "text": "Employer may access a Student’s permitted profile only after the Student applies to Employer’s listing, unless a future feature and separate Student authorization expressly provide otherwise. Authorized Employer users may view the Student’s identity, contact information, academic profile, skills, experience, projects, organizations, application materials, resume, and match score. InternFirst may provide such access through authenticated Platform functionality or private, shortlived URLs. Employer may not attempt to bypass, extend, defeat, or circumvent those access controls. Employer may download resumes and store them in Employer-controlled recruiting or recordkeeping systems. Once downloaded, Employer is independently responsible for the copy’s access control, security, use, retention, deletion, and response to applicable privacy requests. Deletion of the Student’s InternFirst account does not automatically delete Employer’s downloaded copy. Employer does not receive the Student’s voluntary self-identification record, including race, ethnicity, gender, veteran status, disability status, work-authorization record, or sponsorship responses maintained in that record, through ordinary Employer access."
+   },
+   {
+    "type": "h",
+    "text": "11. Permitted Use of Student Information"
+   },
+   {
+    "type": "p",
+    "text": "Employer may use Student Information only to evaluate the Student for the opportunity applied to; communicate about recruiting; schedule and conduct interviews; make and administer an offer; maintain a lawful recruiting record; or consider the Student for another role after appropriate notice or consent where required."
+   },
+   {
+    "type": "li",
+    "text": "Do not sell, rent, publish, monetize, or use Student Information for unrelated advertising, sales,"
+   },
+   {
+    "type": "p",
+    "text": "fundraising, lead generation, or solicitation."
+   },
+   {
+    "type": "li",
+    "text": "Do not scrape, bulk copy, or create an unauthorized external candidate database."
+   },
+   {
+    "type": "li",
+    "text": "Do not share Student Information beyond personnel and advisers with a legitimate need to"
+   },
+   {
+    "type": "p",
+    "text": "know."
+   },
+   {
+    "type": "li",
+    "text": "Do not attempt to access voluntary self-identification data or reidentify aggregate data."
+   },
+   {
+    "type": "li",
+    "text": "Do not use Student Information to train, fine-tune, evaluate, or enrich an external AI system"
+   },
+   {
+    "type": "p",
+    "text": "without InternFirst’s written approval and any required Student authorization."
+   },
+   {
+    "type": "li",
+    "text": "Do not retain Student Information longer than reasonably necessary for recruiting, legal, security,"
+   },
+   {
+    "type": "p",
+    "text": "or documented defense purposes."
+   },
+   {
+    "type": "li",
+    "text": "Protect Student Information with reasonable administrative, technical, and physical safeguards."
+   },
+   {
+    "type": "h",
+    "text": "12. Match Scores and Applicant Ordering"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may calculate match scores and order applicants using job-related profile and listing information. Match scores are decision-support tools, not guarantees, certifications, background checks, or final hiring decisions. Employer must independently review candidates and must not use a score as the sole basis for a decision. The detailed formula, exact weights, source code, trade secrets, and integrity controls are confidential and accessible only to authorized InternFirst personnel. Employer may request a highlevel explanation of principal factors by emailing lukebaltzell@intern-first.com, but InternFirst is not required to disclose proprietary methodology."
+   },
+   {
+    "type": "h",
+    "text": "13. Job-Listing Ranking"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may rank or distribute listings based on relevance, engagement, listing quality, pricing or promotion tier, freshness, performance, and integrity or operational factors. Paid tiers may affect visibility. Payment does not guarantee a specific position, number of impressions, applications, or hires. InternFirst may reduce distribution of low-quality, misleading, or risky listings and is not required to disclose its proprietary formula."
+   },
+   {
+    "type": "h",
+    "text": "14. Applicant Tracking, Internal Notes, and Interviews"
+   },
+   {
+    "type": "p",
+    "text": "Employer may use pipeline, task, assignment, interview-feedback, and internal-note features for legitimate recruiting. Internal notes must be job-related, professional, appropriately restricted, and must not contain unlawful discriminatory statements or unnecessary medical, demographic, or sensitive information. InternFirst is not responsible for a missed interview, scheduling conflict, failure to attend, or rescheduling decision. Employer and Student are responsible for coordinating and resolving missed interviews directly."
+   },
+   {
+    "type": "h",
+    "text": "15. Messaging and Outreach"
+   },
+   {
+    "type": "p",
+    "text": "Employer may contact Students only for legitimate recruiting, networking, interview, and related purposes consistent with Student expectations and settings. Employer must not send spam, harass or pressure Students, misrepresent identity, request unnecessary sensitive information, evade moderation, record communications without legally required consent, or retaliate against a Student for reporting concerns or exercising rights."
+   },
+   {
+    "type": "h",
+    "text": "16. Employer Content and Licenses"
+   },
+   {
+    "type": "p",
+    "text": "“Employer Content” includes company profiles, names, logos, descriptions, websites, listings, events, application questions, messages, and other submitted materials. Employer retains ownership of its original Employer Content and grants InternFirst a nonexclusive, worldwide, royaltyfree license to host, copy, format, display, distribute within the Platform, rank, recommend, promote, and process Employer Content as reasonably necessary to provide the Employer Services, facilitate applications, create aggregate analytics, prevent fraud, enforce policies, and comply with law. Employer represents that it has the right to use all submitted names, trademarks, logos, images, and content."
+   },
+   {
+    "type": "h",
+    "text": "17. Confidentiality and Data Security"
+   },
+   {
+    "type": "p",
+    "text": "Each party will protect the other party’s nonpublic information using at least reasonable care and use it only for purposes of the relationship. Student personal information is confidential regardless of marking. Employer must notify InternFirst at lukebaltzell@intern-first.com without undue delay after discovering suspected unauthorized access, acquisition, use, or disclosure involving Platform or Student Information; contain the incident; preserve evidence; provide known facts; and cooperate with investigation, remediation, and legally required notices. Employer must not notify affected Students about an incident involving InternFirst systems without coordinating with InternFirst unless law requires otherwise."
+   },
+   {
+    "type": "h",
+    "text": "18. Pricing, Billing Models, and Payment Authorization"
+   },
+   {
+    "type": "p",
+    "text": "Employer Services may be offered as free or organic listings, Pay-Per-Job purchases, Budget Campaigns charged on a pay-per-application basis, subscriptions, events, sponsorships, reports, credits, or other offerings. Before Employer submits an order, the checkout, order form, campaign setup screen, or other purchase interface (each, an “Order”) will identify the applicable service, price or unit rate, billing model, billing period, listing or campaign term, budget, quota, included features, renewal terms, taxes, and any material limitations. If an Order conflicts with these Employer Terms on a specific commercial term, the Order controls for that term. 18.1 Organic Listings An Organic Listing is offered without a listing fee for the term and features shown in the Platform. Organic Listings may receive limited distribution and may be subject to listing limits, eligibility rules, expiration, moderation, or conversion to a paid offering. No payment method will be charged merely because an Employer publishes an Organic Listing. Selecting an optional paid promotion or upgrading the listing creates a separate paid Order. 18.2 Pay-Per-Job Purchases A “Pay-Per-Job” or “Pay-Per-Post” purchase is a one-time, fixed-fee purchase for one identified listing. Employer is charged the full disclosed amount when the Order is submitted, or when InternFirst approves and activates the listing if the checkout expressly states that approval is required before charging. The billing period for a Pay-Per-Job purchase is the single listing term displayed in the Order. The term begins when the listing is activated and ends at the earliest of: (a) the end of the displayed listing term; (b) the application deadline; (c) Employer closing or withdrawing the listing; (d) exhaustion of an included applicant quota, if the Order includes one; or (e) suspension or removal under these Employer Terms. A Pay-Per-Job purchase does not automatically renew. Reposting, extending the term, increasing a quota, or purchasing additional visibility requires a new Order unless the original Order expressly includes that feature. Closing a listing early, receiving fewer views or applications than expected, failing to fill the role, or not using the full listing term or quota does not create a prorated refund or cash credit, except where required by law or approved as a special-case accommodation under Section 19. 18.3 Budget Campaigns A “Budget Campaign” is a paid listing campaign for which Employer selects a maximum campaign budget and a disclosed charge basis, such as pay per qualifying application (“PPA”). The billing period is the campaign term displayed in the Order. It begins when InternFirst activates the campaign and ends when the first of the following occurs: (a) the budget is exhausted; (b) the campaign end date is reached; (c) the listing expires or closes; (d) Employer pauses or ends the campaign; or (e) InternFirst suspends or ends the campaign under these Employer Terms. Unless an Order expressly states that the campaign is postpaid or invoiced, Budget Campaigns are prepaid. Employer authorizes InternFirst and Stripe to charge the selected payment method for the campaign budget before activation. InternFirst then deducts billable PPC or PPA events from that prepaid balance at the unit rate shown in the Order. The Platform may show estimated, pending, and finalized spend. Finalized spend controls if an estimate differs because of invalid-activity review, delayed processing, rounding, taxes, or credits. InternFirst will not intentionally charge more than the selected campaign budget unless an authorized Employer administrator separately approves a budget increase, account top-up, autoreload, or overage feature through the Platform or an Order. When the budget is exhausted, InternFirst may pause paid distribution, close the campaign, or convert the listing to Organic status if that option is available and disclosed. Employer may pause a Budget Campaign through available account controls. Pausing stops new paid distribution after the pause is processed but does not reverse charges for billable activity occurring before the pause became effective. Ending a campaign does not reverse finalized spend. Any remaining prepaid balance is handled as Platform Credits under Section 19 unless the Order expressly provides another treatment. 18.4 Qualifying Applications For a PPA campaign, a “Qualifying Application” is a completed application to the applicable listing that satisfies the billable criteria disclosed in the Order when submitted. Those criteria may include a minimum match-score threshold, profile-completion requirement, geographic or work-authorization requirement, or other job-related criterion. Employer is charged no more than once for the same Student’s application to the same listing unless the Order clearly states otherwise. A completed application does not become nonbillable merely because the Student later withdraws, does not respond, is rejected, lacks a qualification not included in the Order’s billable criteria, declines an interview or offer, fails to begin or complete the role, or is not hired. InternFirst may remove or credit an event that it confirms was a duplicate application, bot or fraudulent submission, InternFirst or Employer test activity, a Platform processing error, or otherwise outside the billable criteria stated in the Order. 18.5 Unit Rates, Quotas, and Changes The unit rate, included quota, maximum spend, and billable criteria displayed when a paid listing or campaign is activated apply for that listing or campaign. InternFirst may change generally available prices prospectively, but a price change will not alter an active fixed-price listing or active campaign unless Employer affirmatively accepts the change, increases the budget, renews, or places a new Order. Taxes and government-imposed charges may be added where applicable. 18.6 Subscriptions and Recurring Billing If Employer purchases a subscription, the checkout will identify whether the billing period is monthly, annual, or another stated period; the amount charged for each period; the date recurring charges begin; the included features and usage limits; whether unused usage carries forward; and how to cancel. Unless the Order states otherwise, the subscription renews for successive periods of the same length and the saved payment method is charged at the beginning of each renewal period until canceled. An authorized account administrator may cancel through the “Cancel Subscription” button or any equivalent online cancellation control made available in the account. Cancellation takes effect at the end of the current paid period unless the Order expressly permits an earlier effective date. Employer retains access through the paid period, subject to these Employer Terms, and is not charged for a later renewal after timely cancellation. InternFirst may provide a renewal or price-change notice when required by law or when a material subscription term changes. 18.7 Stripe, Link, Saved Payment Methods, and Invoices Payments may be processed by Stripe, including Link. InternFirst does not store full payment-card numbers or card-security codes. InternFirst may store Stripe customer, payment-method, charge, invoice, amount, tax, status, billing-period, usage, credit, dispute, and related references. By submitting an Order and providing or selecting a payment method, Employer authorizes InternFirst and Stripe to charge that method for the disclosed one-time fee, prepaid budget, finalized usage, authorized top-up or overage, recurring subscription fee, taxes, and other amounts expressly accepted in an Order. If Employer authorizes a saved payment method for future or off-session charges, the applicable checkout will disclose that authorization before acceptance. InternFirst may issue an electronic receipt or invoice through Stripe, email, or the Platform. If an Order permits invoice billing instead of automatic payment, the invoice is due on the date or within the payment period stated in the Order. InternFirst may retry failed payments, request an updated payment method, pause paid distribution, restrict billing features, suspend Employer Services, or refer an unpaid balance for collection, subject to applicable law."
+   },
+   {
+    "type": "h",
+    "text": "19. Credits, Adjustments, Refunds, and Billing Disputes"
+   },
+   {
+    "type": "p",
+    "text": "19.1 Platform Credits “Platform Credits” are contractual credits usable only for eligible InternFirst Employer Services. Credits may arise from a purchase, unused prepaid campaign balance, promotion, service adjustment, replacement listing, invalid-activity adjustment, or special-case accommodation. Credits are not bank deposits, stored-value accounts, legal tender, or cash equivalents; do not earn interest; and may not be sold, transferred, pledged, or redeemed for cash except where required by law. Available Credits are applied automatically to eligible charges before a saved payment method unless the Order or account settings state otherwise. InternFirst may apply Credits with the earliest expiration first. A Credit expires only on the expiration date disclosed when it is issued or purchased. If no expiration date is disclosed, the Credit remains available while the Employer Account is active, subject to account closure, fraud, chargeback, breach, legal requirements, and the record-retention provisions in the Employer Privacy Policy. Promotional Credits may be limited to specified services, listings, dates, regions, or account types. A chargeback, payment reversal, or refund may cause related Credits to be removed. InternFirst may correct an erroneous Credit balance or reverse Credits obtained through fraud, manipulation, duplicate issuance, or technical error. 19.2 Invalid-Activity and Service Adjustments InternFirst may review clicks, applications, impressions, and related billing events for duplicate, automated, fraudulent, test, or technically invalid activity. If InternFirst confirms that a finalized charge was invalid under the applicable Order, InternFirst may issue a Platform Credit, restore campaign budget, replace a listing, or provide another reasonable adjustment. InternFirst is not obligated to issue a cash refund when a Credit or budget restoration provides the contracted value, except where law requires otherwise. 19.3 Refund Policy Except where required by law or expressly stated in an Order, paid fees, finalized campaign spend, purchased listings, subscriptions, and Credits are noncancelable and nonrefundable. InternFirst’s C- Suite, or an authorized designee, may approve a special-case refund, Credit, replacement listing, extension, budget restoration, or other accommodation in its discretion and subject to applicable law. No refund or Credit is owed for suspension or termination caused by fraud, impersonation, unlawful or misleading listings, Student Information misuse, payment abuse, nonpayment, manipulation of billing events, or another material breach. 19.4 Billing Review and Disputes Employer should review receipts, invoices, campaign ledgers, and Credit balances promptly and notify InternFirst at lukebaltzell@intern-first.com of a suspected billing error. To support timely investigation, Employer should identify the account, listing or campaign, transaction, disputed event, amount, and reason, preferably within thirty (30) days after the charge or statement. This review period is an administrative request and does not waive any right that cannot lawfully be waived or shorten any legally controlling limitations period. Employer must not initiate a chargeback for a charge it knowingly authorized without first making a good-faith effort to resolve the issue with InternFirst, unless immediate action is reasonably necessary to preserve a legal or payment-network right. InternFirst may suspend paid services while a chargeback, reversal, or payment dispute is pending and may recover undisputed amounts and payment-network fees to the extent permitted by law and the applicable Order."
+   },
+   {
+    "type": "h",
+    "text": "20. Platform-Integrity Rules"
+   },
+   {
+    "type": "li",
+    "text": "Do not impersonate an employee or representative of a company for which the user does not"
+   },
+   {
+    "type": "p",
+    "text": "work or lack authority to represent."
+   },
+   {
+    "type": "li",
+    "text": "Do not claim affiliation with a nonexistent company or an unauthorized affiliation with a real"
+   },
+   {
+    "type": "p",
+    "text": "company."
+   },
+   {
+    "type": "li",
+    "text": "Do not use a false, stolen, or unauthorized company website, email domain, logo, affiliation, or"
+   },
+   {
+    "type": "p",
+    "text": "identity."
+   },
+   {
+    "type": "li",
+    "text": "Do not create fraudulent listings or collect Student Information under false pretenses."
+   },
+   {
+    "type": "li",
+    "text": "Do not scrape, bulk export, resell, publish, or distribute Student Information except for permitted"
+   },
+   {
+    "type": "p",
+    "text": "resume downloads and lawful recruiting use."
+   },
+   {
+    "type": "li",
+    "text": "Do not manipulate rankings, impressions, clicks, applicant counts, or billing events."
+   },
+   {
+    "type": "li",
+    "text": "Do not evade verification, suspension, pricing, quotas, or security controls."
+   },
+   {
+    "type": "li",
+    "text": "Do not use bots or automated access without written approval."
+   },
+   {
+    "type": "li",
+    "text": "Do not post discriminatory, illegal, unsafe, or misleading opportunities."
+   },
+   {
+    "type": "li",
+    "text": "Do not use the Platform for unrelated sales, collections, surveillance, or harassment."
+   },
+   {
+    "type": "li",
+    "text": "Do not upload Student Information to external AI systems without authorization."
+   },
+   {
+    "type": "li",
+    "text": "Do not violate law, privacy rights, employment rights, intellectual-property rights, confidentiality"
+   },
+   {
+    "type": "p",
+    "text": "duties, or these Employer Terms."
+   },
+   {
+    "type": "h",
+    "text": "21. InternFirst Intellectual Property"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst and its licensors own the Platform, software, interfaces, graphics, designs, databases, reports, analytics frameworks, compilations, matching and ranking systems, trademarks, logos, and proprietary technology, excluding Employer Content and Student Content. InternFirst grants Employer a limited, nonexclusive, nontransferable, revocable right to use the Employer Services for internal recruiting purposes during the applicable service period."
+   },
+   {
+    "type": "h",
+    "text": "22. Monitoring, Audits, Suspension, and Termination"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may review account activity, listings, access logs, messages implicated in a complaint, verification records, and billing records to operate and protect the Platform. InternFirst may require evidence of identity, authority, listing legitimacy, consent, compliance, or remediation. InternFirst may reject content, pause listings, restrict applicant access, suspend users, terminate an account, preserve evidence, or notify affected parties where it reasonably believes there is fraud, impersonation, an unlawful or misleading listing, Student Information misuse, nonpayment, security risk, or material breach. An appeal may be submitted to lukebaltzell@intern-first.com. Employer may initiate account deletion through the “Delete Account” button. InternFirst may retain the account in restricted form for up to six months to permit restoration, and may retain transaction, application, security, enforcement, and legal records for longer as described in the Employer Privacy Policy. If multiple users remain on the company account, deletion of one representative’s login does not delete company-level records."
+   },
+   {
+    "type": "h",
+    "text": "23. Disclaimers"
+   },
+   {
+    "type": "p",
+    "text": "TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE PLATFORM AND EMPLOYER SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” INTERNFIRST DISCLAIMS EXPRESS, IMPLIED, AND STATUTORY WARRANTIES, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, SECURITY, AVAILABILITY, AND RESULTS. INTERNFIRST DOES NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED OR ERROR-FREE; THAT A STUDENT’S IDENTITY, QUALIFICATIONS, EXPERIENCE, WORK AUTHORIZATION, OR REPRESENTATIONS ARE ACCURATE; THAT EMPLOYER WILL RECEIVE ANY APPLICANT OR A QUALIFIED INTERN; THAT A MATCH SCORE WILL PREDICT PERFORMANCE; OR THAT ANY EMPLOYER-STUDENT INTERACTION OR WORKING RELATIONSHIP WILL BE SUCCESSFUL."
+   },
+   {
+    "type": "h",
+    "text": "24. No Liability for Recruiting or Working-Relationship Outcomes"
+   },
+   {
+    "type": "p",
+    "text": "To the maximum extent permitted by law, InternFirst is not liable for whether a Student secures an internship; whether Employer finds a qualified intern; a decision to interview, hire, accept, reject, withdraw, terminate, or continue; or the conduct or outcome of an interview, internship, employment, or other relationship, including compensation, classification, safety, supervision, harassment, discrimination, accommodations, benefits, taxes, or termination."
+   },
+   {
+    "type": "h",
+    "text": "25. Limitation of Liability"
+   },
+   {
+    "type": "p",
+    "text": "TO THE MAXIMUM EXTENT PERMITTED BY LAW, INTERNFIRST AND ITS AFFILIATES, OFFICERS, DIRECTORS, EMPLOYEES, CONTRACTORS, LICENSORS, AND SERVICE PROVIDERS WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL DAMAGES; LOST PROFITS, REVENUE, GOODWILL, OPPORTUNITY, OR DATA; COST OF SUBSTITUTE SERVICES; OR BUSINESS INTERRUPTION. INTERNFIRST’S TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO THE EMPLOYER SERVICES OR THESE EMPLOYER TERMS WILL NOT EXCEED THE GREATER OF THE FEES PAID OR PAYABLE BY EMPLOYER TO INTERNFIRST DURING THE TWELVE MONTHS BEFORE THE FIRST EVENT GIVING RISE TO LIABILITY OR ONE HUNDRED U.S. DOLLARS IF EMPLOYER PAID NO FEES. The limitations do not apply to liability that cannot lawfully be excluded."
+   },
+   {
+    "type": "h",
+    "text": "26. Employer Indemnification"
+   },
+   {
+    "type": "p",
+    "text": "Employer will defend, indemnify, and hold harmless InternFirst, its affiliates, and their officers, directors, employees, agents, and service providers from third-party claims, agency proceedings, damages, judgments, settlements, penalties, costs, and reasonable attorneys’ fees arising from Employer Content or listings; recruiting, hiring, internship, employment, compensation, classification, supervision, safety, accommodation, discrimination, harassment, retaliation, or termination practices; impersonation or false affiliation; unauthorized use, disclosure, export, retention, or security of Student Information; legal violations; a working relationship between Employer and a Student; or Employer’s material breach, fraud, negligence, or willful misconduct."
+   },
+   {
+    "type": "h",
+    "text": "27. Governing Law, Venue, and Jury Waiver"
+   },
+   {
+    "type": "p",
+    "text": "These Employer Terms are governed by Delaware law, without regard to conflict-of-law principles. The parties submit to the exclusive jurisdiction of the state courts located in New Castle County, Delaware, and the United States District Court for the District of Delaware for disputes arising from these Employer Terms or Employer Services. Either party may seek temporary or injunctive relief in another court with jurisdiction to protect confidential information, Student Information, account security, or intellectual property. TO THE MAXIMUM EXTENT PERMITTED BY LAW, EACH PARTY KNOWINGLY AND VOLUNTARILY WAIVES A TRIAL BY JURY FOR A DISPUTE ARISING OUT OF THESE EMPLOYER TERMS."
+   },
+   {
+    "type": "h",
+    "text": "28. Changes, Electronic Records, and Notices"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may update these Employer Terms prospectively. Material changes affecting pricing, renewal, liability, dispute terms, or applicant-data rights may require affirmative acceptance and will not alter a fixed order during its committed term unless the order permits the change. The parties agree to transact electronically. Notices may be delivered to the account email or through the Platform."
+   },
+   {
+    "type": "h",
+    "text": "29. Assignment, Force Majeure, and Miscellaneous"
+   },
+   {
+    "type": "p",
+    "text": "Employer may not assign these Employer Terms without InternFirst’s prior written consent, except in a qualifying merger or sale where the successor assumes the obligations. InternFirst may assign these Employer Terms in connection with a merger, financing, reorganization, or sale of the Platform. Neither party is liable for delay caused by events beyond reasonable control, excluding payment obligations. The parties are independent contractors. If a provision is unenforceable, it will be modified to the minimum extent necessary and the remainder will continue. These Employer Terms, accepted orders, checkout terms, and incorporated policies constitute the entire agreement concerning the Employer Services."
+   },
+   {
+    "type": "h",
+    "text": "30. Contact"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Registered Agent: United States Corporation Agents, Inc. Email: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   }
+  ]
+ },
+ "employer_privacy": {
+  "title": "Employer Privacy Policy",
+  "version": "1.4",
+  "effectiveDate": "August 3, 2026",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "This Employer Privacy Policy explains how InternFirst Inc. collects, uses, discloses, secures, and retains personal information relating to Employer representatives, Employer Accounts, company verification, recruiting activity, listings, billing, and use of the Employer-facing Platform."
+   },
+   {
+    "type": "h",
+    "text": "1. Company Information and Contact"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Email: lukebaltzell@intern-first.com Privacy, security, trust and safety, and privacy appeals: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   },
+   {
+    "type": "h",
+    "text": "2. Scope"
+   },
+   {
+    "type": "p",
+    "text": "This Policy applies to individuals acting for a company, nonprofit, government entity, staffing or recruiting organization, or other Employer. It also describes how Employer Accounts interact with Student Information. The Student Privacy Policy separately governs InternFirst’s collection of Student personal information."
+   },
+   {
+    "type": "h",
+    "text": "3. Information We Collect"
+   },
+   {
+    "type": "p",
+    "text": "Employer Representative Information"
+   },
+   {
+    "type": "li",
+    "text": "Full name"
+   },
+   {
+    "type": "li",
+    "text": "Work email address"
+   },
+   {
+    "type": "li",
+    "text": "Optional phone number"
+   },
+   {
+    "type": "li",
+    "text": "Password or authentication credentials handled by Supabase Auth"
+   },
+   {
+    "type": "li",
+    "text": "Job title, department, role, and permissions"
+   },
+   {
+    "type": "li",
+    "text": "Company affiliation"
+   },
+   {
+    "type": "li",
+    "text": "Profile image"
+   },
+   {
+    "type": "li",
+    "text": "Email-verification status"
+   },
+   {
+    "type": "li",
+    "text": "Account creation and update timestamps"
+   },
+   {
+    "type": "li",
+    "text": "Messages, interview participation, calendar activity, support, and verification communications"
+   },
+   {
+    "type": "p",
+    "text": "Company and Verification Information"
+   },
+   {
+    "type": "li",
+    "text": "Legal or trade name"
+   },
+   {
+    "type": "li",
+    "text": "Company website link and associated website domain"
+   },
+   {
+    "type": "li",
+    "text": "Work-email domain, website-domain comparison result, verification status, supporting"
+   },
+   {
+    "type": "p",
+    "text": "information requested during manual review, and review notes"
+   },
+   {
+    "type": "li",
+    "text": "Company description, industry, size, website, logo, business location, and recruiting locations"
+   },
+   {
+    "type": "li",
+    "text": "Submitted or verified company website and email domains, primary administrator, authorized"
+   },
+   {
+    "type": "p",
+    "text": "users, and permissions Listings and Recruiting Activity"
+   },
+   {
+    "type": "li",
+    "text": "Job title, description, duties, qualifications, skills, location, work arrangement, compensation,"
+   },
+   {
+    "type": "p",
+    "text": "benefits, duration, dates, schedule, deadline, application documents, recruiter contact, eligible majors, education level, and work-authorization requirements"
+   },
+   {
+    "type": "li",
+    "text": "Listing status, applicant quota, pricing model, budget, cost snapshot, payment status, views,"
+   },
+   {
+    "type": "p",
+    "text": "clicks, applications, quality, and engagement information"
+   },
+   {
+    "type": "li",
+    "text": "Applicant profiles, resumes, application status, pipeline stage, match scores, internal notes,"
+   },
+   {
+    "type": "p",
+    "text": "interview feedback, tasks, tags, messages, interviews, offers, dispositions, and recruiting analytics Active listings and associated company information may be visible to Students and may be publicly readable without authentication. Do not place private or confidential information in a listing or public company profile. Billing and Payment Information"
+   },
+   {
+    "type": "li",
+    "text": "Billing contact name, email, and address"
+   },
+   {
+    "type": "li",
+    "text": "Stripe customer and payment-method references"
+   },
+   {
+    "type": "li",
+    "text": "Charge, payment, invoice, or receipt references"
+   },
+   {
+    "type": "li",
+    "text": "Charge type, pricing model, one-time listing purchase, campaign budget, billing-period start and"
+   },
+   {
+    "type": "p",
+    "text": "end dates, PPC or PPA unit rate, billable-event records, applicant quota, usage and spend ledger, Stripe references, invoice or receipt information, status, Platform Credit balance and expiration, invalid-activity adjustments, refunds, disputes, reversals, and chargebacks InternFirst does not store full payment-card numbers or card-security codes. Stripe and Link process payment credentials. Technical, Usage, and Support Information"
+   },
+   {
+    "type": "li",
+    "text": "IP address"
+   },
+   {
+    "type": "li",
+    "text": "Browser, device, and operating-system information"
+   },
+   {
+    "type": "li",
+    "text": "Session identifiers and approximate location derived from IP address"
+   },
+   {
+    "type": "li",
+    "text": "Authentication, access, error, security, and fraud logs"
+   },
+   {
+    "type": "li",
+    "text": "Pages, features, searches, filters, clicks, messages, and navigation"
+   },
+   {
+    "type": "li",
+    "text": "Cookie and local-storage identifiers"
+   },
+   {
+    "type": "li",
+    "text": "Support requests, complaints, appeals, privacy requests, and integrity reports"
+   },
+   {
+    "type": "h",
+    "text": "4. Sources of Information"
+   },
+   {
+    "type": "li",
+    "text": "Directly from Employer and its representatives"
+   },
+   {
+    "type": "li",
+    "text": "From Employer account administrators"
+   },
+   {
+    "type": "li",
+    "text": "From Students who apply or communicate"
+   },
+   {
+    "type": "li",
+    "text": "From use of the Platform"
+   },
+   {
+    "type": "li",
+    "text": "From public business records, company websites, website domains, and other verification"
+   },
+   {
+    "type": "p",
+    "text": "sources"
+   },
+   {
+    "type": "li",
+    "text": "From Supabase, Stripe, and other service providers"
+   },
+   {
+    "type": "li",
+    "text": "From universities or partners where authorized"
+   },
+   {
+    "type": "li",
+    "text": "From people reporting impersonation, fraud, or misuse"
+   },
+   {
+    "type": "li",
+    "text": "From lawful legal or governmental sources"
+   },
+   {
+    "type": "h",
+    "text": "5. How We Use Information"
+   },
+   {
+    "type": "li",
+    "text": "Create, authenticate, verify, maintain, and secure Employer Accounts."
+   },
+   {
+    "type": "li",
+    "text": "Verify companies, company websites, work-email domains, representatives, affiliations, and"
+   },
+   {
+    "type": "p",
+    "text": "authority."
+   },
+   {
+    "type": "li",
+    "text": "Detect impersonation, false affiliation, fraudulent listings, scraping, discrimination, and misuse."
+   },
+   {
+    "type": "li",
+    "text": "Provide company profiles, listings, applications, applicant tracking, messages, interviews,"
+   },
+   {
+    "type": "p",
+    "text": "calendars, tasks, notes, analytics, and team permissions."
+   },
+   {
+    "type": "li",
+    "text": "Generate match scores and rank or distribute listings."
+   },
+   {
+    "type": "li",
+    "text": "Calculate and process one-time listing fees, prepaid campaign budgets, PPC or PPA usage,"
+   },
+   {
+    "type": "p",
+    "text": "subscriptions, taxes, invoices, receipts, Credits, invalid-activity adjustments, refunds, disputes, and accounting records."
+   },
+   {
+    "type": "li",
+    "text": "Provide support and communicate verification, billing, service, security, policy, and legal notices."
+   },
+   {
+    "type": "li",
+    "text": "Maintain, test, analyze, and improve the Platform."
+   },
+   {
+    "type": "li",
+    "text": "Create aggregate or de-identified reports concerning internship opportunity and recruiting"
+   },
+   {
+    "type": "p",
+    "text": "activity."
+   },
+   {
+    "type": "li",
+    "text": "Comply with law, enforce agreements, establish or defend claims, and complete a business"
+   },
+   {
+    "type": "p",
+    "text": "transaction subject to safeguards."
+   },
+   {
+    "type": "h",
+    "text": "6. Employer Accounts, Shared Company Data, and Message Privacy"
+   },
+   {
+    "type": "p",
+    "text": "Authorized Employer users may share access to company profiles, listings, applicants, pipeline stages, company events, assigned tasks, internal notes, analytics, billing information, and verification status according to role permissions. Each user has an individual login. Messages are ordinarily visible only to participating users, not the entire Employer Account. InternFirst personnel and service providers may access messages when necessary for support, security, abuse investigation, policy enforcement, or legal compliance."
+   },
+   {
+    "type": "h",
+    "text": "7. Student Information Available to Employers"
+   },
+   {
+    "type": "p",
+    "text": "After a Student applies to an Employer listing, authorized Employer users may receive in-Platform access to the Student’s name, permitted contact information, academic profile, biography, skills, experience, projects, organizations, resume, application answers, match score, application status, messages, and interview information. Employers may download resumes and retain them in Employer-controlled systems. InternFirst does not control those external copies. The Employer Terms require Employers to use downloaded information only for legitimate recruiting and hiring purposes, maintain reasonable security, limit access, and delete or retain information in accordance with applicable law and legitimate business needs. Employer users do not receive the Student’s voluntary self-identification record through the Platform, including race, ethnicity, gender, veteran status, disability status, work-authorization record, or sponsorship responses maintained in that record."
+   },
+   {
+    "type": "h",
+    "text": "8. Matching and Listing Ranking"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may calculate Student-listing match scores using job-related profile and listing information. Employer receives a match score only for a Student who applies to its listing. Selfidentification data is not used. Scores are decision-support information, not final employment decisions. Detailed formulas, exact weights, source code, integrity controls, and proprietary methodology are accessible only to authorized InternFirst personnel. A high-level explanation of principal factors may be requested at lukebaltzell@intern-first.com, subject to trade-secret and security limits. Listings may be ranked using relevance, engagement, quality, pricing or promotion tier, freshness, performance, and integrity or operational factors. Paid placement may affect visibility."
+   },
+   {
+    "type": "h",
+    "text": "9. Who Can See or Receive Employer Information"
+   },
+   {
+    "type": "p",
+    "text": "Students and Visitors Company profiles, logos, websites, descriptions, recruiter information intended for display, and active listings may be visible to Students and may be publicly accessible. Employer should not include private information in public fields. Employer Users Authorized users may view company-level information according to role permissions. Billing and administrative information should be limited to users with appropriate permissions. Universities Verified universities may receive aggregate or de-identified reports containing listing, engagement, application, time-to-interview, time-to-offer, or outcome metrics. Reports do not include an Employer representative’s credentials, private messages, full payment information, or other nonpublic personal information. InternFirst may identify a company in a report only where the report description or agreement expressly permits it; otherwise company-level reporting will be aggregated or deidentified. Students Students may see the company profile, listing, recruiting contact information intended for display, messages sent to them, interview information, and application status. Students do not ordinarily see internal notes or private interview feedback. InternFirst Personnel and Service Providers Authorized InternFirst personnel may access Employer information as needed for operations, support, verification, matching review, security, trust and safety, billing, legal compliance, and policy enforcement."
+   },
+   {
+    "type": "li",
+    "text": "Supabase, for authentication, database, storage, and related infrastructure"
+   },
+   {
+    "type": "li",
+    "text": "Stripe and Link, for payments, payment-method services, authentication, fraud prevention, and"
+   },
+   {
+    "type": "p",
+    "text": "transactions"
+   },
+   {
+    "type": "li",
+    "text": "[Email or SMTP Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Hosting or Deployment Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Analytics or Error Monitoring Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Customer Support Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Calendar or Video Provider]"
+   },
+   {
+    "type": "li",
+    "text": "[Website or Domain Verification Provider, if added]"
+   },
+   {
+    "type": "li",
+    "text": "Professional advisers, auditors, insurers, and security firms"
+   },
+   {
+    "type": "p",
+    "text": "Legal, Safety, and Business Transfers InternFirst may disclose information to comply with valid legal process; prevent or investigate fraud, impersonation, threats, or security incidents; enforce agreements; protect users or the public; obtain professional advice; or complete a merger, financing, reorganization, bankruptcy, acquisition, or asset transfer. InternFirst may also disclose information at Employer’s direction."
+   },
+   {
+    "type": "h",
+    "text": "10. Aggregate Reporting and No Sale"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst may create aggregate or de-identified reports for Employers and universities. Reports may include counts, ranges, benchmarks, performance metrics, engagement trends, time to interview, time to offer, application volume, and other internship-opportunity metrics designed not to identify an individual Student or Employer representative. InternFirst does not sell identifiable Employer-representative personal information and does not include private representative information in external reports. InternFirst does not include identifiable Student information in aggregate reports. An Employer’s authorized access to an individual applicant and permitted resume download are not aggregate reports and are governed separately. InternFirst does not currently use Employer-representative personal information for cross-context behavioral advertising."
+   },
+   {
+    "type": "h",
+    "text": "11. Uploaded File Storage and Access Controls"
+   },
+   {
+    "type": "p",
+    "text": "Company logos, profile images, Student resumes, and other uploaded files may be stored using Supabase Storage or comparable infrastructure. Uploaded files are maintained in private, accesscontrolled storage. InternFirst limits access according to account permissions and may deliver files through authenticated requests or private, short-lived URLs that expire after a limited period. A logo or profile image may be displayed to authorized viewers as part of a company profile or listing, but the underlying storage bucket is not configured as publicly accessible. Employer should upload only logos and images it is authorized to display."
+   },
+   {
+    "type": "h",
+    "text": "12. Cookies and Similar Technologies"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst and its providers may use cookies, local storage, session identifiers, and similar technologies to authenticate users, remember preferences, secure accounts, prevent fraud, process payments, diagnose errors, measure performance, and understand Platform use. Stripe and Link may use cookies and device information for payment, authentication, fraud prevention, and Link services."
+   },
+   {
+    "type": "h",
+    "text": "13. Retention"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst retains Employer information only as long as reasonably necessary for account operation, recruiting records, billing, fraud prevention, security, legal compliance, dispute resolution, and analytics."
+   },
+   {
+    "type": "li",
+    "text": "Active Employer representative and company information: while the account is active."
+   },
+   {
+    "type": "li",
+    "text": "After use of the “Delete Account” button: representative profile information may be retained in"
+   },
+   {
+    "type": "p",
+    "text": "restricted form for up to six months to permit restoration, unless earlier deletion is requested and no exception applies."
+   },
+   {
+    "type": "li",
+    "text": "Verification records, domain-comparison results, supporting information, and related audit"
+   },
+   {
+    "type": "p",
+    "text": "information: for the period reasonably necessary to prevent fraud, document verification decisions, resolve disputes, and enforce Platform rules."
+   },
+   {
+    "type": "li",
+    "text": "Listings, applications, pipeline records, internal notes, messages, and interview records:"
+   },
+   {
+    "type": "p",
+    "text": "generally up to three years after closure or disposition, subject to customer, legal, and engineering requirements."
+   },
+   {
+    "type": "li",
+    "text": "Security and access logs: generally up to twenty-four months."
+   },
+   {
+    "type": "li",
+    "text": "Payment, tax, and accounting records: generally seven years."
+   },
+   {
+    "type": "li",
+    "text": "Support, complaint, enforcement, and fraud records: for the period reasonably necessary to"
+   },
+   {
+    "type": "p",
+    "text": "address the matter and protect users."
+   },
+   {
+    "type": "li",
+    "text": "Backups: deleted or overwritten on a rolling schedule."
+   },
+   {
+    "type": "li",
+    "text": "Aggregate or de-identified information: may be retained without a fixed period where no"
+   },
+   {
+    "type": "p",
+    "text": "individual is reasonably identifiable."
+   },
+   {
+    "type": "h",
+    "text": "14. Account Administration and Deletion"
+   },
+   {
+    "type": "p",
+    "text": "A primary administrator may remove an individual user’s access. Removal does not delete company-level listings, applicants, dispositions, tasks, notes, approvals, messages, or transaction records where the information belongs to the Employer Account or must be retained. An Employer representative may use the “Delete Account” button to close the representative account. InternFirst may retain profile information in restricted form for up to six months for restoration. Earlier permanent deletion may be requested at lukebaltzell@intern-first.com, subject to company-record, transaction, security, legal, and dispute exceptions. If the Employer Account has other authorized users, their company account may remain active."
+   },
+   {
+    "type": "h",
+    "text": "15. Security and Employer Incidents"
+   },
+   {
+    "type": "p",
+    "text": "InternFirst uses administrative, technical, and physical safeguards intended to protect information, including Supabase authentication, password hashing, database Row-Level Security, role permissions, access controls, and logging. No system can guarantee absolute security. Employer is responsible for its users, devices, credentials, permissions, downloaded resumes, and lawful handling of Student Information. Report suspected incidents immediately to lukebaltzell@intern-first.com. InternFirst will investigate suspected incidents and provide legally required notices."
+   },
+   {
+    "type": "h",
+    "text": "16. Employer-Representative Privacy Choices and Rights"
+   },
+   {
+    "type": "li",
+    "text": "Access or confirm processing"
+   },
+   {
+    "type": "li",
+    "text": "Correct inaccurate information"
+   },
+   {
+    "type": "li",
+    "text": "Delete information"
+   },
+   {
+    "type": "li",
+    "text": "Obtain a portable copy where technically feasible"
+   },
+   {
+    "type": "li",
+    "text": "Withdraw consent where processing relies on consent"
+   },
+   {
+    "type": "li",
+    "text": "Opt out of sale, targeted advertising, or certain profiling if such processing begins and the right"
+   },
+   {
+    "type": "p",
+    "text": "applies"
+   },
+   {
+    "type": "li",
+    "text": "Appeal a denied request where applicable"
+   },
+   {
+    "type": "li",
+    "text": "Receive non-discriminatory treatment for exercising a legal right"
+   },
+   {
+    "type": "p",
+    "text": "Submit a request or appeal to lukebaltzell@intern-first.com. InternFirst may verify identity and authority, consult the Employer account administrator, and deny or limit a request where necessary to preserve company records, protect Student privacy, maintain security, comply with law, retain transactions, or defend claims. California Privacy Rights This section applies to California residents to the extent the California Consumer Privacy Act, as amended by the California Privacy Rights Act (collectively, the “CCPA”), applies to InternFirst and the information at issue. California privacy rights may extend to students, job applicants, employees, independent contractors, and business contacts when the statutory requirements are met. Categories of Personal Information"
+   },
+   {
+    "type": "li",
+    "text": "Identifiers, such as representative name, work email, optional phone number, account identifiers,"
+   },
+   {
+    "type": "p",
+    "text": "IP address, and profile image."
+   },
+   {
+    "type": "li",
+    "text": "Customer-record and business-contact information, such as title, department, company"
+   },
+   {
+    "type": "p",
+    "text": "affiliation, billing contact information, and business address."
+   },
+   {
+    "type": "li",
+    "text": "Commercial information, such as listings purchased, budgets, charges, subscription status,"
+   },
+   {
+    "type": "p",
+    "text": "invoices, credits, and payment transaction references."
+   },
+   {
+    "type": "li",
+    "text": "Internet or electronic-network activity, such as logins, listing management, applicant review,"
+   },
+   {
+    "type": "p",
+    "text": "messages, searches, clicks, and feature use."
+   },
+   {
+    "type": "li",
+    "text": "Professional or employment information, such as representative title, role, permissions, recruiting"
+   },
+   {
+    "type": "p",
+    "text": "responsibilities, and company affiliation."
+   },
+   {
+    "type": "li",
+    "text": "Audio, electronic, visual, or similar information, such as company logos, profile images,"
+   },
+   {
+    "type": "p",
+    "text": "messages, and interview or calendar data."
+   },
+   {
+    "type": "li",
+    "text": "Approximate geolocation derived from IP address."
+   },
+   {
+    "type": "li",
+    "text": "Inferences and analytics, such as listing quality, engagement, performance, ranking signals,"
+   },
+   {
+    "type": "p",
+    "text": "fraud signals, and recruiting analytics. InternFirst collects and uses these categories for the business and commercial purposes described in this Policy, including providing accounts and recruiting services; verification; security and fraud prevention; analytics; communications; payments; customer support; legal compliance; and aggregate or de-identified reporting. Categories of recipients may include authorized users, Supabase, Stripe and Link, other service providers listed in this Policy, professional advisers, and government authorities when legally required. InternFirst has not sold personal information for monetary or other valuable consideration during the preceding twelve months and has not shared personal information for cross-context behavioral advertising during the preceding twelve months, based on the current pilot configuration. InternFirst does not knowingly sell or share the personal information of consumers under 16. California Rights"
+   },
+   {
+    "type": "li",
+    "text": "Right to know the categories and specific pieces of personal information collected, sources,"
+   },
+   {
+    "type": "p",
+    "text": "purposes, and recipient categories."
+   },
+   {
+    "type": "li",
+    "text": "Right to delete personal information, subject to legal exceptions."
+   },
+   {
+    "type": "li",
+    "text": "Right to correct inaccurate personal information."
+   },
+   {
+    "type": "li",
+    "text": "Right to opt out of sale or sharing for cross-context behavioral advertising."
+   },
+   {
+    "type": "li",
+    "text": "Right to limit certain uses or disclosures of sensitive personal information when that right applies."
+   },
+   {
+    "type": "li",
+    "text": "Right to non-discrimination for exercising CCPA rights."
+   },
+   {
+    "type": "p",
+    "text": "Requests may be submitted by email to lukebaltzell@intern-first.com. Because InternFirst operates exclusively online and has a direct relationship with account holders, InternFirst currently designates email and in-account controls as its request methods. InternFirst may verify identity and authority before acting on a request. InternFirst will honor a legally recognized opt-out preference signal, including Global Privacy Control, for processing to which the signal applies. InternFirst does not currently display a “Do Not Sell or Share My Personal Information” link because it does not currently sell or share personal information as those terms are defined by the CCPA. Other U.S. State Privacy Rights Depending on your state of residence and whether a particular law applies to InternFirst and the information involved, you may have rights to confirm processing; access; correct; delete; obtain a portable copy; opt out of targeted advertising, sale, or certain profiling; withdraw consent to sensitive-data processing; designate an authorized agent; appeal a denied request; and receive non-discriminatory treatment. InternFirst intends this request process to accommodate applicable rights under laws such as the Texas Data Privacy and Security Act, Virginia Consumer Data Protection Act, Colorado Privacy Act, Florida Digital Bill of Rights, Delaware Personal Data Privacy Act, and similar comprehensive state privacy laws, subject to each law’s scope, thresholds, exemptions, and exceptions. Some state laws exclude or limit coverage for information processed solely in an employment or commercial context. California does not retain the former general employee and business-tobusiness exemptions. Regardless of whether a statutory right applies, InternFirst will consider reasonable access, correction, deletion, and portability requests from employer representatives, subject to the company-account, security, transaction, and legal-record limitations described in this Policy. Submit a request or appeal to lukebaltzell@intern-first.com. InternFirst generally aims to respond within 45 days and may extend the response period when permitted. If a request is denied, InternFirst will explain the reason and provide appeal or regulator-complaint information when applicable law requires it. Children and International Use Employer Accounts are not intended for individuals under 18. The pilot is intended for U.S. organizations and representatives. International onboarding may require supplemental terms, dataprocessing provisions, and transfer notices. Changes to This Policy InternFirst may update this Policy prospectively. Material changes will be communicated by email, in-product notice, or another conspicuous method before taking effect. Where a change requires consent, InternFirst will request it. Prior versions will be retained internally or at [Policy Archive URL]. Contact and Complaints InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Email: lukebaltzell@intern-first.com Privacy, security, trust and safety, and privacy appeals: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+   }
+  ]
+ }
+}

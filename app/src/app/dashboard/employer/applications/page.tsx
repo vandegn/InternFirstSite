@@ -19,7 +19,7 @@ type ApplicationAnswer = {
   id: string;
   answer_text: string | null;
   answer_options: string[];
-  file_url: string | null;
+  storage_path: string | null;
   question: {
     id: string;
     prompt: string;
@@ -45,7 +45,6 @@ type Application = {
   resume: {
     id: string;
     name: string;
-    file_url: string;
   } | null;
   answers: ApplicationAnswer[];
   listing: {
@@ -375,7 +374,7 @@ export default function EmployerApplications() {
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Resume</span>
                         <div style={{ marginTop: '4px' }}>
                           <a
-                            href={app.resume.file_url}
+                            href={`/api/files/resume/${app.resume.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -401,9 +400,9 @@ export default function EmployerApplications() {
                               <p style={{ fontSize: '0.82rem', fontWeight: 500, margin: 0 }}>
                                 {answer.question?.prompt ?? 'Question removed'}
                               </p>
-                              {answer.file_url ? (
+                              {answer.storage_path ? (
                                 <a
-                                  href={answer.file_url}
+                                  href={`/api/files/application-answer/${answer.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   style={{ fontSize: '0.85rem', color: 'var(--primary)' }}

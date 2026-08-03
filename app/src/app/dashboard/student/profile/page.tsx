@@ -12,7 +12,7 @@ import {
 import { MAJORS, MAX_STUDENT_SKILLS } from '@/lib/constants';
 import SchoolPicker, { EMPTY_SCHOOL, schoolFromStudent, type SchoolValue } from '@/components/SchoolPicker';
 
-interface Resume { id: string; name: string; file_url: string; uploaded_at: string; }
+interface Resume { id: string; name: string; uploaded_at: string; }
 interface Skill { id: string; name: string; }
 interface Experience { id: string; type: string; title: string; organization?: string; location?: string; description?: string; technologies?: string; link?: string; start_date?: string; end_date?: string; is_current?: boolean; }
 interface Org { id: string; type: string; name: string; chapter?: string; role?: string; description?: string; join_date?: string; end_date?: string; is_current?: boolean; }
@@ -1006,7 +1006,7 @@ export default function StudentProfile() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                         </svg>
-                        <a href={r.file_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: 'var(--primary)', fontWeight: 500, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <a href={`/api/files/resume/${r.id}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, color: 'var(--primary)', fontWeight: 500, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {r.name}
                         </a>
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', flexShrink: 0 }}>

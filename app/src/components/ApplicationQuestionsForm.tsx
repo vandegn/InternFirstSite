@@ -3,17 +3,17 @@
 import { useState } from 'react';
 import { uploadApplicationFile, type ListingQuestion, type ApplicationAnswerInput } from '@/lib/supabase';
 
-export type AnswerState = Record<string, { text: string; options: string[]; fileUrl: string | null }>;
+export type AnswerState = Record<string, { text: string; options: string[]; storagePath: string | null }>;
 
 export function emptyAnswers(questions: ListingQuestion[]): AnswerState {
   return Object.fromEntries(
-    questions.map((q) => [q.id, { text: '', options: [], fileUrl: null }])
+    questions.map((q) => [q.id, { text: '', options: [], storagePath: null }])
   );
 }
 
 function isAnswered(question: ListingQuestion, answer: AnswerState[string] | undefined): boolean {
   if (!answer) return false;
-  if (question.question_type === 'file') return !!answer.fileUrl;
+  if (question.question_type === 'file') return !!answer.storagePath;
   if (question.question_type === 'multi_select') return answer.options.length > 0;
   return answer.text.trim().length > 0;
 }
@@ -33,7 +33,7 @@ export function toAnswerInputs(questions: ListingQuestion[], answers: AnswerStat
         question_id: q.id,
         answer_text: q.question_type === 'multi_select' || q.question_type === 'file' ? null : answer.text.trim(),
         answer_options: q.question_type === 'multi_select' ? answer.options : [],
-        file_url: q.question_type === 'file' ? answer.fileUrl : null,
+        storage_path: q.question_type === 'file' ? answer.storagePath : null,
       };
     });
 }
@@ -58,8 +58,8 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
     setUploadingId(questionId);
     setUploadError((prev) => ({ ...prev, [questionId]: '' }));
     try {
-      const url = await uploadApplicationFile(studentId, file);
-      set(questionId, { fileUrl: url, text: file.name });
+      const path = await uploadApplicationFile(studentId, file);
+      set(questionId, { storagePath: path, text: file.name });
     } catch (err: unknown) {
       setUploadError((prev) => ({
         ...prev,
@@ -78,7 +78,7 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {questions.map((question) => {
-          const answer = answers[question.id] ?? { text: '', options: [], fileUrl: null };
+          const answer = answers[question.id] ?? { text: '', options: [], storagePath: null };
           const missing = showErrors && question.required && !isAnswered(question, answer);
 
           return (
@@ -196,7 +196,7 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
                       cursor: uploadingId === question.id ? 'default' : 'pointer',
                     }}
                   >
-                    {uploadingId === question.id ? 'Uploading…' : answer.fileUrl ? 'Replace file' : '+ Choose file'}
+                    {uploadingId === question.id ? 'Uploading…' : answer.storagePath ? 'Replace file' : '+ Choose file'}
                     <input
                       type="file"
                       disabled={uploadingId === question.id}
@@ -208,15 +208,10 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
                       style={{ display: 'none' }}
                     />
                   </label>
-                  {answer.fileUrl && (
-                    <a
-                      href={answer.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ marginLeft: '10px', fontSize: '0.82rem', color: 'var(--primary)' }}
-                    >
-                      {answer.text || 'View file'}
-                    </a>
+                  {answer.storagePath && (
+                    <span style={{ marginLeft: '10px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      {answer.text || 'File attached'}
+                    </span>
                   )}
                   {uploadError[question.id] && (
                     <p style={{ color: 'var(--danger-fg)', fontSize: '0.78rem', margin: '6px 0 0' }}>{uploadError[question.id]}</p>

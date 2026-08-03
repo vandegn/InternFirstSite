@@ -1057,7 +1057,9 @@ create policy "Questions on active listings are publicly viewable"
 -- ----- Application answers -----
 -- One row per (application, question). Which column is populated depends on the
 -- question type: answer_text for short/long/yes_no/single_select,
--- answer_options for multi_select, file_url for file uploads.
+-- answer_options for multi_select, storage_path for file uploads (an object
+-- key in the private `applicant-docs` bucket, served via /api/files).
+-- file_url is legacy (old public-bucket URLs) and no longer written.
 create table application_answers (
   id uuid primary key default gen_random_uuid(),
   application_id uuid references applications(id) on delete cascade not null,
@@ -1065,6 +1067,7 @@ create table application_answers (
   answer_text text,
   answer_options text[] not null default '{}',
   file_url text,
+  storage_path text,
   created_at timestamptz default now() not null,
   unique(application_id, question_id)
 );
@@ -1176,3 +1179,25 @@ $fn$;
 
 revoke all on function employer_pending_applicant_count() from public;
 grant execute on function employer_pending_applicant_count() to authenticated;
+
+-- ============================================
+-- 22. PRIVATE APPLICANT DOCS (storage)
+-- ============================================
+-- Resumes (student_resumes.storage_path) and application file-answers
+-- (application_answers.storage_path) live in the PRIVATE `applicant-docs`
+-- bucket, created by app/scripts/private-docs-setup.mjs. Reads go through
+-- GET /api/files/[kind]/[id], which authorizes via the table RLS above and
+-- then redirects to a 60-second service-role signed URL. There is
+-- deliberately no storage SELECT policy — the bucket is not directly
+-- readable. student_resumes (defined in migrations/add_student_resumes.sql)
+-- also gained storage_path, and its file_url dropped NOT NULL.
+
+create policy "Students upload own applicant docs"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'applicant-docs'
+    and (storage.foldername(name))[1] in ('resumes', 'application-files')
+    and (storage.foldername(name))[2] in (
+      select id::text from students where user_id = auth.uid()
+    )
+  );

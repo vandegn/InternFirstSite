@@ -18,7 +18,7 @@ type Application = {
   status: string;
   stage_id: string | null;
   applied_at: string;
-  resume: { id: string; name: string; file_url: string } | null;
+  resume: { id: string; name: string } | null;
   listing: { id: string; title: string };
   student: {
     id: string;
@@ -240,7 +240,7 @@ function PipelineAllInner() {
                     <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                       {app.resume && (
                         <a
-                          href={app.resume.file_url}
+                          href={`/api/files/resume/${app.resume.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase, getConversations, getMessagesWith, sendMessage, markMessagesAsRead } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
+import AvailabilityRequestCard from '@/components/AvailabilityRequestCard';
 
 type Conversation = {
   otherUserId: string;
@@ -22,6 +23,10 @@ type Message = {
   body: string;
   sent_at: string;
   read: boolean;
+  // Set when this message carries an interview availability request. The
+  // thread renders the picker in place of a text bubble; `body` stays as the
+  // readable fallback used by email notifications.
+  availability_request_id: string | null;
   sender: {
     full_name: string;
     avatar_url: string | null;
@@ -283,6 +288,21 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                   )}
                   {messages.map((msg) => {
                     const isMine = msg.sender_id === userId;
+
+                    // Interview availability request: the recipient is the
+                    // student being asked, so they're the side that can act on
+                    // it. The employer sees the same card, read-only.
+                    if (msg.availability_request_id) {
+                      return (
+                        <div key={msg.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                          <AvailabilityRequestCard
+                            requestId={msg.availability_request_id}
+                            canRespond={!isMine}
+                          />
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={msg.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
                         <div style={{

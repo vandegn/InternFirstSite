@@ -10,6 +10,7 @@ import { supabase, isEduEmail, EMPLOYER_EMAIL_ERROR } from '@/lib/supabase';
 import { isFreeEmailProvider, normalizeDomain } from '@/lib/domain-signals';
 import { validatePassword } from '@/lib/password';
 import { MAJORS } from '@/lib/constants';
+import SchoolPicker, { EMPTY_SCHOOL, type SchoolValue } from '@/components/SchoolPicker';
 
 type Role = 'student' | 'employer';
 
@@ -27,6 +28,7 @@ export default function RegisterPage() {
   const [majorDropdownOpen, setMajorDropdownOpen] = useState(false);
   const majorRef = useRef<HTMLDivElement>(null);
   const [graduationYear, setGraduationYear] = useState('');
+  const [school, setSchool] = useState<SchoolValue>(EMPTY_SCHOOL);
   // Employer fields
   const [companyName, setCompanyName] = useState('');
   const [website, setWebsite] = useState('');
@@ -87,6 +89,13 @@ export default function RegisterPage() {
       return;
     }
 
+    // The picker only ever commits a row from the approved list, so a missing
+    // id means nothing was actually selected.
+    if (role === 'student' && !school.id) {
+      setError('Please select your school from the list.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -96,6 +105,9 @@ export default function RegisterPage() {
       if (role === 'student') {
         metadata.major = major;
         metadata.graduationYear = graduationYear;
+        metadata.schoolId = String(school.id);
+        metadata.schoolName = school.name;
+        metadata.schoolState = school.state ?? '';
       } else if (role === 'employer') {
         metadata.companyName = companyName;
         metadata.website = website;
@@ -196,6 +208,15 @@ export default function RegisterPage() {
             {/* Student fields */}
             {role === 'student' && (
               <>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label htmlFor="school">School</label>
+                  <SchoolPicker
+                    value={school}
+                    onChange={setSchool}
+                    placeholder="Search your college or university..."
+                    hint="Pick from the list — typed text that isn't selected won't be saved."
+                  />
+                </div>
                 <div className="form-group">
                   <label htmlFor="major">Major</label>
                   <div ref={majorRef} style={{ position: 'relative' }}>

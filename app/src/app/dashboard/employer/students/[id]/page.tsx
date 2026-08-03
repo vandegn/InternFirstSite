@@ -36,7 +36,8 @@ type StudentProfile = {
   id: string;
   major: string | null;
   minor: string | null;
-  university: string | null;
+  school_name: string | null;
+  school_state: string | null;
   graduation_year: number | null;
   gpa: number | null;
   bio: string | null;
@@ -147,7 +148,7 @@ export default function EmployerStudentProfilePage() {
         <div style={{ flex: 1, minWidth: '220px' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{name}</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginTop: '4px' }}>
-            {[student.major, student.university].filter(Boolean).join(' · ') || 'No major listed'}
+            {[student.school_name, student.major].filter(Boolean).join(' · ') || 'No school or major listed'}
             {student.graduation_year ? ` · Class of ${student.graduation_year}` : ''}
           </p>
           {student.minor && (

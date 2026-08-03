@@ -30,5 +30,8 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // vitest.config.ts is excluded because Next 16 ships rolldown-vite while
+  // vitest pins its own vite, and the two Plugin types don't unify. It's build
+  // tooling, not app code — vitest reads it directly and never typechecks it.
+  "exclude": ["node_modules", "vitest.config.ts"]
 }

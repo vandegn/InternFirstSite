@@ -3,6 +3,11 @@ import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
 import { MAX_STUDENT_SKILLS, surveyIndustriesToListingIndustries, type CompType, type QuestionType } from '@/lib/constants';
 import { isFreeEmailProvider } from '@/lib/domain-signals';
+import {
+  localToday,
+  type AvailabilityRequest,
+  type AvailabilitySlot,
+} from '@/lib/interview-availability';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -30,6 +35,11 @@ export async function getProfile(userId: string) {
 export type RoleData = {
   major?: string;
   graduationYear?: string;
+  // Picked from the approved-school list at signup. Stored as strings because
+  // user_metadata round-trips everything through JSON as text.
+  schoolId?: string;
+  schoolName?: string;
+  schoolState?: string;
   companyName?: string;
   website?: string;
   companyDescription?: string;
@@ -75,6 +85,9 @@ export async function createProfileAndRoleData(
       graduation_year: roleData.graduationYear
         ? parseInt(roleData.graduationYear)
         : null,
+      school_id: roleData.schoolId ? parseInt(roleData.schoolId) : null,
+      school_name: roleData.schoolName || null,
+      school_state: roleData.schoolState || null,
     });
     if (error) throw error;
   } else if (role === 'employer') {
@@ -115,6 +128,9 @@ export async function ensureProfileFromMetadata(
   if (role === 'student') {
     roleData.major = metadata.major;
     roleData.graduationYear = metadata.graduationYear;
+    roleData.schoolId = metadata.schoolId;
+    roleData.schoolName = metadata.schoolName;
+    roleData.schoolState = metadata.schoolState;
   } else if (role === 'employer') {
     roleData.companyName = metadata.companyName;
     roleData.website = metadata.website;
@@ -1287,6 +1303,10 @@ export async function updateStudent(studentId: string, fields: {
   major?: string;
   graduation_year?: number;
   bio?: string;
+  // Always written as a set — clearing a school nulls all three.
+  school_id?: number | null;
+  school_name?: string | null;
+  school_state?: string | null;
 }) {
   const { data, error } = await supabase
     .from('students')
@@ -2056,6 +2076,117 @@ export async function sendRescheduleRequestMessage(opts: {
     body: opts.body,
   });
   if (error) throw error;
+}
+
+// ---- Interview availability handshake ----
+// The employer asks for a window, the student marks the frames that work, the
+// employer picks one. Every write goes through /api/interviews/availability so
+// the state machine in lib/interview-availability.ts is enforced in one place;
+// the reads below are plain RLS-scoped selects.
+
+// Step 1 — employer requests times for a candidate.
+export async function requestInterviewTimes(opts: {
+  applicationId: string;
+  windowStart: string;
+  windowEnd: string;
+  durationMinutes?: number;
+  note?: string;
+}) {
+  const res = await fetch('/api/interviews/availability', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // The employer's local day — the server judges "not in the past" in the
+    // employer's zone, not the server's.
+    body: JSON.stringify({ ...opts, today: localToday() }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to request interview times');
+  }
+  return res.json() as Promise<AvailabilityRequest>;
+}
+
+// Step 2 — student submits the frames that work, or reports that none do.
+export async function submitStudentAvailability(
+  requestId: string,
+  opts: { slots: AvailabilitySlot[]; note?: string; noneWork?: boolean },
+) {
+  const res = await fetch(`/api/interviews/availability/${requestId}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...opts,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to submit your availability');
+  }
+  return res.json() as Promise<AvailabilityRequest>;
+}
+
+// Step 3 — employer locks in one of the offered times.
+export async function confirmInterviewTime(
+  requestId: string,
+  opts: { scheduledAt: string; durationMinutes?: number; notes?: string },
+) {
+  const res = await fetch(`/api/interviews/availability/${requestId}/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to schedule the interview');
+  }
+  return res.json() as Promise<AvailabilityRequest & { interview_id: string }>;
+}
+
+// Off-ramp — withdraw so a different window can be requested.
+export async function withdrawInterviewRequest(requestId: string) {
+  const res = await fetch(`/api/interviews/availability/${requestId}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to withdraw the interview request');
+  }
+  return res.json() as Promise<AvailabilityRequest>;
+}
+
+// Every request this employer has open or closed, with the student's offered
+// frames inlined so the board can render the picker without a second round trip.
+export async function getEmployerAvailabilityRequests(employerId: string) {
+  const { data, error } = await supabase
+    .from('interview_availability_requests')
+    .select('*, slots:interview_availability_slots(*)')
+    .eq('employer_id', employerId)
+    .order('requested_at', { ascending: false });
+  if (error) return [];
+  return (data ?? []) as AvailabilityRequest[];
+}
+
+// The request behind an inbox message. Returns null once it's been withdrawn
+// out from under the student, so the card can say so instead of 409-ing.
+export async function getAvailabilityRequest(requestId: string) {
+  const { data, error } = await supabase
+    .from('interview_availability_requests')
+    .select(`
+      *,
+      slots:interview_availability_slots(*),
+      listing:internship_listings(id, title),
+      employer:employers(id, company_name, logo_url)
+    `)
+    .eq('id', requestId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as AvailabilityRequest & {
+    listing: { id: string; title: string } | null;
+    employer: { id: string; company_name: string; logo_url: string | null } | null;
+  };
 }
 
 // ---- Notifications ----

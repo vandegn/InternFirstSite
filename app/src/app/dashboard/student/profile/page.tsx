@@ -10,6 +10,7 @@ import {
   getStudentOrganizations, addStudentOrganization, updateStudentOrganization, deleteStudentOrganization,
 } from '@/lib/supabase';
 import { MAJORS, MAX_STUDENT_SKILLS } from '@/lib/constants';
+import SchoolPicker, { EMPTY_SCHOOL, schoolFromStudent, type SchoolValue } from '@/components/SchoolPicker';
 
 interface Resume { id: string; name: string; file_url: string; uploaded_at: string; }
 interface Skill { id: string; name: string; }
@@ -69,7 +70,7 @@ export default function StudentProfile() {
   const [major, setMajor] = useState('');
   const [phone, setPhone] = useState('');
   const [graduationYear, setGraduationYear] = useState<number | ''>('');
-  const [schoolName] = useState('');
+  const [school, setSchool] = useState<SchoolValue>(EMPTY_SCHOOL);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [internships, setInternships] = useState<Experience[]>([]);
@@ -88,6 +89,7 @@ export default function StudentProfile() {
   const [draftName, setDraftName] = useState('');
   const [draftBio, setDraftBio] = useState('');
   const [draftMajor, setDraftMajor] = useState('');
+  const [draftSchool, setDraftSchool] = useState<SchoolValue>(EMPTY_SCHOOL);
   const [draftMajorSearch, setDraftMajorSearch] = useState('');
   const [draftGradYear, setDraftGradYear] = useState<number | ''>('');
   const [draftPhone, setDraftPhone] = useState('');
@@ -146,6 +148,7 @@ export default function StudentProfile() {
         setStudentId(student.id);
         setMajor(student.major || '');
         setGraduationYear(student.graduation_year || '');
+        setSchool(schoolFromStudent(student));
         setBio(student.bio || '');
 
         const studentResumes = await getStudentResumes(student.id);
@@ -212,6 +215,7 @@ export default function StudentProfile() {
     setDraftBio(bio);
     setDraftMajor(major);
     setDraftMajorSearch(major);
+    setDraftSchool(school);
     setDraftGradYear(graduationYear);
     setDraftPhone(phone);
     setAvatarFile(null);
@@ -240,10 +244,16 @@ export default function StudentProfile() {
         major: draftMajor || undefined,
         graduation_year: draftGradYear ? Number(draftGradYear) : undefined,
         bio: draftBio || undefined,
+        // Explicit nulls, unlike the fields above: clearing a school has to
+        // actually clear it, not fall back to the stored value.
+        school_id: draftSchool.id,
+        school_name: draftSchool.name || null,
+        school_state: draftSchool.state,
       });
       setFullName(draftName);
       setBio(draftBio);
       setMajor(draftMajor);
+      setSchool(draftSchool);
       setGraduationYear(draftGradYear);
       setPhone(draftPhone);
       setEditingHero(false);
@@ -816,6 +826,16 @@ export default function StudentProfile() {
 
               {editingHero ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>School</label>
+                    <SchoolPicker
+                      id="profile-school"
+                      value={draftSchool}
+                      onChange={setDraftSchool}
+                      inputStyle={inputStyle}
+                      placeholder="Search your college or university..."
+                    />
+                  </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, position: 'relative' }} ref={majorDropdownRef}>
                       <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Major</label>
@@ -862,10 +882,10 @@ export default function StudentProfile() {
               ) : (
                 <>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: bio ? '10px' : 0 }}>
-                    {schoolName && (
+                    {school.name && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-                        {schoolName}
+                        {school.name}
                       </span>
                     )}
                     {major && (

@@ -24,6 +24,13 @@ create table students (
   user_id uuid references profiles(user_id) on delete cascade not null unique,
   major text,
   graduation_year integer,
+  -- School, picked from the Dept. of Education approved list served by
+  -- /api/schools. school_id is the federal institution id; name and state are
+  -- denormalised so profile views render without a lookup.
+  -- See migrations/20260802_student_school.sql.
+  school_id integer,
+  school_name text,
+  school_state text,
   resume_url text,
   bio text,
   created_at timestamptz default now() not null,

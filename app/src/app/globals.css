@@ -2207,8 +2207,15 @@ img { max-width: 100%; height: auto; display: block; }
 /* ========================================
    DASHBOARD LAYOUT
    ======================================== */
+/* Column layout so the content row can just claim the remaining height with
+   flex: 1. The community banner sits above the header and wraps to two lines
+   on narrow screens, so a calc() against a fixed header height would be wrong
+   at exactly the widths where it matters. */
 .dashboard-body {
     background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 .dash-header {

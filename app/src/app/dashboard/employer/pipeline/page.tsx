@@ -17,11 +17,25 @@ import {
   createInterview,
   rescheduleInterview,
   deleteApplication,
+  requestInterviewTimes,
+  getEmployerAvailabilityRequests,
+  confirmInterviewTime,
+  withdrawInterviewRequest,
   type PipelineStage,
 } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
 import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
 import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
+import RequestTimesModal from '@/components/RequestTimesModal';
+import type { RequestTimesFormData } from '@/components/RequestTimesModal';
+import SelectInterviewTimeModal from '@/components/SelectInterviewTimeModal';
+import {
+  isLiveAvailabilityStatus,
+  EMPLOYER_STATUS_LABELS,
+  STATUS_CHIP,
+  type AvailabilityRequest,
+  type AvailabilityStatus,
+} from '@/lib/interview-availability';
 
 type ApplicationAnswer = {
   id: string;
@@ -142,6 +156,13 @@ export default function EmployerPipelinePage() {
   const [scheduleApp, setScheduleApp] = useState<Application | null>(null);
   const [scheduleInterview, setScheduleInterview] = useState<Interview | null>(null);
 
+  // Interview availability handshake: ask for a window, then pick a final time
+  // out of what the candidate offered. See lib/interview-availability.ts.
+  const [availabilityRequests, setAvailabilityRequests] = useState<AvailabilityRequest[]>([]);
+  const [requestTimesApp, setRequestTimesApp] = useState<Application | null>(null);
+  const [pickTimeApp, setPickTimeApp] = useState<Application | null>(null);
+  const [availabilityError, setAvailabilityError] = useState('');
+
   // Stage management modal — all edits stage into draftStages /
   // pendingDeletes and only persist on Save changes.
   const [editingStages, setEditingStages] = useState(false);
@@ -179,14 +200,16 @@ export default function EmployerPipelinePage() {
       if (!employer) return;
       setEmployerId(employer.id);
 
-      const [appsData, listingsData, interviewsData] = await Promise.all([
+      const [appsData, listingsData, interviewsData, availabilityData] = await Promise.all([
         getEmployerApplications(employer.id),
         getEmployerListings(employer.id, 1, 100),
         getEmployerInterviews(employer.id),
+        getEmployerAvailabilityRequests(employer.id),
       ]);
 
       setApplications(appsData.map(normalizeApp));
       setInterviews(interviewsData as unknown as Interview[]);
+      setAvailabilityRequests(availabilityData);
       const ls = listingsData.data.map((l: any) => ({ id: l.id, title: l.title }));
       setListings(ls);
       if (ls.length > 0) setSelectedListing(ls[0].id);
@@ -335,6 +358,90 @@ export default function EmployerPipelinePage() {
       setApplications(appsData.map(normalizeApp));
     }
     closeScheduleModal();
+  }
+
+  // ---- Interview availability handshake ----
+
+  // The open negotiation on a card, if any. Terminal rows (scheduled,
+  // no_availability, cancelled) are still shown as a chip, so grab the newest
+  // row for the application and let the caller decide what it means.
+  function latestRequestForApp(applicationId: string): AvailabilityRequest | undefined {
+    return availabilityRequests.find(r => r.application_id === applicationId);
+  }
+
+  function liveRequestForApp(applicationId: string): AvailabilityRequest | undefined {
+    const latest = latestRequestForApp(applicationId);
+    return latest && isLiveAvailabilityStatus(latest.status) ? latest : undefined;
+  }
+
+  function upsertRequest(request: AvailabilityRequest) {
+    setAvailabilityRequests(prev => {
+      const rest = prev.filter(r => r.id !== request.id);
+      // Newest first, matching getEmployerAvailabilityRequests' ordering, so
+      // latestRequestForApp keeps returning the right row.
+      return [request, ...rest];
+    });
+  }
+
+  // Step 1 — send the window to the candidate.
+  async function handleRequestTimes(data: RequestTimesFormData) {
+    if (!requestTimesApp) return;
+    const created = await requestInterviewTimes({
+      applicationId: requestTimesApp.id,
+      windowStart: data.windowStart,
+      windowEnd: data.windowEnd,
+      durationMinutes: data.durationMinutes,
+      note: data.note,
+    });
+    upsertRequest(created);
+    setRequestTimesApp(null);
+    // Requesting times advances the candidate to Interviewing via
+    // trg_sync_stage_on_availability_requested, so re-read where the board
+    // actually put the card rather than guessing.
+    if (employerId) {
+      const appsData = await getEmployerApplications(employerId);
+      setApplications(appsData.map(normalizeApp));
+    }
+  }
+
+  // Step 3 — lock in one of the offered times.
+  async function handleConfirmTime(data: { scheduledAt: string; durationMinutes: number; notes: string }) {
+    const request = pickTimeApp ? latestRequestForApp(pickTimeApp.id) : null;
+    if (!request || !employerId) return;
+    const updated = await confirmInterviewTime(request.id, {
+      scheduledAt: data.scheduledAt,
+      durationMinutes: data.durationMinutes,
+      notes: data.notes,
+    });
+    upsertRequest({ ...request, ...updated });
+    setPickTimeApp(null);
+    // A real interview row now exists; refresh both it and the board, since
+    // its insert trigger may have moved the card too.
+    const [interviewsData, appsData] = await Promise.all([
+      getEmployerInterviews(employerId),
+      getEmployerApplications(employerId),
+    ]);
+    setInterviews(interviewsData as unknown as Interview[]);
+    setApplications(appsData.map(normalizeApp));
+  }
+
+  // Off-ramp — none of the offered times work, or the candidate had none at
+  // all. Withdraw so a fresh window can be requested; the board immediately
+  // offers "Request Times" again.
+  async function handleRequestNewWindow() {
+    const app = pickTimeApp;
+    const request = app ? latestRequestForApp(app.id) : null;
+    if (!request || !app) return;
+    setAvailabilityError('');
+    try {
+      const updated = await withdrawInterviewRequest(request.id);
+      upsertRequest({ ...request, ...updated });
+      setPickTimeApp(null);
+      // Straight into the next ask — that's the whole point of withdrawing.
+      setRequestTimesApp(app);
+    } catch (e) {
+      setAvailabilityError(e instanceof Error ? e.message : 'Could not withdraw the request');
+    }
   }
 
   function openEditModal() {
@@ -701,6 +808,12 @@ export default function EmployerPipelinePage() {
                   {colApps.map(app => {
                     const isExpanded = expandedId === app.id;
                     const liveInterview = activeInterviewForApp(app.id);
+                    const availability = latestRequestForApp(app.id);
+                    const availabilityStatus = availability?.status as AvailabilityStatus | undefined;
+                    // Only one handshake can be open at a time, so the card's
+                    // primary action is unambiguous: ask, or pick.
+                    const awaitingPick = availabilityStatus === 'awaiting_employer';
+                    const handshakeOpen = Boolean(liveRequestForApp(app.id));
                     return (
                       <div
                         key={app.id}
@@ -796,6 +909,21 @@ export default function EmployerPipelinePage() {
                               {formatInterviewWhen(liveInterview.scheduled_at)}
                             </span>
                           )}
+                          {/* Where the availability handshake currently sits.
+                              Dropped once a real interview exists — the
+                              confirmed time above says it better. */}
+                          {availabilityStatus && availabilityStatus !== 'scheduled' && availabilityStatus !== 'cancelled' && (
+                            <span
+                              title={`Interview times: ${EMPLOYER_STATUS_LABELS[availabilityStatus]}`}
+                              style={{
+                                fontSize: '0.63rem', fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                                background: STATUS_CHIP[availabilityStatus].bg,
+                                color: STATUS_CHIP[availabilityStatus].color,
+                              }}
+                            >
+                              {EMPLOYER_STATUS_LABELS[availabilityStatus]}
+                            </span>
+                          )}
                         </div>
 
                         <p style={{ fontSize: '0.68rem', color: 'var(--text-light)' }}>
@@ -851,6 +979,46 @@ export default function EmployerPipelinePage() {
                               </div>
                             )}
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {/* Step 1 / step 3 of the availability handshake.
+                                  While we're waiting on the candidate the
+                                  button stays visible but inert, so the card
+                                  explains itself instead of going blank. */}
+                              {awaitingPick ? (
+                                <button
+                                  onClick={() => { setAvailabilityError(''); setPickTimeApp(app); }}
+                                  style={{
+                                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--chip-amber-ink)', background: 'var(--chip-amber-bg)',
+                                    color: 'var(--chip-amber-ink)', fontWeight: 700, cursor: 'pointer',
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  }}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                  Pick interview time
+                                </button>
+                              ) : !handshakeOpen && (
+                                <button
+                                  onClick={() => { setAvailabilityError(''); setRequestTimesApp(app); }}
+                                  style={{
+                                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--primary)', background: 'var(--surface)',
+                                    color: 'var(--primary)', fontWeight: 600, cursor: 'pointer',
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  }}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                  Request Times
+                                </button>
+                              )}
+                              {handshakeOpen && !awaitingPick && (
+                                <span style={{
+                                  fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                  border: '1px dashed var(--border)', color: 'var(--text-light)',
+                                  display: 'inline-flex', alignItems: 'center',
+                                }}>
+                                  Waiting on candidate’s availability
+                                </span>
+                              )}
                               <button
                                 onClick={() => openScheduleModal(app)}
                                 style={{
@@ -1439,6 +1607,40 @@ export default function EmployerPipelinePage() {
           notes: scheduleInterview.employer_notes || '',
         } : null}
       />
+
+      {/* Step 1 — ask the candidate for times. */}
+      <RequestTimesModal
+        open={requestTimesApp !== null}
+        onClose={() => setRequestTimesApp(null)}
+        onSubmit={handleRequestTimes}
+        candidateName={requestTimesApp?.student.profile.full_name}
+        listingTitle={requestTimesApp?.listing.title}
+      />
+
+      {/* Step 3 — pick a final time from what they offered. */}
+      <SelectInterviewTimeModal
+        open={pickTimeApp !== null}
+        onClose={() => setPickTimeApp(null)}
+        request={pickTimeApp ? latestRequestForApp(pickTimeApp.id) ?? null : null}
+        candidateName={pickTimeApp?.student.profile.full_name}
+        listingTitle={pickTimeApp?.listing.title}
+        onConfirm={handleConfirmTime}
+        onRequestNewWindow={handleRequestNewWindow}
+      />
+
+      {availabilityError && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 10000, padding: '10px 16px', borderRadius: 8,
+            background: 'var(--danger-bg)', color: 'var(--danger-fg)',
+            border: '1px solid var(--danger-border)', fontSize: '0.82rem', fontWeight: 600,
+          }}
+        >
+          {availabilityError}
+        </div>
+      )}
     </div>
   );
 }

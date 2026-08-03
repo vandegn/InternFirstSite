@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase, getProfile, getUnreadCount, DASHBOARD_ROUTES } from '@/lib/supabase';
 import NotificationBell from './NotificationBell';
 import FeedbackButton from './FeedbackButton';
+import CommunityBanner from './CommunityBanner';
 import Avatar from './Avatar';
 
 type NavItem = {
@@ -181,6 +182,9 @@ export default function DashboardShell({ children, role }: { children: React.Rea
 
   return (
     <div className="dashboard-body">
+      {/* Platform-level notice. Admins run the place, so they don't need it. */}
+      {role !== 'intern_first_admin' && <CommunityBanner />}
+
       {/* Header */}
       <header className="dash-header">
         <div className="dash-header-inner">
@@ -213,7 +217,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
         </div>
       </header>
 
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* Sidebar */}
         <aside
           style={{

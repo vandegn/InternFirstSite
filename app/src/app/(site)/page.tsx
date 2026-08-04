@@ -35,22 +35,17 @@ const faqData = [
   },
 ];
 
+// Categories are navigation into the real search, not a claim about inventory —
+// the "N open roles" counts that used to sit here were invented.
 const categories = [
-  { name: 'Creative Design', count: 68 },
-  { name: 'Software Development', count: 120 },
-  { name: 'Marketing', count: 200 },
-  { name: 'Video & Media', count: 124 },
-  { name: 'Data & Analytics', count: 26 },
-  { name: 'Customer Success', count: 100 },
-  { name: 'Finance & Accounting', count: 68 },
-  { name: 'Operations', count: 42 },
-];
-
-const featuredJobs = [
-  { title: 'Product Designer', location: 'Syracuse, CT', img: 'https://internfirst-demo.com/wp-content/uploads/2026/02/9-1024x1024.png' },
-  { title: 'Medical Assistant', location: 'Kent, UT', img: 'https://internfirst-demo.com/wp-content/uploads/2026/02/6-1024x1024.png' },
-  { title: 'Marketing Coordinator', location: 'Lansing, IL', img: 'https://internfirst-demo.com/wp-content/uploads/2026/02/5-1024x1024.png' },
-  { title: 'Web Designer', location: 'Lafayette, CA', img: 'https://internfirst-demo.com/wp-content/uploads/2026/02/8-1024x1024.png' },
+  'Creative Design',
+  'Software Development',
+  'Marketing',
+  'Video & Media',
+  'Data & Analytics',
+  'Customer Success',
+  'Finance & Accounting',
+  'Operations',
 ];
 
 export default function LandingPage() {
@@ -138,58 +133,20 @@ export default function LandingPage() {
             Start your search by selecting the category that best fits your professional goals.
           </p>
           <div className="category-grid">
-            {categories.map((c) => (
-              <Link key={c.name} href="/internships" className="category-card">
+            {categories.map((name) => (
+              <Link key={name} href="/internships" className="category-card">
                 <div className="category-icon">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
                     <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                   </svg>
                 </div>
-                <h3>{c.name}</h3>
-                <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 500 }}>
-                  {c.count} open roles
-                </span>
+                <h3>{name}</h3>
               </Link>
             ))}
           </div>
           <div className="section-cta">
             <Link href="/internships" className="btn-outline">See all internships</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURED INTERNSHIPS */}
-      <section className="internships">
-        <div className="container">
-          <h2 className="section-title">Featured opportunities</h2>
-          <p className="section-subtitle">
-            A preview of what&apos;s live on the platform right now.
-          </p>
-          <div className="internship-grid">
-            {featuredJobs.map((job) => (
-              <article key={job.title} className="internship-card">
-                <div className="internship-img">
-                  <img src={job.img} alt={job.title} />
-                </div>
-                <div className="internship-body">
-                  <h3>{job.title}</h3>
-                  <p className="location">{job.location}</p>
-                  <div className="internship-meta">
-                    <span className="badge-type">Full time</span>
-                    <span className="badge-salary">$1,500 / mo</span>
-                  </div>
-                  <div className="tags">
-                    <span>Figma</span>
-                    <span>Remote OK</span>
-                  </div>
-                  <Link href="/internships" className="btn-apply">View role</Link>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div className="section-cta">
-            <Link href="/internships" className="btn-outline">Browse all internships</Link>
           </div>
         </div>
       </section>

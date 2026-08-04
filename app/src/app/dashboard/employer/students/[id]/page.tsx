@@ -36,7 +36,6 @@ type Certification = {
   id: string;
   name: string;
   certification_number: string | null;
-  file_url: string;
   uploaded_at: string;
 };
 
@@ -298,7 +297,7 @@ export default function EmployerStudentProfilePage() {
                   )}
                 </div>
                 <a
-                  href={cert.file_url}
+                  href={`/api/files/certification/${cert.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', flexShrink: 0 }}

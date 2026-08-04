@@ -48,7 +48,7 @@ type Application = {
   status: string;
   stage_id: string | null;
   applied_at: string;
-  resume: { id: string; name: string; file_url: string } | null;
+  resume: { id: string; name: string } | null;
   listing: { id: string; title: string };
   stage: {
     id: string;
@@ -632,7 +632,7 @@ export default function PostedJobsPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                             {app.resume && (
                               <a
-                                href={app.resume.file_url}
+                                href={`/api/files/resume/${app.resume.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title="View Resume"

@@ -1057,7 +1057,9 @@ create policy "Questions on active listings are publicly viewable"
 -- ----- Application answers -----
 -- One row per (application, question). Which column is populated depends on the
 -- question type: answer_text for short/long/yes_no/single_select,
--- answer_options for multi_select, file_url for file uploads.
+-- answer_options for multi_select, storage_path for file uploads (an object
+-- key in the private `applicant-docs` bucket, served via /api/files).
+-- file_url is legacy (old public-bucket URLs) and no longer written.
 create table application_answers (
   id uuid primary key default gen_random_uuid(),
   application_id uuid references applications(id) on delete cascade not null,
@@ -1065,6 +1067,7 @@ create table application_answers (
   answer_text text,
   answer_options text[] not null default '{}',
   file_url text,
+  storage_path text,
   created_at timestamptz default now() not null,
   unique(application_id, question_id)
 );
@@ -1178,21 +1181,79 @@ revoke all on function employer_pending_applicant_count() from public;
 grant execute on function employer_pending_applicant_count() to authenticated;
 
 -- ============================================
--- 22. STUDENT CERTIFICATIONS
+-- 22. PRIVATE APPLICANT DOCS (storage)
+-- ============================================
+-- Resumes (student_resumes.storage_path) and application file-answers
+-- (application_answers.storage_path) live in the PRIVATE `applicant-docs`
+-- bucket, created by app/scripts/private-docs-setup.mjs. Reads go through
+-- GET /api/files/[kind]/[id], which authorizes via the table RLS above and
+-- then redirects to a 60-second service-role signed URL. There is
+-- deliberately no storage SELECT policy — the bucket is not directly
+-- readable. student_resumes (defined in migrations/add_student_resumes.sql)
+-- also gained storage_path, and its file_url dropped NOT NULL.
+
+create policy "Students upload own applicant docs"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'applicant-docs'
+    and (storage.foldername(name))[1] in ('resumes', 'application-files')
+    and (storage.foldername(name))[2] in (
+      select id::text from students where user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- 23. POLICY ACCEPTANCES
+-- ============================================
+-- Durable record of who accepted which version of the Terms & Conditions and
+-- Privacy Policy (content in app/src/lib/policies). Written by /auth/callback
+-- (service role) from versions stamped into user_metadata at registration.
+-- accepted_at is the client's claim; recorded_at is server time. Append-only:
+-- a version bump produces a second row, never an overwrite.
+
+create table policy_acceptances (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  role text not null check (role in ('student', 'employer')),
+  terms_version text not null,
+  privacy_version text not null,
+  accepted_at timestamptz not null,
+  recorded_at timestamptz default now() not null,
+  unique (user_id, role, terms_version, privacy_version)
+);
+
+create index idx_policy_acceptances_user on policy_acceptances(user_id);
+
+alter table policy_acceptances enable row level security;
+
+-- Only the service-role callback writes; users may read their own history.
+create policy "Users read own policy acceptances"
+  on policy_acceptances for select to authenticated
+  using (user_id = auth.uid());
+
+-- ============================================
+-- 24. STUDENT CERTIFICATIONS
 -- ============================================
 -- Credentials a student proves with a document — Six Sigma belts, OSHA 30, CPR,
--- a cloud cert. Shaped like student_resumes: one row per uploaded PDF in the
--- shared `images` bucket, many per student. The certification number lives
--- beside the file because that is what an employer checks against the issuer's
--- registry; it is nullable so an unnumbered credential can still be uploaded.
--- See supabase/migrations/20260803_student_certifications.sql for the RLS.
+-- a cloud cert. One row per uploaded PDF, many per student. The certification
+-- number lives beside the file because that is what an employer checks against
+-- the issuer's registry; it is nullable so an unnumbered credential can still
+-- be uploaded. See supabase/migrations/20260803_student_certifications.sql for
+-- the RLS.
+--
+-- The PDF is applicant PII of the same class as a resume, so it lives in the
+-- private `applicant-docs` bucket under certifications/<studentId>/ and is read
+-- only through GET /api/files/certification/[id] (section 22). file_url is
+-- legacy — nullable, and unset on anything uploaded after
+-- 20260803_certifications_private_docs.sql.
 
 create table student_certifications (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade not null,
   name text not null,
   certification_number text,
-  file_url text not null,
+  storage_path text,
+  file_url text,
   uploaded_at timestamptz default now() not null
 );
 

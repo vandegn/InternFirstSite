@@ -58,6 +58,29 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=profile_creation_failed`);
   }
 
+  // Durable record of the signup-time Terms/Privacy acknowledgement. The
+  // register page stamps the accepted versions into user_metadata; accepted_at
+  // is the client's claim, recorded_at (DB default) is server time. Unique on
+  // (user, role, versions) so re-visiting the callback link is a no-op.
+  // Non-fatal: a logging gap must never cost someone their signup.
+  const meta = user.user_metadata ?? {};
+  if ((role === 'student' || role === 'employer') && meta.termsVersion && meta.privacyVersion) {
+    try {
+      await getAdminSupabase().from('policy_acceptances').upsert(
+        {
+          user_id: user.id,
+          role,
+          terms_version: String(meta.termsVersion),
+          privacy_version: String(meta.privacyVersion),
+          accepted_at: meta.policyAcceptedAt ?? new Date().toISOString(),
+        },
+        { onConflict: 'user_id,role,terms_version,privacy_version', ignoreDuplicates: true },
+      );
+    } catch (err) {
+      console.error('Policy acceptance recording failed:', err);
+    }
+  }
+
   // Seed the verification signals so the employer lands in the review queue
   // already triaged. Deliberately non-fatal and time-boxed by the RDAP
   // timeout — a slow registry must never cost someone their signup.

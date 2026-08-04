@@ -672,7 +672,7 @@ export type ApplicationAnswerInput = {
   question_id: string;
   answer_text?: string | null;
   answer_options?: string[];
-  file_url?: string | null;
+  storage_path?: string | null;
 };
 
 export async function submitApplicationAnswers(
@@ -684,7 +684,7 @@ export async function submitApplicationAnswers(
     question_id: a.question_id,
     answer_text: a.answer_text ?? null,
     answer_options: a.answer_options ?? [],
-    file_url: a.file_url ?? null,
+    storage_path: a.storage_path ?? null,
   }));
   if (rows.length === 0) return;
 
@@ -693,14 +693,14 @@ export async function submitApplicationAnswers(
 }
 
 // Extra files attached to a screening question, alongside the standard resume.
-// Uses the same `images` bucket uploadResume writes to.
+// Goes into the private `applicant-docs` bucket; returns the storage path,
+// which the answer row stores and /api/files/application-answer/[id] serves.
 export async function uploadApplicationFile(studentId: string, file: File) {
   const ext = file.name.split('.').pop();
   const path = `application-files/${studentId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from('images').upload(path, file, { upsert: false });
+  const { error } = await supabase.storage.from('applicant-docs').upload(path, file, { upsert: false });
   if (error) throw error;
-  const { data } = supabase.storage.from('images').getPublicUrl(path);
-  return data.publicUrl;
+  return path;
 }
 
 // ---- Messages ----
@@ -915,12 +915,12 @@ export async function getEmployerApplications(employerId: string) {
       applied_at,
       updated_at,
       resume_id,
-      resume:student_resumes(id, name, file_url),
+      resume:student_resumes(id, name),
       answers:application_answers(
         id,
         answer_text,
         answer_options,
-        file_url,
+        storage_path,
         question:listing_questions(id, prompt, question_type, position)
       ),
       listing:internship_listings!inner(id, title, employer_id),
@@ -1212,16 +1212,15 @@ export async function getApplicationStatus(studentId: string, listingId: string)
 export async function uploadResume(studentId: string, file: File, displayName: string) {
   const ext = file.name.split('.').pop();
   const path = `resumes/${studentId}/${Date.now()}.${ext}`;
+  // Private bucket — the file is only reachable through /api/files/resume/[id].
   const { error: uploadError } = await supabase.storage
-    .from('images')
+    .from('applicant-docs')
     .upload(path, file, { upsert: false });
   if (uploadError) throw uploadError;
 
-  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path);
-
   const { data, error } = await supabase
     .from('student_resumes')
-    .insert({ student_id: studentId, name: displayName, file_url: urlData.publicUrl })
+    .insert({ student_id: studentId, name: displayName, storage_path: path })
     .select()
     .single();
   if (error) throw error;
@@ -1247,16 +1246,18 @@ export async function deleteResume(resumeId: string) {
 }
 
 // ---- Student Certifications ----
-// Same storage pattern as resumes (a file in the `images` bucket plus a row
-// pointing at its public URL), with the credential's number alongside — that's
-// what an employer checks against the issuer.
+// Same storage pattern as resumes: the PDF goes to the private `applicant-docs`
+// bucket and the row keeps only its storage_path, so the file is reachable
+// solely through /api/files/certification/[id]. The credential's number sits
+// alongside it — that's what an employer checks against the issuer.
 
 export type StudentCertification = {
   id: string;
   student_id: string;
   name: string;
   certification_number: string | null;
-  file_url: string;
+  storage_path: string | null;
+  file_url: string | null;   // legacy: public-bucket URLs from before the move
   uploaded_at: string;
 };
 
@@ -1273,12 +1274,13 @@ export async function uploadCertification(
   if (!isPdf) throw new Error('Certifications must be uploaded as a PDF.');
 
   const path = `certifications/${studentId}/${Date.now()}.pdf`;
+  // Private bucket — the file is only reachable through
+  // /api/files/certification/[id], which signs it for 60 seconds after the
+  // table's RLS has cleared the caller.
   const { error: uploadError } = await supabase.storage
-    .from('images')
+    .from('applicant-docs')
     .upload(path, file, { upsert: false, contentType: 'application/pdf' });
   if (uploadError) throw uploadError;
-
-  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path);
 
   const { data, error } = await supabase
     .from('student_certifications')
@@ -1286,7 +1288,7 @@ export async function uploadCertification(
       student_id: studentId,
       name,
       certification_number: certificationNumber || null,
-      file_url: urlData.publicUrl,
+      storage_path: path,
     })
     .select()
     .single();

@@ -43,7 +43,7 @@ type ApplicationAnswer = {
   id: string;
   answer_text: string | null;
   answer_options: string[] | null;
-  file_url: string | null;
+  storage_path: string | null;
   question: { id: string; prompt: string; question_type: string; position: number } | null;
 };
 
@@ -54,7 +54,7 @@ type Application = {
   match_score: number | null;
   flagged_knockout: boolean | null;
   applied_at: string;
-  resume: { id: string; name: string; file_url: string } | null;
+  resume: { id: string; name: string } | null;
   answers: ApplicationAnswer[];
   listing: { id: string; title: string };
   student: {
@@ -116,7 +116,7 @@ function normalizeApp(app: Record<string, unknown>): Application {
 function answerText(a: ApplicationAnswer): string {
   if (a.answer_options?.length) return a.answer_options.join(', ');
   if (a.answer_text) return a.answer_text;
-  if (a.file_url) return 'File attached';
+  if (a.storage_path) return 'File attached';
   return '—';
 }
 
@@ -1107,7 +1107,7 @@ function EmployerPipelineInner() {
                               </button>
                               {app.resume && (
                                 <a
-                                  href={app.resume.file_url}
+                                  href={`/api/files/resume/${app.resume.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   style={{

@@ -63,7 +63,7 @@ export default function InternshipDetail() {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [showApplyForm, setShowApplyForm] = useState(false);
-  const [resumes, setResumes] = useState<{ id: string; name: string; file_url: string; uploaded_at: string }[]>([]);
+  const [resumes, setResumes] = useState<{ id: string; name: string; uploaded_at: string }[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [messageSending, setMessageSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -428,7 +428,7 @@ export default function InternshipDetail() {
                               Uploaded {new Date(r.uploaded_at).toLocaleDateString()}
                             </span>
                           </div>
-                          <a href={r.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>View</a>
+                          <a href={`/api/files/resume/${r.id}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>View</a>
                         </label>
                       ))}
                       <label

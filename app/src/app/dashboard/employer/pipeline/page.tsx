@@ -22,7 +22,11 @@ import {
   getEmployerAvailabilityRequests,
   confirmInterviewTime,
   withdrawInterviewRequest,
+  extendOffer,
+  getEmployerOffers,
+  isLiveOffer,
   type PipelineStage,
+  type Offer,
 } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
 import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
@@ -30,6 +34,8 @@ import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewMo
 import RequestTimesModal from '@/components/RequestTimesModal';
 import type { RequestTimesFormData } from '@/components/RequestTimesModal';
 import SelectInterviewTimeModal from '@/components/SelectInterviewTimeModal';
+import ExtendOfferModal from '@/components/ExtendOfferModal';
+import type { ExtendOfferFormData } from '@/components/ExtendOfferModal';
 import {
   isLiveAvailabilityStatus,
   EMPLOYER_STATUS_LABELS,
@@ -172,6 +178,11 @@ function EmployerPipelineInner() {
   const [movingApp, setMovingApp] = useState(false);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
+  // Offers. A move into an Offered column is confirmed twice: the usual move
+  // dialog, then ExtendOfferModal, which is what actually sends it.
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [offerTarget, setOfferTarget] = useState<{ app: Application; toStage: PipelineStage } | null>(null);
+
   // Trash drop-zone: dropping a card here proposes a permanent delete.
   const [trashTarget, setTrashTarget] = useState<Application | null>(null);
   const [trashHover, setTrashHover] = useState(false);
@@ -227,17 +238,19 @@ function EmployerPipelineInner() {
       if (!employer) return;
       setEmployerId(employer.id);
 
-      const [appsData, listingsData, interviewsData, availabilityData] = await Promise.all([
+      const [appsData, listingsData, interviewsData, availabilityData, offersData] = await Promise.all([
         getEmployerApplications(employer.id),
         getEmployerListings(employer.id, 1, 100),
         getEmployerInterviews(employer.id),
         getEmployerAvailabilityRequests(employer.id),
+        getEmployerOffers(employer.id),
       ]);
 
       const apps = appsData.map(normalizeApp);
       setApplications(apps);
       setInterviews(interviewsData as unknown as Interview[]);
       setAvailabilityRequests(availabilityData);
+      setOffers(offersData);
       const ls = listingsData.data.map((l: any) => ({ id: l.id, title: l.title }));
       setListings(ls);
 
@@ -309,9 +322,30 @@ function EmployerPipelineInner() {
     setPendingMove({ app, toStage: newStage });
   }, [applications, stages, draggingId]);
 
+  // The live offer on an application, if any. Withdrawn and declined rows stay
+  // in the list as history, so read the newest live one.
+  function liveOfferForApp(applicationId: string): Offer | undefined {
+    return offers.find(o => o.application_id === applicationId && isLiveOffer(o.status));
+  }
+
+  function latestOfferForApp(applicationId: string): Offer | undefined {
+    return offers.find(o => o.application_id === applicationId);
+  }
+
   async function confirmMove() {
     if (!pendingMove || movingApp) return;
     const { app, toStage } = pendingMove;
+
+    // Landing in an Offered column is not just a move — it tells the candidate
+    // they got the job. Hand off to the second confirmation, which is what
+    // actually sends it. Someone who already has a live offer (dragged out and
+    // back, say) skips it: they've been told once already.
+    if (toStage.stage_type === 'offered' && !liveOfferForApp(app.id)) {
+      setPendingMove(null);
+      setOfferTarget({ app, toStage });
+      return;
+    }
+
     setMovingApp(true);
     // Optimistic: the board updates as soon as the dialog closes, and rolls
     // back to the card's original column if the write fails.
@@ -332,6 +366,39 @@ function EmployerPipelineInner() {
     } finally {
       setMovingApp(false);
     }
+  }
+
+  // Step 2 of 2. The offer row is written before the card moves: it carries the
+  // letter and the notification, so if it fails the candidate has been told
+  // nothing and the board still reads true. A card that doesn't move after a
+  // sent offer is recoverable — dragging again finds the live offer and just
+  // moves the card.
+  async function handleExtendOffer(data: ExtendOfferFormData) {
+    if (!offerTarget || !employerId) return;
+    const { app, toStage } = offerTarget;
+
+    // If the stage write failed on a previous attempt the offer is already
+    // sent, so retrying must not try to send a second one — the partial unique
+    // index would reject it and the employer would be stuck.
+    if (!liveOfferForApp(app.id)) {
+      const offer = await extendOffer({
+        applicationId: app.id,
+        employerId,
+        studentId: app.student.id,
+        listingId: app.listing.id,
+        letter: data.letter,
+        note: data.note,
+      });
+      setOffers(prev => [offer, ...prev]);
+    }
+
+    // The candidate already has the offer notification; the generic
+    // "Application update: Offered" one on top of it would only dilute it.
+    await updateApplicationStage(app.id, toStage.id, { notify: false });
+    setApplications(prev => prev.map(a =>
+      a.id === app.id ? { ...a, stage_id: toStage.id, status: toStage.label } : a
+    ));
+    setOfferTarget(null);
   }
 
   function handleTrashDrop(e: React.DragEvent) {
@@ -401,11 +468,9 @@ function EmployerPipelineInner() {
         notes: data.notes,
       });
       setInterviews(prev => [...prev, created as Interview]);
-      // trg_sync_stage_on_interview_created may have advanced the candidate to
-      // the Interviewing column, so pull the board's real state back down
-      // rather than guessing where the card should now sit.
-      const appsData = await getEmployerApplications(employerId);
-      setApplications(appsData.map(normalizeApp));
+      // The card stays where the employer put it — scheduling no longer moves
+      // it (migrations/20260803_manual_pipeline_movement.sql), so there is
+      // nothing to re-read here.
     }
     closeScheduleModal();
   }
@@ -445,13 +510,8 @@ function EmployerPipelineInner() {
     });
     upsertRequest(created);
     setRequestTimesApp(null);
-    // Requesting times advances the candidate to Interviewing via
-    // trg_sync_stage_on_availability_requested, so re-read where the board
-    // actually put the card rather than guessing.
-    if (employerId) {
-      const appsData = await getEmployerApplications(employerId);
-      setApplications(appsData.map(normalizeApp));
-    }
+    // Asking for times doesn't move the card either — the chip on it is the
+    // only thing that changes, and that comes from availabilityRequests.
   }
 
   // Step 3 — lock in one of the offered times.
@@ -465,14 +525,10 @@ function EmployerPipelineInner() {
     });
     upsertRequest({ ...request, ...updated });
     setPickTimeApp(null);
-    // A real interview row now exists; refresh both it and the board, since
-    // its insert trigger may have moved the card too.
-    const [interviewsData, appsData] = await Promise.all([
-      getEmployerInterviews(employerId),
-      getEmployerApplications(employerId),
-    ]);
+    // A real interview row now exists, so re-read those. The board itself is
+    // untouched: confirming a time doesn't move the card.
+    const interviewsData = await getEmployerInterviews(employerId);
     setInterviews(interviewsData as unknown as Interview[]);
-    setApplications(appsData.map(normalizeApp));
   }
 
   // Off-ramp — none of the offered times work, or the candidate had none at
@@ -882,6 +938,7 @@ function EmployerPipelineInner() {
                     // primary action is unambiguous: ask, or pick.
                     const awaitingPick = availabilityStatus === 'awaiting_employer';
                     const handshakeOpen = Boolean(liveRequestForApp(app.id));
+                    const offer = latestOfferForApp(app.id);
                     // The card a notification pointed at: opened and outlined
                     // until the employer collapses it.
                     const isFocused = app.id === focusApplicationId && isExpanded;
@@ -986,6 +1043,29 @@ function EmployerPipelineInner() {
                           {/* Where the availability handshake currently sits.
                               Dropped once a real interview exists — the
                               confirmed time above says it better. */}
+                          {/* Where the offer stands. This is the card's most
+                              consequential state, so it reads as words rather
+                              than a color the employer has to decode. */}
+                          {offer && offer.status !== 'withdrawn' && (
+                            <span
+                              title={offer.responded_at
+                                ? `Answered ${new Date(offer.responded_at).toLocaleDateString()}`
+                                : `Offer sent ${new Date(offer.extended_at).toLocaleDateString()}`}
+                              style={{
+                                fontSize: '0.63rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                                background: offer.status === 'accepted' ? 'var(--chip-green-bg)'
+                                  : offer.status === 'declined' ? 'var(--danger-bg)'
+                                  : 'var(--chip-amber-bg)',
+                                color: offer.status === 'accepted' ? 'var(--chip-green-ink)'
+                                  : offer.status === 'declined' ? 'var(--danger-fg)'
+                                  : 'var(--chip-amber-ink)',
+                              }}
+                            >
+                              {offer.status === 'accepted' ? 'Offer accepted'
+                                : offer.status === 'declined' ? 'Offer declined'
+                                : 'Offer sent — awaiting reply'}
+                            </span>
+                          )}
                           {availabilityStatus && availabilityStatus !== 'scheduled' && availabilityStatus !== 'cancelled' && (
                             <span
                               title={`Interview times: ${EMPLOYER_STATUS_LABELS[availabilityStatus]}`}
@@ -1105,6 +1185,21 @@ function EmployerPipelineInner() {
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 {liveInterview ? 'Reschedule interview' : 'Schedule interview'}
                               </button>
+                              {offer?.storage_path && (
+                                <a
+                                  href={`/api/files/offer/${offer.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--chip-green-ink)', color: 'var(--chip-green-ink)',
+                                    textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                  }}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                  Offer letter
+                                </a>
+                              )}
                               {app.resume && (
                                 <a
                                   href={`/api/files/resume/${app.resume.id}`}
@@ -1572,6 +1667,10 @@ function EmployerPipelineInner() {
       {/* Confirm a stage move */}
       {pendingMove && (() => {
         const fromStage = stages.find(s => s.id === pendingMove.app.stage_id);
+        // An Offered destination doesn't finalize here — confirming opens the
+        // offer dialog, so this one says so rather than promising the move.
+        const opensOfferStep = pendingMove.toStage.stage_type === 'offered'
+          && !liveOfferForApp(pendingMove.app.id);
         return (
           <div
             onClick={() => { if (!movingApp) setPendingMove(null); }}
@@ -1596,8 +1695,12 @@ function EmployerPipelineInner() {
                   : <>They&apos;ll be placed in <strong>{pendingMove.toStage.label}</strong>.</>}
               </p>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-light)', marginBottom: 18 }}>
-                Pipeline columns are visible to candidates, so {pendingMove.app.student.profile.full_name.split(' ')[0]} will
-                be notified that their application status changed.
+                {opensOfferStep
+                  ? <>This one sends an offer, so there&apos;s a second step: you&apos;ll confirm
+                      the details and can attach the offer letter before
+                      {' '}{pendingMove.app.student.profile.full_name.split(' ')[0]} hears anything.</>
+                  : <>Pipeline columns are visible to candidates, so {pendingMove.app.student.profile.full_name.split(' ')[0]} will
+                      be notified that their application status changed.</>}
               </p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button
@@ -1618,7 +1721,7 @@ function EmployerPipelineInner() {
                     cursor: movingApp ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {movingApp ? 'Moving…' : 'Yes, move candidate'}
+                  {movingApp ? 'Moving…' : opensOfferStep ? 'Continue' : 'Yes, move candidate'}
                 </button>
               </div>
             </div>
@@ -1723,6 +1826,16 @@ function EmployerPipelineInner() {
         listingTitle={pickTimeApp?.listing.title}
         onConfirm={handleConfirmTime}
         onRequestNewWindow={handleRequestNewWindow}
+      />
+
+      {/* The second confirmation on the Offered column — this is what sends it. */}
+      <ExtendOfferModal
+        open={offerTarget !== null}
+        candidateName={offerTarget?.app.student.profile.full_name ?? ''}
+        listingTitle={offerTarget?.app.listing.title}
+        stageLabel={offerTarget?.toStage.label ?? 'Offered'}
+        onCancel={() => setOfferTarget(null)}
+        onConfirm={handleExtendOffer}
       />
 
       {availabilityError && (

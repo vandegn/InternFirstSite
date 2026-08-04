@@ -1142,7 +1142,14 @@ export async function reorderStages(orderedStageIds: string[]) {
 
 // Move an application to a new stage. The DB trigger keeps
 // applications.status in sync with the new stage's label.
-export async function updateApplicationStage(applicationId: string, stageId: string) {
+// `notify: false` suppresses the generic "Application update: <stage>" bell
+// entry for callers that send the student something better. The offer flow
+// uses it — being told twice, once vaguely, undersells the news.
+export async function updateApplicationStage(
+  applicationId: string,
+  stageId: string,
+  opts: { notify?: boolean } = {},
+) {
   const { data, error } = await supabase
     .from('applications')
     .update({ stage_id: stageId })
@@ -1150,6 +1157,7 @@ export async function updateApplicationStage(applicationId: string, stageId: str
     .select('*, student:students!inner(user_id), listing:internship_listings!inner(title), stage:pipeline_stages!applications_stage_id_fkey(label)')
     .single();
   if (error) throw error;
+  if (opts.notify === false) return data;
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -2052,11 +2060,12 @@ export async function respondToInterview(
     .single();
   if (error) throw error;
 
-  // Declining walks the candidate back out of the Interviewing column — done by
-  // trg_sync_stage_on_interview_closed rather than here, because a student has
-  // no RLS write access to applications. Writing applications.status directly
-  // (as this used to) also never showed up: status is a denormalized mirror of
-  // the stage label, so the posting's status was left untouched.
+  // Responding does not move the candidate on the board. The employer owns
+  // that decision (migrations/20260803_manual_pipeline_movement.sql), and a
+  // student has no RLS write access to applications anyway. Writing
+  // applications.status directly (as this used to) also never showed up:
+  // status is a denormalized mirror of the stage label. The employer learns
+  // the outcome from the notification below.
 
   // Notify the employer how the candidate responded.
   try {
@@ -2248,6 +2257,168 @@ export async function getEmployerAvailabilityRequests(employerId: string) {
   return (data ?? []) as AvailabilityRequest[];
 }
 
+// ---- Offers ----
+// The record behind an "Offered" column. Created only by the pipeline's
+// two-step confirmation, and moved to accepted/declined by the student.
+
+export type OfferStatus = 'extended' | 'accepted' | 'declined' | 'withdrawn';
+
+export type Offer = {
+  id: string;
+  application_id: string;
+  employer_id: string;
+  student_id: string;
+  listing_id: string;
+  status: OfferStatus;
+  storage_path: string | null;
+  note: string | null;
+  extended_at: string;
+  responded_at: string | null;
+};
+
+// An offer the student can still act on. Withdrawn and declined rows are
+// history; 'accepted' stays live because both sides keep reading the letter.
+export function isLiveOffer(status: OfferStatus) {
+  return status === 'extended' || status === 'accepted';
+}
+
+// Employer step 2 of 2: the letter (optional) goes to the private bucket
+// first, so a failed upload can't leave an offer row promising a document
+// that isn't there. The caller moves the pipeline stage separately — the row
+// records the offer, the column records where the employer filed them.
+export async function extendOffer(opts: {
+  applicationId: string;
+  employerId: string;
+  studentId: string;
+  listingId: string;
+  letter?: File | null;
+  note?: string;
+}): Promise<Offer> {
+  let storagePath: string | null = null;
+  if (opts.letter) {
+    const isPdf = opts.letter.type === 'application/pdf'
+      || opts.letter.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) throw new Error('The offer letter must be a PDF.');
+    const path = `offer-letters/${opts.applicationId}/${Date.now()}.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from('applicant-docs')
+      .upload(path, opts.letter, { upsert: false, contentType: 'application/pdf' });
+    if (uploadError) throw uploadError;
+    storagePath = path;
+  }
+
+  const { data, error } = await supabase
+    .from('offers')
+    .insert({
+      application_id: opts.applicationId,
+      employer_id: opts.employerId,
+      student_id: opts.studentId,
+      listing_id: opts.listingId,
+      storage_path: storagePath,
+      note: opts.note?.trim() || null,
+      status: 'extended',
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  // Tell the student in the same breath. Best-effort, like every other
+  // notification here — a failed bell entry must not undo a real offer.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const [recipient, listingRes] = await Promise.all([
+      studentUserId(opts.studentId),
+      supabase.from('internship_listings').select('title').eq('id', opts.listingId).single(),
+    ]);
+    const listingTitle = listingRes.data?.title as string | undefined;
+    if (user && recipient) {
+      await createNotification({
+        userId: recipient,
+        actorId: user.id,
+        type: 'offer',
+        title: 'You have an offer',
+        body: listingTitle
+          ? `You're receiving an offer for "${listingTitle}". Review it and let them know.`
+          : `You're receiving an offer. Review it and let them know.`,
+        link: '/dashboard/student/applications',
+      });
+    }
+  } catch (e) {
+    console.error('[extendOffer] notification failed', e);
+  }
+
+  return data as Offer;
+}
+
+export async function getEmployerOffers(employerId: string): Promise<Offer[]> {
+  const { data, error } = await supabase
+    .from('offers')
+    .select('*')
+    .eq('employer_id', employerId)
+    .order('extended_at', { ascending: false });
+  if (error) return [];
+  return (data ?? []) as Offer[];
+}
+
+// Offers on this student's applications, with the company and role inlined so
+// the applications page can render the card without a second round trip.
+export async function getStudentOffers(studentId: string) {
+  const { data, error } = await supabase
+    .from('offers')
+    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url)')
+    .eq('student_id', studentId)
+    .order('extended_at', { ascending: false });
+  if (error) return [];
+  return (data ?? []).map((o) => {
+    const row = o as Record<string, unknown>;
+    const one = <T,>(v: unknown): T => (Array.isArray(v) ? v[0] : v) as T;
+    return {
+      ...(row as unknown as Offer),
+      listing: one<{ id: string; title: string } | null>(row.listing) ?? null,
+      employer: one<{ id: string; company_name: string; logo_url: string | null } | null>(row.employer) ?? null,
+    };
+  });
+}
+
+export type StudentOffer = Awaited<ReturnType<typeof getStudentOffers>>[number];
+
+// The student's answer. RLS pins them to these two statuses, so a bad value
+// comes back as zero rows rather than a silent success.
+export async function respondToOffer(offerId: string, action: 'accept' | 'decline') {
+  const status: OfferStatus = action === 'accept' ? 'accepted' : 'declined';
+  const { data, error } = await supabase
+    .from('offers')
+    .update({ status, responded_at: new Date().toISOString() })
+    .eq('id', offerId)
+    .select('*, listing:internship_listings(title)')
+    .single();
+  if (error) throw error;
+
+  // Send the employer back to the candidate's card, the same deep link the
+  // new-applicant notification uses.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const recipient = await employerUserId((data as any).employer_id);
+    const listingRow = (data as any).listing;
+    const listingTitle = (Array.isArray(listingRow) ? listingRow[0]?.title : listingRow?.title) as string | undefined;
+    const me = user ? await getProfile(user.id) : null;
+    if (user && recipient) {
+      await createNotification({
+        userId: recipient,
+        actorId: user.id,
+        type: 'offer',
+        title: action === 'accept' ? 'Offer accepted' : 'Offer declined',
+        body: `${me?.full_name ?? 'A candidate'} ${action === 'accept' ? 'accepted' : 'declined'} your offer${listingTitle ? ` for "${listingTitle}"` : ''}.`,
+        link: `/dashboard/employer/pipeline?listing=${(data as any).listing_id}&application=${(data as any).application_id}`,
+      });
+    }
+  } catch (e) {
+    console.error('[respondToOffer] notification failed', e);
+  }
+
+  return data as Offer;
+}
+
 // The request behind an inbox message. Returns null once it's been withdrawn
 // out from under the student, so the card can say so instead of 409-ing.
 export async function getAvailabilityRequest(requestId: string) {
@@ -2274,7 +2445,8 @@ export type NotificationType =
   | 'message'
   | 'application_status'
   | 'new_application'
-  | 'interview';
+  | 'interview'
+  | 'offer';
 
 export type NotificationRow = {
   id: string;

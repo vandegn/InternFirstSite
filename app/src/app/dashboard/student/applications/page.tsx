@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { supabase, getStudentByUserId, getStudentApplications } from '@/lib/supabase';
+import {
+  supabase,
+  getStudentByUserId,
+  getStudentApplications,
+  getStudentOffers,
+  respondToOffer,
+  type StudentOffer,
+} from '@/lib/supabase';
 
 type StageType = 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
 
@@ -64,6 +71,11 @@ function formatDate(dateStr: string) {
 
 export default function MyApplications() {
   const [applications, setApplications] = useState<Application[]>([]);
+  const [offers, setOffers] = useState<StudentOffer[]>([]);
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [offerError, setOfferError] = useState('');
+  // Declining is the one irreversible answer here, so it asks again.
+  const [decliningOffer, setDecliningOffer] = useState<StudentOffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
@@ -95,7 +107,11 @@ export default function MyApplications() {
       const student = await getStudentByUserId(user.id);
       if (!student) return;
 
-      const raw = await getStudentApplications(student.id);
+      const [raw, offerRows] = await Promise.all([
+        getStudentApplications(student.id),
+        getStudentOffers(student.id),
+      ]);
+      setOffers(offerRows);
 
       // Normalize Supabase nested joins (may return arrays instead of objects)
       const normalized = raw.map((app: any) => {
@@ -124,6 +140,29 @@ export default function MyApplications() {
   const filtered = statusFilter
     ? applications.filter((a) => a.stage?.stage_type === statusFilter)
     : applications;
+
+  // The employer's offer on an application, if there is one. Withdrawn rows
+  // are history — nothing is shown for them.
+  function offerFor(applicationId: string) {
+    return offers.find((o) => o.application_id === applicationId && o.status !== 'withdrawn');
+  }
+
+  async function handleRespond(offer: StudentOffer, action: 'accept' | 'decline') {
+    if (respondingTo) return;
+    setRespondingTo(offer.id);
+    setOfferError('');
+    try {
+      const updated = await respondToOffer(offer.id, action);
+      setOffers((prev) => prev.map((o) => (o.id === offer.id ? { ...o, ...updated } : o)));
+      setDecliningOffer(null);
+    } catch (err) {
+      setOfferError(
+        err instanceof Error ? err.message : 'We couldn’t record your answer. Please try again.'
+      );
+    } finally {
+      setRespondingTo(null);
+    }
+  }
 
   return (
     <div style={{ padding: '32px', maxWidth: '1100px', margin: '0 auto' }}>
@@ -387,10 +426,170 @@ export default function MyApplications() {
                       </span>
                     </div>
                   )}
+
+                  {/* The offer, once the employer sends it. It outranks the
+                      status pill above, so it gets its own panel rather than
+                      another chip. */}
+                  {(() => {
+                    const offer = offerFor(app.id);
+                    if (!offer) return null;
+                    const answered = offer.status !== 'extended';
+                    return (
+                      <div
+                        style={{
+                          marginTop: '14px',
+                          padding: '14px 16px',
+                          borderRadius: '10px',
+                          border: '1px solid var(--chip-green-ink)',
+                          borderLeft: '4px solid var(--chip-green-ink)',
+                          background: 'var(--chip-green-bg)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.92rem', fontWeight: 700 }}>
+                            {offer.status === 'accepted'
+                              ? 'You accepted this offer'
+                              : offer.status === 'declined'
+                                ? 'You declined this offer'
+                                : `${employer?.company_name ?? 'The employer'} is offering you this role`}
+                          </span>
+                          <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                            {answered && offer.responded_at
+                              ? formatDate(offer.responded_at)
+                              : `Sent ${formatDate(offer.extended_at)}`}
+                          </span>
+                        </div>
+
+                        {offer.note && (
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                            {offer.note}
+                          </p>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {offer.storage_path && (
+                            <a
+                              href={`/api/files/offer/${offer.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '7px 14px', borderRadius: '8px',
+                                border: '1px solid var(--chip-green-ink)', background: 'var(--surface)',
+                                color: 'var(--chip-green-ink)', fontSize: '0.82rem', fontWeight: 600,
+                                textDecoration: 'none',
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                              View offer letter
+                            </a>
+                          )}
+                          {!answered && (
+                            <>
+                              <button
+                                onClick={() => handleRespond(offer, 'accept')}
+                                disabled={respondingTo === offer.id}
+                                style={{
+                                  padding: '7px 16px', borderRadius: '8px', border: 'none',
+                                  background: 'var(--chip-green-ink)', color: '#fff',
+                                  fontSize: '0.82rem', fontWeight: 700,
+                                  cursor: respondingTo === offer.id ? 'not-allowed' : 'pointer',
+                                  opacity: respondingTo === offer.id ? 0.6 : 1,
+                                }}
+                              >
+                                {respondingTo === offer.id ? 'Saving…' : 'Accept offer'}
+                              </button>
+                              <button
+                                onClick={() => { setOfferError(''); setDecliningOffer(offer); }}
+                                disabled={respondingTo === offer.id}
+                                style={{
+                                  padding: '7px 16px', borderRadius: '8px',
+                                  border: '1px solid var(--border)', background: 'var(--surface)',
+                                  color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600,
+                                  cursor: respondingTo === offer.id ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
+                          {!answered && !offer.storage_path && (
+                            <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                              No letter attached yet — message them if you need the details in writing.
+                            </span>
+                          )}
+                        </div>
+
+                        {offerError && respondingTo === null && (
+                          <p role="alert" style={{ marginTop: '10px', fontSize: '0.78rem', color: 'var(--danger-fg)' }}>
+                            {offerError}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Declining tells the employer the search is back on for this role, and
+          there's no undo, so it asks once more. */}
+      {decliningOffer && (
+        <div
+          onClick={() => { if (!respondingTo) setDecliningOffer(null); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: '24px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            style={{
+              background: 'var(--surface)', borderRadius: 'var(--radius)',
+              width: 'min(420px, 92vw)', padding: '24px',
+            }}
+          >
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 10 }}>
+              Decline this offer?
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 18 }}>
+              {decliningOffer.employer?.company_name ?? 'The employer'} will be told you turned down
+              {decliningOffer.listing?.title ? ` ${decliningOffer.listing.title}` : ' the role'}.
+              You can&apos;t take this back from here — you&apos;d have to message them.
+            </p>
+            {offerError && (
+              <p role="alert" style={{ fontSize: '0.8rem', color: 'var(--danger-fg)', marginBottom: 12 }}>
+                {offerError}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDecliningOffer(null)}
+                disabled={respondingTo !== null}
+                className="btn-secondary"
+                style={{ fontSize: '0.85rem', padding: '7px 14px' }}
+              >
+                Keep it open
+              </button>
+              <button
+                onClick={() => handleRespond(decliningOffer, 'decline')}
+                disabled={respondingTo !== null}
+                style={{
+                  fontSize: '0.85rem', padding: '7px 14px', borderRadius: 6,
+                  border: '1px solid var(--danger-border)', background: 'var(--danger-bg)',
+                  color: 'var(--danger-fg)', fontWeight: 600,
+                  cursor: respondingTo !== null ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {respondingTo !== null ? 'Sending…' : 'Yes, decline'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

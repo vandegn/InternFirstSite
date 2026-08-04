@@ -215,7 +215,16 @@ function PipelineAllInner() {
                     }}
                   >
                     {stages.map(s => (
-                      <option key={s.id} value={s.id}>Move to: {s.label}</option>
+                      // Offers only go out through the board's two-step
+                      // confirmation — see components/ExtendOfferModal.tsx.
+                      <option
+                        key={s.id}
+                        value={s.id}
+                        disabled={s.stage_type === 'offered' && s.id !== app.stage_id}
+                      >
+                        Move to: {s.label}
+                        {s.stage_type === 'offered' && s.id !== app.stage_id ? ' — send from Pipeline' : ''}
+                      </option>
                     ))}
                   </select>
                 </div>

@@ -10,6 +10,8 @@ const KIND_TO_TABLE: Record<string, string> = {
   resume: 'student_resumes',
   'application-answer': 'application_answers',
   certification: 'student_certifications',
+  // Written by the employer, read by both sides — `offers` RLS already says who.
+  offer: 'offers',
 };
 
 const SIGNED_URL_SECONDS = 60;

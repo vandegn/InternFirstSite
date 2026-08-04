@@ -655,7 +655,17 @@ export default function PostedJobsPage() {
                               }}
                             >
                               {selectedListingStages.map(s => (
-                                <option key={s.id} value={s.id}>{s.label}</option>
+                                // Offers only go out through the pipeline
+                                // board's two-step confirmation — see
+                                // components/ExtendOfferModal.tsx.
+                                <option
+                                  key={s.id}
+                                  value={s.id}
+                                  disabled={s.stage_type === 'offered' && s.id !== app.stage_id}
+                                >
+                                  {s.label}
+                                  {s.stage_type === 'offered' && s.id !== app.stage_id ? ' — send from Pipeline' : ''}
+                                </option>
                               ))}
                             </select>
                             <button

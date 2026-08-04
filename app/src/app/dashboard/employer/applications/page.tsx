@@ -437,7 +437,18 @@ export default function EmployerApplications() {
                         }}
                       >
                         {listingStages.map(s => (
-                          <option key={s.id} value={s.id}>{s.label}</option>
+                          // Offered columns are not reachable from here.
+                          // Extending an offer notifies the candidate and can
+                          // carry an offer letter, so it runs through the
+                          // pipeline board's two-step confirmation or not at all.
+                          <option
+                            key={s.id}
+                            value={s.id}
+                            disabled={s.stage_type === 'offered' && s.id !== app.stage_id}
+                          >
+                            {s.label}
+                            {s.stage_type === 'offered' && s.id !== app.stage_id ? ' — send from Pipeline' : ''}
+                          </option>
                         ))}
                       </select>
                       {updating === app.id && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Saving...</span>}

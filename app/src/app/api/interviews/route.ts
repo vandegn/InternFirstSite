@@ -64,8 +64,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? 'Failed to create' }, { status: 500 });
   }
 
-  // The candidate's pipeline stage is moved by trg_sync_stage_on_interview_created
-  // (see migrations/20260801_pipeline_interview_sync.sql). Writing
+  // Scheduling deliberately does NOT touch the candidate's pipeline stage —
+  // the employer moves the card themselves (see
+  // migrations/20260803_manual_pipeline_movement.sql). Writing
   // applications.status here would be a no-op at best: status is a denormalized
   // mirror of the stage label, so a raw write is overwritten by the next stage
   // change and is invisible to every surface that renders the stage.

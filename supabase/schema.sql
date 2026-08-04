@@ -1258,3 +1258,43 @@ create table student_certifications (
 );
 
 create index idx_student_certifications_student on student_certifications(student_id);
+
+-- ============================================
+-- 25. OFFERS
+-- ============================================
+-- The record behind an "Offered" pipeline column. Created only by the board's
+-- two-step confirmation (move dialog, then ExtendOfferModal), never by a bare
+-- stage change, because it tells a student they got the job.
+--
+-- Shaped like interview_schedules, the platform's other two-sided commitment:
+-- a status the student moves, notifications both ways, and a partial unique
+-- index keeping one live offer per application. The optional letter is a PDF in
+-- the private `applicant-docs` bucket under offer-letters/<applicationId>/,
+-- read only through GET /api/files/offer/[id] (section 22).
+--
+-- See supabase/migrations/20260803_offers.sql for the RLS and the storage
+-- INSERT policy that lets employers write the letter.
+
+create table offers (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid references applications(id) on delete cascade not null,
+  employer_id uuid references employers(id) on delete cascade not null,
+  student_id uuid references students(id) on delete cascade not null,
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  status text not null default 'extended'
+    check (status in ('extended', 'accepted', 'declined', 'withdrawn')),
+  storage_path text,
+  note text,
+  extended_at timestamptz default now() not null,
+  responded_at timestamptz
+);
+
+create index idx_offers_application on offers(application_id);
+create index idx_offers_student on offers(student_id, status);
+create index idx_offers_employer on offers(employer_id, status);
+
+-- Withdrawn and declined rows stay as history, so an employer who withdraws
+-- can extend a fresh offer.
+create unique index idx_offers_one_live
+  on offers(application_id)
+  where status in ('extended', 'accepted');

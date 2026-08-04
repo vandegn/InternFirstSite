@@ -15,8 +15,9 @@ import {
   sendRescheduleRequestMessage,
   getRecommendedListings,
   getStagesForListings,
+  getStudentOffers,
 } from '@/lib/supabase';
-import type { PipelineStage } from '@/lib/supabase';
+import type { PipelineStage, StudentOffer } from '@/lib/supabase';
 import Calendar from '@/components/Calendar';
 import type { CalendarEvent } from '@/components/Calendar';
 import CareerSurveyModal from '@/components/CareerSurveyModal';
@@ -172,6 +173,9 @@ export default function StudentDashboard() {
   const animatedOffers = useCountUp(offerCount);
   const [studentApplications, setStudentApplications] = useState<StudentApplication[]>([]);
   const [stagesByListing, setStagesByListing] = useState<Record<string, PipelineStage[]>>({});
+  // Offers on these applications, so a tracker row that has one links to the
+  // offer itself rather than back to the job description.
+  const [offers, setOffers] = useState<StudentOffer[]>([]);
   const [studentInterviews, setStudentInterviews] = useState<StudentInterview[]>([]);
   const [recommended, setRecommended] = useState<RecommendedListing[]>([]);
   const [profileName, setProfileName] = useState('');
@@ -246,14 +250,16 @@ export default function StudentDashboard() {
         }
         setSurveyLoaded(true);
         const surveyIndustries = existingSurvey?.industries ?? [];
-        const [stats, apps, interviews, recs] = await Promise.all([
+        const [stats, apps, interviews, recs, offerRows] = await Promise.all([
           getStudentStats(student.id),
           getStudentApplications(student.id),
           getStudentInterviews(student.id),
           surveyIndustries.length > 0
             ? getRecommendedListings(surveyIndustries, 4)
             : Promise.resolve([]),
+          getStudentOffers(student.id),
         ]);
+        setOffers(offerRows);
         setApplicationCount(stats.total);
         setOfferCount(stats.offers);
 
@@ -649,9 +655,18 @@ export default function StudentDashboard() {
                   const track = buildTrack(app, listing?.id ? stagesByListing[listing.id] : undefined);
                   const { rejected: isRejected, currentIdx: stageIdx } = track;
 
+                  // Once there's an offer on this application, the offer is
+                  // what the student came to the row to see — not the job
+                  // description they read weeks ago.
+                  const offer = offers.find(
+                    (o) => o.application_id === app.id && o.status !== 'withdrawn',
+                  );
+
                   return (
                     <Link
-                      href={`/dashboard/student/internships/${listing?.id}`}
+                      href={offer
+                        ? `/dashboard/student/applications?offer=${offer.id}`
+                        : `/dashboard/student/internships/${listing?.id}`}
                       key={app.id}
                       style={{ textDecoration: 'none', color: 'inherit' }}
                     >
@@ -681,6 +696,18 @@ export default function StudentDashboard() {
                               {employer?.company_name || 'Unknown Company'}
                             </div>
                           </div>
+                          {offer && (
+                            <span style={{
+                              fontSize: '0.65rem', fontWeight: 700, padding: '3px 8px',
+                              borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0,
+                              background: offer.status === 'declined' ? 'var(--danger-bg)' : 'var(--chip-green-bg)',
+                              color: offer.status === 'declined' ? 'var(--danger-fg)' : 'var(--chip-green-ink)',
+                            }}>
+                              {offer.status === 'accepted' ? 'Offer accepted'
+                                : offer.status === 'declined' ? 'Offer declined'
+                                : 'Offer — respond'}
+                            </span>
+                          )}
                           <span style={{
                             fontSize: '0.7rem',
                             fontWeight: 600,

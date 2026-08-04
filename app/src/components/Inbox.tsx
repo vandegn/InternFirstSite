@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase, getConversations, getMessagesWith, sendMessage, markMessagesAsRead } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
 import AvailabilityRequestCard from '@/components/AvailabilityRequestCard';
+import OfferMessageCard from '@/components/OfferMessageCard';
 
 type Conversation = {
   otherUserId: string;
@@ -27,6 +28,9 @@ type Message = {
   // thread renders the picker in place of a text bubble; `body` stays as the
   // readable fallback used by email notifications.
   availability_request_id: string | null;
+  // Set when this message carries an offer — same treatment, offer card in
+  // place of the bubble.
+  offer_id: string | null;
   sender: {
     full_name: string;
     avatar_url: string | null;
@@ -299,6 +303,17 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                             requestId={msg.availability_request_id}
                             canRespond={!isMine}
                           />
+                        </div>
+                      );
+                    }
+
+                    // An offer. Same rule: the recipient is the student it was
+                    // made to, so they get the action; the employer sees it
+                    // read-only.
+                    if (msg.offer_id) {
+                      return (
+                        <div key={msg.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                          <OfferMessageCard offerId={msg.offer_id} canRespond={!isMine} />
                         </div>
                       );
                     }

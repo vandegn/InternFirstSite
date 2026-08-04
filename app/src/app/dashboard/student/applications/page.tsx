@@ -76,17 +76,25 @@ export default function MyApplications() {
   const [offerError, setOfferError] = useState('');
   // Declining is the one irreversible answer here, so it asks again.
   const [decliningOffer, setDecliningOffer] = useState<StudentOffer | null>(null);
+  // The offer a deep link pointed at: scrolled to once, and outlined so it's
+  // obvious which of several applications the link meant.
+  const [focusOfferId, setFocusOfferId] = useState<string | null>(null);
+  const focusScrolled = useRef(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
 
-  // Deep link from the dashboard stat cards (?status=offered). Read from
-  // window rather than useSearchParams so this client page doesn't need a
-  // Suspense boundary just to pre-select a filter.
+  // Deep links, read from window rather than useSearchParams so this client
+  // page doesn't need a Suspense boundary: ?status=offered from the dashboard
+  // stat cards, and ?offer=<id> from the tracker row, the offer notification
+  // and the inbox card — all three of which mean "show me that offer".
   useEffect(() => {
-    const status = new URLSearchParams(window.location.search).get('status');
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
     if (status && FILTER_OPTIONS.some((o) => o.value === status)) setStatusFilter(status);
+    const offer = params.get('offer');
+    if (offer) setFocusOfferId(offer);
   }, []);
 
   // Close dropdown on outside click
@@ -145,6 +153,14 @@ export default function MyApplications() {
   // are history — nothing is shown for them.
   function offerFor(applicationId: string) {
     return offers.find((o) => o.application_id === applicationId && o.status !== 'withdrawn');
+  }
+
+  // Ref callback rather than an effect: the panel only exists once offers and
+  // applications have both loaded and the row it belongs to has rendered.
+  function focusOfferRef(node: HTMLDivElement | null) {
+    if (!node || focusScrolled.current) return;
+    focusScrolled.current = true;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   async function handleRespond(offer: StudentOffer, action: 'accept' | 'decline') {
@@ -434,8 +450,10 @@ export default function MyApplications() {
                     const offer = offerFor(app.id);
                     if (!offer) return null;
                     const answered = offer.status !== 'extended';
+                    const isFocused = offer.id === focusOfferId;
                     return (
                       <div
+                        ref={isFocused ? focusOfferRef : undefined}
                         style={{
                           marginTop: '14px',
                           padding: '14px 16px',
@@ -443,6 +461,8 @@ export default function MyApplications() {
                           border: '1px solid var(--chip-green-ink)',
                           borderLeft: '4px solid var(--chip-green-ink)',
                           background: 'var(--chip-green-bg)',
+                          boxShadow: isFocused ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : 'none',
+                          transition: 'box-shadow 0.2s',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

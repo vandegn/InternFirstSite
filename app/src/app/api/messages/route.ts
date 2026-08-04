@@ -22,9 +22,22 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { receiverId, body, applicationId } = await req.json();
+  const { receiverId, body, applicationId, offerId } = await req.json();
   if (!receiverId || !body || typeof body !== 'string' || !body.trim()) {
     return NextResponse.json({ error: 'receiverId and body are required' }, { status: 400 });
+  }
+
+  // A message may carry an offer, which makes the Inbox render a card instead
+  // of a text bubble. Confirm the sender can actually see that offer first —
+  // the select is RLS-scoped, so a row coming back is the proof. Otherwise any
+  // client could staple someone else's offer id onto a message.
+  if (offerId) {
+    const { data: offer } = await supabase
+      .from('offers')
+      .select('id')
+      .eq('id', offerId)
+      .maybeSingle();
+    if (!offer) return NextResponse.json({ error: 'Unknown offer' }, { status: 403 });
   }
 
   const { data: inserted, error: insertError } = await supabase
@@ -34,6 +47,7 @@ export async function POST(req: NextRequest) {
       receiver_id: receiverId,
       body: body.trim(),
       application_id: applicationId ?? null,
+      offer_id: offerId ?? null,
     })
     .select()
     .single();

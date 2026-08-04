@@ -16,11 +16,9 @@ export const supabase = supabaseUrl && supabaseAnonKey
   ? createBrowserClient(supabaseUrl, supabaseAnonKey)
   : (null as unknown as SupabaseClient);
 
-export const DASHBOARD_ROUTES: Record<string, string> = {
-  student: '/dashboard/student',
-  employer: '/dashboard/employer',
-  intern_first_admin: '/dashboard/admin',
-};
+// Defined in lib/routes.ts so middleware.ts can read it without importing this
+// module (and its browser client). Re-exported here to keep call sites working.
+export { DASHBOARD_ROUTES } from '@/lib/routes';
 
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
@@ -784,11 +782,17 @@ export async function getMessagesWith(userId: string, otherUserId: string) {
   return data ?? [];
 }
 
-export async function sendMessage(_senderId: string, receiverId: string, body: string) {
+export async function sendMessage(
+  _senderId: string,
+  receiverId: string,
+  body: string,
+  // Attaching an offer makes the Inbox render a card instead of a bubble.
+  opts: { offerId?: string } = {},
+) {
   const res = await fetch('/api/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ receiverId, body }),
+    body: JSON.stringify({ receiverId, body, offerId: opts.offerId }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -2359,8 +2363,13 @@ export async function extendOffer(opts: {
     .single();
   if (error) throw error;
 
-  // Tell the student in the same breath. Best-effort, like every other
-  // notification here — a failed bell entry must not undo a real offer.
+  const offer = data as Offer;
+
+  // Tell the student in the same breath, two ways. The bell is the alert; the
+  // inbox message is the durable copy — it stays in the thread with this
+  // employer, can be replied to, and is where a student will go looking for
+  // the offer a week later. Both are best-effort: a failed notification must
+  // not undo a real offer.
   try {
     const { data: { user } } = await supabase.auth.getUser();
     const [recipient, listingRes] = await Promise.all([
@@ -2377,14 +2386,45 @@ export async function extendOffer(opts: {
         body: listingTitle
           ? `You're receiving an offer for "${listingTitle}". Review it and let them know.`
           : `You're receiving an offer. Review it and let them know.`,
-        link: '/dashboard/student/applications',
+        link: `/dashboard/student/applications?offer=${offer.id}`,
       });
+
+      // The Inbox renders this as an offer card (messages.offer_id). The body
+      // is the readable fallback the email notification sends, so it has to
+      // stand on its own without the card.
+      const noteLine = opts.note?.trim() ? `\n\n${opts.note.trim()}` : '';
+      await sendMessage(
+        user.id,
+        recipient,
+        `We'd like to offer you the ${listingTitle ? `${listingTitle} ` : ''}role. `
+          + `You can review the offer and accept or decline it from your applications page.${noteLine}`,
+        { offerId: offer.id },
+      );
     }
   } catch (e) {
     console.error('[extendOffer] notification failed', e);
   }
 
-  return data as Offer;
+  return offer;
+}
+
+// One offer with the company and role inlined — what the inbox card renders.
+// RLS decides who gets a row back: the student it was made to, and the
+// employer's team. Anyone else gets null.
+export async function getOfferById(offerId: string) {
+  const { data, error } = await supabase
+    .from('offers')
+    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url)')
+    .eq('id', offerId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const row = data as Record<string, unknown>;
+  const one = <T,>(v: unknown): T => (Array.isArray(v) ? v[0] : v) as T;
+  return {
+    ...(row as unknown as Offer),
+    listing: one<{ id: string; title: string } | null>(row.listing) ?? null,
+    employer: one<{ id: string; company_name: string; logo_url: string | null } | null>(row.employer) ?? null,
+  };
 }
 
 export async function getEmployerOffers(employerId: string): Promise<Offer[]> {

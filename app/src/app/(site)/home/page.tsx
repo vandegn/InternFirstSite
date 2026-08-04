@@ -88,7 +88,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Creative design</h3>
-              <Link href="/register">68 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
             <div className="category-card">
               <div className="category-icon">
@@ -98,7 +98,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Development</h3>
-              <Link href="/register">120 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
             <div className="category-card">
               <div className="category-icon">
@@ -107,7 +107,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Admin marketing</h3>
-              <Link href="/register">200 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
             <div className="category-card">
               <div className="category-icon">
@@ -117,7 +117,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Video editor</h3>
-              <Link href="/register">124 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
             <div className="category-card">
               <div className="category-icon">
@@ -128,7 +128,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Data analyst</h3>
-              <Link href="/register">26 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
             <div className="category-card">
               <div className="category-icon">
@@ -138,7 +138,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Customer Service</h3>
-              <Link href="/register">100 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
             <div className="category-card">
               <div className="category-icon">
@@ -149,7 +149,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Accounting</h3>
-              <Link href="/register">68 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
             <div className="category-card">
               <div className="category-icon">
@@ -161,175 +161,8 @@ export default function Home() {
                 </svg>
               </div>
               <h3>Voice Over</h3>
-              <Link href="/register">15 Internships Available</Link>
+              <Link href="/internships">Browse roles</Link>
             </div>
-          </div>
-          <div className="section-cta">
-            <Link href="/register" className="btn-outline">See More</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* INTERNSHIPS */}
-      <section className="internships">
-        <div className="container">
-          <h2 className="section-title">Internships You Might Be Interested In</h2>
-          <p className="section-subtitle">
-            Explore tailored opportunities across a wide range of specialized industries
-          </p>
-          <div className="internship-grid">
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/9-1024x1024.png" alt="Product Designer" />
-              </div>
-              <div className="internship-body">
-                <h3>Product Designer</h3>
-                <p className="location">Syracuse, Connecticut</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/6-1024x1024.png" alt="Medical Assistant" />
-              </div>
-              <div className="internship-body">
-                <h3>Medical Assistant</h3>
-                <p className="location">Kent, Utah</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/4-1024x1024.png" alt="Librarian" />
-              </div>
-              <div className="internship-body">
-                <h3>Librarian</h3>
-                <p className="location">Portland, Illinois</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/8-1024x1024.png" alt="Web Designer" />
-              </div>
-              <div className="internship-body">
-                <h3>Web Designer</h3>
-                <p className="location">Lafayette, California</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/5-1024x1024.png" alt="Marketing Coordinator" />
-              </div>
-              <div className="internship-body">
-                <h3>Marketing Coordinator</h3>
-                <p className="location">Lansing, Illinois</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/1-1024x1024.png" alt="Dog Trainer" />
-              </div>
-              <div className="internship-body">
-                <h3>Dog Trainer</h3>
-                <p className="location">Stockton, New Hampshire</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/7-1024x1024.png" alt="Nursing Assistant" />
-              </div>
-              <div className="internship-body">
-                <h3>Nursing Assistant</h3>
-                <p className="location">Great Falls, Maryland</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
-            <article className="internship-card">
-              <div className="internship-img">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/3-1024x1024.png" alt="President of Sales" />
-              </div>
-              <div className="internship-body">
-                <h3>President of Sales</h3>
-                <p className="location">Pasadena, Oklahoma</p>
-                <div className="internship-meta">
-                  <span className="badge-type">Full time</span>
-                  <span className="badge-salary">$1,500 / mo.</span>
-                </div>
-                <div className="tags">
-                  <span>App</span>
-                  <span>Figma</span>
-                  <span>PSD</span>
-                </div>
-                <Link href="/register" className="btn-apply">Apply</Link>
-              </div>
-            </article>
           </div>
           <div className="section-cta">
             <Link href="/register" className="btn-outline">See More</Link>

@@ -32,6 +32,14 @@ type Organization = {
   is_current: boolean | null;
 };
 
+type Certification = {
+  id: string;
+  name: string;
+  certification_number: string | null;
+  file_url: string;
+  uploaded_at: string;
+};
+
 type StudentProfile = {
   id: string;
   major: string | null;
@@ -47,6 +55,7 @@ type StudentProfile = {
   skills: { id: string; name: string }[];
   experiences: Experience[];
   organizations: Organization[];
+  certifications: Certification[];
 };
 
 const EXPERIENCE_LABELS: Record<string, string> = {
@@ -131,6 +140,7 @@ export default function EmployerStudentProfilePage() {
   const experiences = student.experiences ?? [];
   const organizations = student.organizations ?? [];
   const skills = student.skills ?? [];
+  const certifications = student.certifications ?? [];
 
   return (
     <div className="dash-main" style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
@@ -265,6 +275,42 @@ export default function EmployerStudentProfilePage() {
         </Section>
       )}
 
+      {certifications.length > 0 && (
+        <Section title="Certifications">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {certifications.map((cert) => (
+              <div
+                key={cert.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '8px',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+                </svg>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{cert.name}</p>
+                  {cert.certification_number && (
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                      Certification No. {cert.certification_number}
+                    </p>
+                  )}
+                </div>
+                <a
+                  href={cert.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', flexShrink: 0 }}
+                >
+                  View PDF →
+                </a>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {organizations.length > 0 && (
         <Section title="Organizations & Involvement">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -309,7 +355,7 @@ export default function EmployerStudentProfilePage() {
         </Section>
       )}
 
-      {skills.length === 0 && experiences.length === 0 && organizations.length === 0 && !student.bio && (
+      {skills.length === 0 && experiences.length === 0 && organizations.length === 0 && certifications.length === 0 && !student.bio && (
         <div className="card-base" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           <p style={{ fontSize: '0.92rem' }}>This candidate hasn&apos;t filled out their profile yet.</p>
         </div>

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {
   supabase, getProfile, getStudentByUserId, updateProfile, updateStudent,
   getStudentResumes, uploadResume, deleteResume, uploadImage,
+  getStudentCertifications, uploadCertification, deleteCertification,
+  type StudentCertification,
   getStudentSkills, addStudentSkill, removeStudentSkill,
   getStudentExperiences, addStudentExperience, updateStudentExperience, deleteStudentExperience,
   getStudentOrganizations, addStudentOrganization, updateStudentOrganization, deleteStudentOrganization,
@@ -72,6 +74,7 @@ export default function StudentProfile() {
   const [graduationYear, setGraduationYear] = useState<number | ''>('');
   const [school, setSchool] = useState<SchoolValue>(EMPTY_SCHOOL);
   const [resumes, setResumes] = useState<Resume[]>([]);
+  const [certifications, setCertifications] = useState<StudentCertification[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [internships, setInternships] = useState<Experience[]>([]);
   const [jobs, setJobs] = useState<Experience[]>([]);
@@ -82,6 +85,7 @@ export default function StudentProfile() {
   const [editingHero, setEditingHero] = useState(false);
   const [editingSkills, setEditingSkills] = useState(false);
   const [editingResume, setEditingResume] = useState(false);
+  const [editingCerts, setEditingCerts] = useState(false);
   const [editingExp, setEditingExp] = useState(false);
   const [editingOrgs, setEditingOrgs] = useState(false);
 
@@ -114,6 +118,14 @@ export default function StudentProfile() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [uploadingResume, setUploadingResume] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Certification upload — PDF plus the credential number employers verify against
+  const [certName, setCertName] = useState('');
+  const [certNumber, setCertNumber] = useState('');
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [uploadingCert, setUploadingCert] = useState(false);
+  const [certError, setCertError] = useState('');
+  const certFileInputRef = useRef<HTMLInputElement>(null);
 
   // Experience forms
   const [showExpForm, setShowExpForm] = useState<{ internship: boolean; work: boolean; project: boolean }>({ internship: false, work: false, project: false });
@@ -151,8 +163,12 @@ export default function StudentProfile() {
         setSchool(schoolFromStudent(student));
         setBio(student.bio || '');
 
-        const studentResumes = await getStudentResumes(student.id);
+        const [studentResumes, studentCertifications] = await Promise.all([
+          getStudentResumes(student.id),
+          getStudentCertifications(student.id),
+        ]);
         setResumes(studentResumes);
+        setCertifications(studentCertifications);
 
         const [studentSkills, allExperiences, allOrganizations] = await Promise.all([
           getStudentSkills(student.id),
@@ -340,6 +356,50 @@ export default function StudentProfile() {
       await deleteResume(resumeId);
       setResumes((prev) => prev.filter((r) => r.id !== resumeId));
     } catch { /* ignore */ }
+  }
+
+  // ---- Certification handlers ----
+  async function handleUploadCertification(e: React.FormEvent) {
+    e.preventDefault();
+    if (!certFile || !certName.trim() || !certNumber.trim()) return;
+    setUploadingCert(true);
+    setCertError('');
+    try {
+      const newCert = await uploadCertification(studentId, certFile, certName.trim(), certNumber.trim());
+      setCertifications((prev) => [newCert, ...prev]);
+      setCertName('');
+      setCertNumber('');
+      setCertFile(null);
+      if (certFileInputRef.current) certFileInputRef.current.value = '';
+      showSaved();
+    } catch (err) {
+      setCertError(errorMessage(err, 'Uploading the certification failed. Please try again.'));
+    } finally {
+      setUploadingCert(false);
+    }
+  }
+
+  function handleCertFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    // Catch a non-PDF at pick time rather than after the student has filled in
+    // the rest of the form and hit Upload.
+    if (file && !(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+      setCertError('Certifications must be a PDF file.');
+      setCertFile(null);
+      if (certFileInputRef.current) certFileInputRef.current.value = '';
+      return;
+    }
+    setCertError('');
+    setCertFile(file);
+  }
+
+  async function handleDeleteCertification(certId: string) {
+    try {
+      await deleteCertification(certId);
+      setCertifications((prev) => prev.filter((c) => c.id !== certId));
+    } catch (err) {
+      setCertError(errorMessage(err, 'Removing the certification failed. Please try again.'));
+    }
   }
 
   // Save failures used to disappear into console.error, so a rejected insert
@@ -565,6 +625,7 @@ export default function StudentProfile() {
   }
 
   const hasExperience = internships.length > 0 || jobs.length > 0 || projects.length > 0;
+  const certFormReady = Boolean(certFile) && certName.trim() !== '' && certNumber.trim() !== '';
   const displayAvatar = avatarPreview || avatarUrl;
 
   const emptyText = (text: string) => (
@@ -1060,6 +1121,91 @@ export default function StudentProfile() {
                     </div>
                     <button type="submit" disabled={uploadingResume || !resumeFile || !resumeName.trim()} style={{ ...addBtnStyle, background: resumeFile && resumeName.trim() ? 'var(--primary)' : 'var(--border)', color: resumeFile && resumeName.trim() ? 'var(--on-primary)' : 'var(--text-secondary)', border: '1px solid ' + (resumeFile && resumeName.trim() ? 'var(--primary)' : 'var(--border)'), cursor: resumeFile && resumeName.trim() ? 'pointer' : 'not-allowed' }}>
                       {uploadingResume ? 'Uploading...' : 'Upload Resume'}
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {/* Certifications — a PDF of the credential plus the number an
+                  employer can verify it by (Six Sigma belts, OSHA, CPR, …) */}
+              <div style={cardStyle}>
+                <div style={cardHeader}>
+                  <h3 style={sectionTitle}>Certifications</h3>
+                  <EditBtn onClick={() => { setEditingCerts(!editingCerts); if (editingCerts) setCertError(''); }} editing={editingCerts} />
+                </div>
+                {certError && errorBanner(certError)}
+                {certifications.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {certifications.map((c) => (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+                        </svg>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <a href={c.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 500, fontSize: '0.85rem', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {c.name}
+                          </a>
+                          {c.certification_number && (
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                              Certification No. {c.certification_number}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', flexShrink: 0 }}>
+                          {new Date(c.uploaded_at).toLocaleDateString()}
+                        </span>
+                        {editingCerts && (
+                          <button onClick={() => handleDeleteCertification(c.id)} style={{ ...smallBtnStyle, border: '1px solid var(--danger-border)', color: 'var(--danger-accent)', padding: '3px 8px' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : emptyText('No certifications uploaded yet.')}
+                {editingCerts && (
+                  <form onSubmit={handleUploadCertification} style={{ marginTop: '12px', padding: '14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg)' }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Certification Name</label>
+                      <input style={inputStyle} type="text" placeholder="e.g. Lean Six Sigma Green Belt" required value={certName} onChange={(e) => setCertName(e.target.value)} />
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Certification Number</label>
+                      <input style={inputStyle} type="text" placeholder="As printed on the certificate" required value={certNumber} onChange={(e) => setCertNumber(e.target.value)} />
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>File (PDF)</label>
+                      <input type="file" accept="application/pdf,.pdf" ref={certFileInputRef} onChange={handleCertFileChange} style={{ display: 'none' }} />
+                      <button
+                        type="button"
+                        onClick={() => certFileInputRef.current?.click()}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: certFile ? '1.5px solid var(--accent)' : '1.5px dashed var(--border)',
+                          background: certFile ? 'var(--accent-light)' : 'var(--surface)',
+                          color: certFile ? 'var(--accent-dark)' : 'var(--text-secondary)',
+                          fontSize: '0.82rem',
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          width: '100%',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        {certFile ? certFile.name : 'Choose a PDF file'}
+                      </button>
+                    </div>
+                    <button type="submit" disabled={uploadingCert || !certFormReady} style={{ ...addBtnStyle, background: certFormReady ? 'var(--primary)' : 'var(--border)', color: certFormReady ? 'var(--on-primary)' : 'var(--text-secondary)', border: '1px solid ' + (certFormReady ? 'var(--primary)' : 'var(--border)'), cursor: certFormReady ? 'pointer' : 'not-allowed' }}>
+                      {uploadingCert ? 'Uploading...' : 'Upload Certification'}
                     </button>
                   </form>
                 )}

@@ -2,7 +2,7 @@
 -- INTERVIEW AVAILABILITY HANDSHAKE
 -- ============================================
 -- The three-step negotiation that runs *before* an interview_schedules row
--- exists. Today the employer picks a time out of thin air and the student can
+-- exists. Today the employer picks a toime out of thin air and the student can
 -- only accept/decline/ask-again. This adds the round trip:
 --
 --   1. Employer picks a date window on the pipeline board  -> 'requested'

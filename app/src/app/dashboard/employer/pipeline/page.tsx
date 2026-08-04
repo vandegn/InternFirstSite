@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   supabase,
   getEmployerByUserId,
@@ -36,6 +37,7 @@ import {
   type AvailabilityRequest,
   type AvailabilityStatus,
 } from '@/lib/interview-availability';
+import { PIPELINE_STAGE_PRESETS, type PipelineStagePreset } from '@/lib/constants';
 
 type ApplicationAnswer = {
   id: string;
@@ -129,7 +131,31 @@ const COLOR_PRESETS: { bg: string; text: string }[] = [
   { bg: 'var(--info-bg)', text: 'var(--chip-blue-ink)' },
 ];
 
-export default function EmployerPipelinePage() {
+// Left-to-right order of the canonical buckets, used to slot a newly added
+// column into the flow rather than always dropping it before "Offered".
+const STAGE_TYPE_ORDER: Record<PipelineStage['stage_type'], number> = {
+  applied: 0,
+  reviewing: 1,
+  interviewing: 2,
+  offered: 3,
+  rejected: 4,
+};
+
+// Where a stage preset's suggested color sits in COLOR_PRESETS, so choosing a
+// stage pre-selects its swatch and the employer can still recolor from there.
+function colorIdxForPreset(preset: PipelineStagePreset) {
+  const idx = COLOR_PRESETS.findIndex(c => c.bg === preset.colorBg && c.text === preset.colorText);
+  return idx === -1 ? 0 : idx;
+}
+
+function EmployerPipelineInner() {
+  // Deep link from a "new applicant" notification: ?listing= picks the board
+  // and ?application= points at one candidate's card, which is what the
+  // employer actually wants to see when they click the bell.
+  const params = useSearchParams();
+  const focusListingId = params.get('listing') ?? '';
+  const focusApplicationId = params.get('application') ?? '';
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [listings, setListings] = useState<{ id: string; title: string }[]>([]);
   const [selectedListing, setSelectedListing] = useState('');
@@ -169,7 +195,8 @@ export default function EmployerPipelinePage() {
   const [draftStages, setDraftStages] = useState<PipelineStage[]>([]);
   const [pendingDeletes, setPendingDeletes] = useState<Array<{ id: string; reassignTo: string | null }>>([]);
   const [savingStages, setSavingStages] = useState(false);
-  const [newStageLabel, setNewStageLabel] = useState('');
+  // Columns are chosen from PIPELINE_STAGE_PRESETS by label, not free-typed.
+  const [newStagePreset, setNewStagePreset] = useState('');
   const [newStageColorIdx, setNewStageColorIdx] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<PipelineStage | null>(null);
   const [reassignTo, setReassignTo] = useState<string>('');
@@ -207,15 +234,38 @@ export default function EmployerPipelinePage() {
         getEmployerAvailabilityRequests(employer.id),
       ]);
 
-      setApplications(appsData.map(normalizeApp));
+      const apps = appsData.map(normalizeApp);
+      setApplications(apps);
       setInterviews(interviewsData as unknown as Interview[]);
       setAvailabilityRequests(availabilityData);
       const ls = listingsData.data.map((l: any) => ({ id: l.id, title: l.title }));
       setListings(ls);
-      if (ls.length > 0) setSelectedListing(ls[0].id);
+
+      // The candidate we were linked to wins over the ?listing= param, which
+      // could be stale if the posting was re-created — the card is the target.
+      const focusApp = focusApplicationId
+        ? apps.find(a => a.id === focusApplicationId)
+        : undefined;
+      const wanted = focusApp?.listing.id ?? focusListingId;
+      if (wanted && ls.some((l: { id: string }) => l.id === wanted)) setSelectedListing(wanted);
+      else if (ls.length > 0) setSelectedListing(ls[0].id);
+      if (focusApp) setExpandedId(focusApp.id);
       setLoading(false);
     }
     fetchData();
+    // Deliberately runs once: re-reading the params later would yank an
+    // employer who has since switched listings back to the linked card.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Bring the linked card into view once, the first time it renders. A ref
+  // callback rather than an effect because the card mounts inside its column's
+  // scroller, which only exists after the stages have loaded.
+  const focusScrolled = useRef(false);
+  const focusCardRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node || focusScrolled.current) return;
+    focusScrolled.current = true;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
   // Refetch stages whenever the selected listing changes.
@@ -447,7 +497,7 @@ export default function EmployerPipelinePage() {
   function openEditModal() {
     setDraftStages(stages.map(s => ({ ...s })));
     setPendingDeletes([]);
-    setNewStageLabel('');
+    setNewStagePreset('');
     setNewStageColorIdx(0);
     setEditingStages(true);
   }
@@ -465,32 +515,40 @@ export default function EmployerPipelinePage() {
     setPendingDeletes([]);
     setDeleteTarget(null);
     setReassignTo('');
-    setNewStageLabel('');
+    setNewStagePreset('');
     setNewStageColorIdx(0);
   }
 
   function draftAddStage() {
-    if (!newStageLabel.trim() || !selectedListing) return;
+    const preset = PIPELINE_STAGE_PRESETS.find(p => p.label === newStagePreset);
+    if (!preset || !selectedListing) return;
+    if (draftStages.some(s => s.label.toLowerCase() === preset.label.toLowerCase())) return;
     const color = COLOR_PRESETS[newStageColorIdx];
     const tmpId = `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const newStage: PipelineStage = {
       id: tmpId,
       listing_id: selectedListing,
-      label: newStageLabel.trim(),
+      label: preset.label,
       color_bg: color.bg,
       color_text: color.text,
       position: 0, // normalized on save
-      stage_type: 'reviewing',
+      stage_type: preset.stageType,
       locked: false,
     };
+    // Slot the column where its stage_type says it belongs — a screening step
+    // lands after Applied, "Hired" after Offered — so the board reads as the
+    // real flow without the employer having to drag it there. They still can.
     setDraftStages(prev => {
-      const offeredIdx = prev.findIndex(s => s.stage_type === 'offered');
-      if (offeredIdx === -1) return [...prev, newStage];
+      const rank = STAGE_TYPE_ORDER[newStage.stage_type];
+      let insertAt = 0;
+      prev.forEach((s, i) => {
+        if (STAGE_TYPE_ORDER[s.stage_type] <= rank) insertAt = i + 1;
+      });
       const next = [...prev];
-      next.splice(offeredIdx, 0, newStage);
+      next.splice(insertAt, 0, newStage);
       return next;
     });
-    setNewStageLabel('');
+    setNewStagePreset('');
     setNewStageColorIdx(0);
   }
 
@@ -573,6 +631,7 @@ export default function EmployerPipelinePage() {
           label: draft.label,
           colorBg: draft.color_bg,
           colorText: draft.color_text,
+          stageType: draft.stage_type,
         });
         tmpToReal[draft.id] = created.id;
       }
@@ -599,7 +658,7 @@ export default function EmployerPipelinePage() {
       setEditingStages(false);
       setDraftStages([]);
       setPendingDeletes([]);
-      setNewStageLabel('');
+      setNewStagePreset('');
       setNewStageColorIdx(0);
     } catch (e) {
       console.error('[handleSaveStages] failed', e);
@@ -742,11 +801,20 @@ export default function EmployerPipelinePage() {
             const sortedColApps = isAppliedAnchor
               ? [...allColApps].sort((a, b) => new Date(a.applied_at).getTime() - new Date(b.applied_at).getTime())
               : allColApps;
-            const colApps = isAppliedAnchor
+            const cappedColApps = isAppliedAnchor
               ? sortedColApps.slice(0, APPLIED_DISPLAY_LIMIT)
               : sortedColApps;
+            // A notification links to one specific candidate, so that card is
+            // rendered even when it falls past the Applied cap — otherwise the
+            // link lands on a board where the candidate isn't drawn.
+            const focusedBeyondCap = focusApplicationId
+              && sortedColApps.some(a => a.id === focusApplicationId)
+              && !cappedColApps.some(a => a.id === focusApplicationId);
+            const colApps = focusedBeyondCap
+              ? [...cappedColApps, sortedColApps.find(a => a.id === focusApplicationId)!]
+              : cappedColApps;
             const overflowCount = isAppliedAnchor
-              ? Math.max(0, allColApps.length - APPLIED_DISPLAY_LIMIT)
+              ? Math.max(0, allColApps.length - colApps.length)
               : 0;
             return (
               <div
@@ -814,9 +882,13 @@ export default function EmployerPipelinePage() {
                     // primary action is unambiguous: ask, or pick.
                     const awaitingPick = availabilityStatus === 'awaiting_employer';
                     const handshakeOpen = Boolean(liveRequestForApp(app.id));
+                    // The card a notification pointed at: opened and outlined
+                    // until the employer collapses it.
+                    const isFocused = app.id === focusApplicationId && isExpanded;
                     return (
                       <div
                         key={app.id}
+                        ref={app.id === focusApplicationId ? focusCardRef : undefined}
                         draggable
                         onDragStart={(e) => handleDragStart(e, app.id)}
                         onDragEnd={() => { setDraggingId(null); setDragOverStageId(null); setTrashHover(false); }}
@@ -824,12 +896,14 @@ export default function EmployerPipelinePage() {
                         style={{
                           background: 'var(--surface)',
                           borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border)',
+                          border: `1px solid ${isFocused ? 'var(--primary)' : 'var(--border)'}`,
                           padding: '12px',
                           cursor: 'grab',
                           opacity: draggingId === app.id ? 0.5 : 1,
-                          transition: 'box-shadow 0.15s, opacity 0.15s',
-                          boxShadow: draggingId === app.id ? '0 4px 12px rgba(0,0,0,0.15)' : 'var(--shadow)',
+                          transition: 'box-shadow 0.15s, opacity 0.15s, border-color 0.15s',
+                          boxShadow: draggingId === app.id
+                            ? '0 4px 12px rgba(0,0,0,0.15)'
+                            : isFocused ? '0 0 0 3px var(--primary-light)' : 'var(--shadow)',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -1282,12 +1356,33 @@ export default function EmployerPipelinePage() {
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
               <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>Add a column</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input
-                  placeholder="Column name (e.g., Phone Screen)"
-                  value={newStageLabel}
-                  onChange={e => setNewStageLabel(e.target.value)}
-                  style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.88rem' }}
-                />
+                <select
+                  value={newStagePreset}
+                  onChange={e => {
+                    const label = e.target.value;
+                    setNewStagePreset(label);
+                    const preset = PIPELINE_STAGE_PRESETS.find(p => p.label === label);
+                    if (preset) setNewStageColorIdx(colorIdxForPreset(preset));
+                  }}
+                  style={{
+                    padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)',
+                    fontSize: '0.88rem', background: 'var(--surface)',
+                  }}
+                >
+                  <option value="">Choose a stage…</option>
+                  {PIPELINE_STAGE_PRESETS.map(p => {
+                    // A stage already on the board stays listed but inert, so the
+                    // dropdown always shows the whole flow.
+                    const alreadyUsed = draftStages.some(
+                      s => s.label.toLowerCase() === p.label.toLowerCase()
+                    );
+                    return (
+                      <option key={p.label} value={p.label} disabled={alreadyUsed}>
+                        {p.label}{alreadyUsed ? ' — already on the board' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {COLOR_PRESETS.map((c, i) => (
@@ -1305,21 +1400,23 @@ export default function EmployerPipelinePage() {
                   </div>
                   <button
                     onClick={draftAddStage}
-                    disabled={!newStageLabel.trim()}
+                    disabled={!newStagePreset}
                     className="btn-primary"
                     style={{
                       fontSize: '0.85rem', padding: '7px 16px',
                       marginLeft: 'auto',
-                      opacity: newStageLabel.trim() ? 1 : 0.5,
-                      cursor: newStageLabel.trim() ? 'pointer' : 'not-allowed',
+                      opacity: newStagePreset ? 1 : 0.5,
+                      cursor: newStagePreset ? 'pointer' : 'not-allowed',
                     }}
                   >
                     Add column
                   </button>
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: 0 }}>
-                  New columns are inserted between Applied and Offered. Those two are
-                  fixed — they anchor the board and can&apos;t be renamed or removed.
+                  Columns come from a standard recruitment flow so candidates read the
+                  same status everywhere, and each one slots into the board where its
+                  step belongs. Applied and Offered are fixed — they anchor the board
+                  and can&apos;t be renamed or removed.
                 </p>
               </div>
             </div>
@@ -1642,5 +1739,17 @@ export default function EmployerPipelinePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function EmployerPipelinePage() {
+  return (
+    <Suspense fallback={
+      <div className="dash-main" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}>
+        Loading...
+      </div>
+    }>
+      <EmployerPipelineInner />
+    </Suspense>
   );
 }

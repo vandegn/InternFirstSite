@@ -1176,3 +1176,24 @@ $fn$;
 
 revoke all on function employer_pending_applicant_count() from public;
 grant execute on function employer_pending_applicant_count() to authenticated;
+
+-- ============================================
+-- 22. STUDENT CERTIFICATIONS
+-- ============================================
+-- Credentials a student proves with a document — Six Sigma belts, OSHA 30, CPR,
+-- a cloud cert. Shaped like student_resumes: one row per uploaded PDF in the
+-- shared `images` bucket, many per student. The certification number lives
+-- beside the file because that is what an employer checks against the issuer's
+-- registry; it is nullable so an unnumbered credential can still be uploaded.
+-- See supabase/migrations/20260803_student_certifications.sql for the RLS.
+
+create table student_certifications (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id) on delete cascade not null,
+  name text not null,
+  certification_number text,
+  file_url text not null,
+  uploaded_at timestamptz default now() not null
+);
+
+create index idx_student_certifications_student on student_certifications(student_id);

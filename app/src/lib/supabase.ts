@@ -812,18 +812,24 @@ export async function getStudentProfileForEmployer(studentId: string) {
     .single();
   if (error || !student) return null;
 
-  const [skills, experiences, organizations] = await Promise.all([
+  const [skills, experiences, organizations, certifications] = await Promise.all([
     getStudentSkills(studentId),
     getStudentExperiences(studentId),
     getStudentOrganizations(studentId),
+    getStudentCertifications(studentId),
   ]);
 
   const profile = Array.isArray(student.profile) ? student.profile[0] : student.profile;
-  return { ...student, profile, skills, experiences, organizations };
+  return { ...student, profile, skills, experiences, organizations, certifications };
 }
 
 // Notifies the listing's employer that a new student applied. Best-effort.
-async function notifyEmployerOfApplication(listingId: string) {
+//
+// The link goes straight to the candidate's card on that listing's pipeline
+// board — the place the employer can actually act on the applicant — rather
+// than to the generic applications list, which drops them into every listing's
+// applicants at once and makes them hunt for the person the alert named.
+async function notifyEmployerOfApplication(listingId: string, applicationId: string) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -840,7 +846,7 @@ async function notifyEmployerOfApplication(listingId: string) {
       type: 'new_application',
       title: 'New applicant',
       body: `${me?.full_name ?? 'A student'} applied to "${listingTitle ?? 'your listing'}".`,
-      link: '/dashboard/employer/applications',
+      link: `/dashboard/employer/pipeline?listing=${listingId}&application=${applicationId}`,
     });
   } catch (e) {
     console.error('[notifyEmployerOfApplication] failed', e);
@@ -893,7 +899,7 @@ export async function applyToListing(studentId: string, listingId: string) {
     .select()
     .single();
   if (error) throw error;
-  await notifyEmployerOfApplication(listingId);
+  await notifyEmployerOfApplication(listingId, data.id);
   return data;
 }
 
@@ -1052,6 +1058,11 @@ export async function createStage(opts: {
   label: string;
   colorBg?: string;
   colorText?: string;
+  // Which canonical bucket the new column belongs to. Comes from the stage
+  // preset the employer picked (PIPELINE_STAGE_PRESETS) so the dashboard stats
+  // and the interview sync triggers, which key off stage_type rather than the
+  // label, keep working on custom columns.
+  stageType?: PipelineStage['stage_type'];
 }) {
   // Insert just before the "Offered" anchor: take the max position
   // among non-offered stages and add one.
@@ -1072,7 +1083,7 @@ export async function createStage(opts: {
       color_bg: opts.colorBg ?? '#e0e7ff',
       color_text: opts.colorText ?? '#3730a3',
       position: nextPosition,
-      stage_type: 'reviewing',
+      stage_type: opts.stageType ?? 'reviewing',
       locked: false,
     })
     .select('*')
@@ -1232,6 +1243,72 @@ export async function deleteResume(resumeId: string) {
     .from('student_resumes')
     .delete()
     .eq('id', resumeId);
+  if (error) throw error;
+}
+
+// ---- Student Certifications ----
+// Same storage pattern as resumes (a file in the `images` bucket plus a row
+// pointing at its public URL), with the credential's number alongside — that's
+// what an employer checks against the issuer.
+
+export type StudentCertification = {
+  id: string;
+  student_id: string;
+  name: string;
+  certification_number: string | null;
+  file_url: string;
+  uploaded_at: string;
+};
+
+export async function uploadCertification(
+  studentId: string,
+  file: File,
+  name: string,
+  certificationNumber: string,
+): Promise<StudentCertification> {
+  // PDF only. A certificate is a document an employer opens to verify a
+  // credential, and the accept="" filter on the input is trivially bypassed,
+  // so the rule is enforced here too.
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (!isPdf) throw new Error('Certifications must be uploaded as a PDF.');
+
+  const path = `certifications/${studentId}/${Date.now()}.pdf`;
+  const { error: uploadError } = await supabase.storage
+    .from('images')
+    .upload(path, file, { upsert: false, contentType: 'application/pdf' });
+  if (uploadError) throw uploadError;
+
+  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path);
+
+  const { data, error } = await supabase
+    .from('student_certifications')
+    .insert({
+      student_id: studentId,
+      name,
+      certification_number: certificationNumber || null,
+      file_url: urlData.publicUrl,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as StudentCertification;
+}
+
+export async function getStudentCertifications(studentId: string): Promise<StudentCertification[]> {
+  const { data, error } = await supabase
+    .from('student_certifications')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('uploaded_at', { ascending: false });
+  if (error) return [];
+  return (data ?? []) as StudentCertification[];
+}
+
+export async function deleteCertification(certificationId: string) {
+  const { error } = await supabase
+    .from('student_certifications')
+    .delete()
+    .eq('id', certificationId);
   if (error) throw error;
 }
 
@@ -1426,7 +1503,7 @@ export async function applyToListingWithResume(
   // already run by the time they open the application.
   await submitApplicationAnswers(data.id, answers);
 
-  await notifyEmployerOfApplication(listingId);
+  await notifyEmployerOfApplication(listingId, data.id);
   return data;
 }
 

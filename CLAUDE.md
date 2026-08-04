@@ -52,9 +52,11 @@ npm run lint     # ESLint
 
 **Auth flow:** Supabase Auth (email/password + Google OAuth) → email verification required (Supabase built-in, skipped for OAuth) → `/auth/callback` server route creates profile + role data from `user_metadata` → role-based redirect to dashboard. Unverified users are redirected to `/verify-email`. `.edu` email required for students. Key auth helpers are in `src/lib/supabase.ts` (`getProfile`, `createProfileAndRoleData`, `isEduEmail`).
 
-**Database:** Supabase PostgreSQL with RLS enabled on all tables. Core tables: `profiles`, `students`, `employers`, `internship_listings`, `applications`, `messages`, `student_skills`, `student_experiences`, `student_organizations`, `student_resumes`, `listing_views`, `saved_listings`, `career_survey_responses`. Schema is in `supabase/schema.sql`.
+**Database:** Supabase PostgreSQL with RLS enabled on all tables. Core tables: `profiles`, `students`, `employers`, `internship_listings`, `applications`, `messages`, `student_skills`, `student_experiences`, `student_organizations`, `student_resumes`, `student_certifications`, `listing_views`, `saved_listings`, `career_survey_responses`. Schema is in `supabase/schema.sql`.
 
 **Student profile split:** `student_experiences` is professional only (`internship`, `work`, `project`). Everything campus-side — Greek life, clubs, campus involvement — lives in `student_organizations`, which has an `is_current` flag so members don't have to invent an end date. Work experience is edited on `/dashboard/student/profile`, never in settings.
+
+**Certifications:** `student_certifications` holds one row per uploaded credential — a PDF in the shared `images` bucket plus the certification number an employer verifies against the issuer (Six Sigma belts, OSHA, CPR). Multiple per student, uploaded from the Certifications card on `/dashboard/student/profile` and shown to approved employers on `/dashboard/employer/students/[id]`. PDF-only is enforced in `uploadCertification`, not just by the file input's `accept`.
 
 **School selection:** students pick their institution from the Department of Education's approved list, bundled as `src/data/us-schools.json` and searched through `/api/schools` (same server-side-dataset pattern as `/api/locations`). `components/SchoolPicker.tsx` only ever commits a row from that list — typed text that wasn't selected is discarded on blur — and writes `students.school_id` / `school_name` / `school_state`. Required at student registration; editable afterwards from the profile hero. Not related to `students.university_id`, a dead FK from the removed university portal.
 
@@ -84,7 +86,7 @@ npm run lint     # ESLint
 - `/listings/new` — create a new listing; `/listings/[id]/edit` — edit existing
 - `/posted-jobs` — split-view of all posted listings
 - `/applications` — review and manage candidate applications
-- `/pipeline` — kanban board with per-listing customizable columns for moving candidates through hiring stages
+- `/pipeline` — kanban board with per-listing customizable columns for moving candidates through hiring stages. Columns are added from `PIPELINE_STAGE_PRESETS` in `constants.ts` (a preset dropdown, not free text) so every board speaks the same recruitment flow and each column carries a truthful `stage_type`; add a row there to offer a new stage. Accepts `?listing=&application=` to open one candidate's card — that's where the "new applicant" notification points.
 - `/inbox` — in-platform messaging with students
 - `/account` — company account page
 - `/settings` — account settings
@@ -123,12 +125,13 @@ Work environment and internship length are **ranked multi-selects** (`work_envir
 - **Students:** `getStudentByUserId`, `updateStudent`, `getStudentApplications`, `getStudentStats`
 - **Skills/Experiences/Orgs:** `getStudentSkills`, `addStudentSkill`, `removeStudentSkill`, `getStudentExperiences`, `addStudentExperience`, `updateStudentExperience`, `deleteStudentExperience`, `getStudentOrganizations`, `addStudentOrganization`, `updateStudentOrganization`, `deleteStudentOrganization`
 - **Resumes:** `uploadResume`, `getStudentResumes`, `deleteResume`
+- **Certifications:** `uploadCertification`, `getStudentCertifications`, `deleteCertification`
 - **Listings:** `createListing`, `updateListing`, `getActiveListings`, `getListingById`, `getRecommendedListings`, `getListingViewCounts`, `trackListingView`
 - **Applications:** `applyToListing`, `applyToListingWithResume`, `getApplicationStatus`
 - **Saved listings (bookmarks):** `getSavedListingIds`, `saveListing`, `unsaveListing` — private to the student; saving never creates an application
 - **Career Survey:** `getCareerSurvey`, `upsertCareerSurvey`
 - **Messaging:** `getConversations`, `getMessagesWith`, `sendMessage`, `markMessagesAsRead`, `getUnreadCount`
-- **Constants** (`src/lib/constants.ts`): `INDUSTRIES`, `MAJORS`, `MAJOR_TO_INDUSTRIES`, `SKILLS`
+- **Constants** (`src/lib/constants.ts`): `INDUSTRIES`, `MAJORS`, `MAJOR_TO_INDUSTRIES`, `SKILLS`, `PIPELINE_STAGE_PRESETS`
 
 ## Test Accounts
 

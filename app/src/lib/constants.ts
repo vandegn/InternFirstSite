@@ -251,6 +251,35 @@ export const MAX_STUDENT_SKILLS = 10;
 // enforced by a check constraint on internship_listings.preferred_skills.
 export const MAX_LISTING_SKILLS = 10;
 
+// ============================================
+// Pipeline stage presets
+// ============================================
+// The columns an employer can add to a listing's pipeline board, covering a
+// full internship recruitment flow. Employers pick from this list rather than
+// free-typing, so a candidate's status reads the same across every listing and
+// `stageType` stays truthful — it buckets the column into the canonical
+// category the dashboard stats, the student's status label, and the interview
+// sync triggers all read (see supabase/migrations/2026-06-24-pipeline-stages.sql).
+//
+// This is the extension point: adding a row here adds a dropdown option, and
+// nothing else needs to change. `stageType` must stay one of the five values
+// the pipeline_stages check constraint allows, so "Hired" buckets as 'offered'
+// — the last forward step of the flow — rather than inventing a sixth type.
+// "Applied" and "Offered" already exist as locked anchors on every board, so
+// presets matching a column that's already there are offered as disabled.
+export const PIPELINE_STAGE_PRESETS = [
+  { label: 'Application Received', stageType: 'applied',      colorBg: 'var(--chip-indigo-bg)',   colorText: 'var(--chip-indigo-ink)' },
+  { label: 'Phone Screening',      stageType: 'reviewing',    colorBg: 'var(--chip-blue-bg)',     colorText: 'var(--chip-blue-ink)' },
+  { label: 'Interview 1',          stageType: 'interviewing', colorBg: 'var(--chip-violet-bg)',   colorText: 'var(--chip-violet-ink)' },
+  { label: 'Interview 2',          stageType: 'interviewing', colorBg: 'var(--chip-violet-bg)',   colorText: 'var(--chip-violet-ink)' },
+  { label: 'Final Interview',      stageType: 'interviewing', colorBg: 'var(--chip-orange-bg)',   colorText: 'var(--chip-orange-ink)' },
+  { label: 'Offered',              stageType: 'offered',      colorBg: 'var(--chip-green-bg)',    colorText: 'var(--chip-green-ink)' },
+  { label: 'Hired',                stageType: 'offered',      colorBg: 'var(--chip-green-bg)',    colorText: 'var(--chip-green-ink)' },
+  { label: 'Rejected',             stageType: 'rejected',     colorBg: 'var(--danger-bg-strong)', colorText: 'var(--danger-fg)' },
+] as const;
+
+export type PipelineStagePreset = (typeof PIPELINE_STAGE_PRESETS)[number];
+
 // Shorthand so the ~115 rows below stay scannable — the taxonomy's labels are
 // long by design, and spelling each one out turns this map into a wall.
 const I = {

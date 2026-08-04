@@ -16,6 +16,16 @@ const one = <T,>(v: unknown): T => (Array.isArray(v) ? v[0] : v) as T;
 export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRepo {
   return {
     async getEmployerIdForUser(userId) {
+      // Team membership first (any active member can schedule), then the
+      // legacy ownership lookup for a DB the team migration hasn't reached.
+      const { data: member } = await supabase
+        .from('employer_members')
+        .select('employer_id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (member) return member.employer_id;
+
       const { data } = await supabase
         .from('employers')
         .select('id')

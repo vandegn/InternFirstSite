@@ -89,3 +89,22 @@ export function interviewScheduledEmployerEmail(opts: {
   return { subject, html };
 }
 
+
+export function teamInviteEmail(opts: {
+  companyName: string;
+  inviterName: string;
+  roleLabel: string;
+  token: string;
+}) {
+  const ctaUrl = `${APP_URL}/join/${opts.token}`;
+  const subject = `${opts.inviterName} invited you to join ${opts.companyName} on InternFirst`;
+  const html = shell(
+    `Join ${escapeHtml(opts.companyName)} on InternFirst`,
+    `<p><strong>${escapeHtml(opts.inviterName)}</strong> invited you to join <strong>${escapeHtml(opts.companyName)}</strong>'s recruiting team as <strong>${escapeHtml(opts.roleLabel)}</strong>.</p>
+     <p>Accept the invitation to review candidates, message applicants, and run interviews together — all inside InternFirst.</p>
+     <p>This invitation expires in 7 days.</p>`,
+    ctaUrl,
+    'Accept Invitation',
+  );
+  return { subject, html };
+}

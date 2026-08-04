@@ -16,7 +16,12 @@
 -- through GET /api/files/offer/[id]. It is optional: plenty of offers are made
 -- verbally first and the letter follows.
 --
--- Run this in the Supabase SQL Editor.
+-- Employer-side access resolves through acting_employer_ids() rather than
+-- employers.user_id, matching every other employer policy after
+-- 20260803_employer_team.sql: an invited recruiter extends offers for their
+-- company, and a deactivated member stops being able to immediately.
+--
+-- Run this in the Supabase SQL Editor, after 20260803_employer_team.sql.
 
 create table if not exists offers (
   id uuid primary key default gen_random_uuid(),
@@ -53,16 +58,14 @@ create policy "Employers manage offers on own listings"
     is_approved_employer(auth.uid())
     and listing_id in (
       select il.id from internship_listings il
-      join employers e on il.employer_id = e.id
-      where e.user_id = auth.uid()
+      where il.employer_id in (select acting_employer_ids(auth.uid()))
     )
   )
   with check (
     is_approved_employer(auth.uid())
     and listing_id in (
       select il.id from internship_listings il
-      join employers e on il.employer_id = e.id
-      where e.user_id = auth.uid()
+      where il.employer_id in (select acting_employer_ids(auth.uid()))
     )
   );
 
@@ -99,8 +102,7 @@ create policy "Employers upload offer letters"
     and (storage.foldername(name))[2] in (
       select a.id::text from applications a
       join internship_listings il on il.id = a.listing_id
-      join employers e on il.employer_id = e.id
-      where e.user_id = auth.uid()
+      where il.employer_id in (select acting_employer_ids(auth.uid()))
     )
   );
 

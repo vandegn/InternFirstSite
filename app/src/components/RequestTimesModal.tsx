@@ -147,10 +147,16 @@ export default function RequestTimesModal({
           opacity: animating ? 1 : 0,
           transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
           overflow: 'hidden',
+          // Cap the height so a short window can't push the actions below the
+          // fold, where `overflow: hidden` would clip them unreachable. Header
+          // and footer stay put; the form between them scrolls.
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Header */}
-        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid var(--border, #f3f4f6)' }}>
+        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid var(--border, #f3f4f6)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, marginBottom: 2 }}>
@@ -180,7 +186,7 @@ export default function RequestTimesModal({
         </div>
 
         {/* Form */}
-        <div style={{ padding: '20px 28px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ padding: '20px 28px 8px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
             Pick the window you’re interviewing in. We’ll message the candidate
             so they can mark the days and times that work for them, then you
@@ -287,7 +293,7 @@ export default function RequestTimesModal({
         {/* Footer */}
         <div style={{
           padding: '16px 28px 20px', display: 'flex', justifyContent: 'flex-end', gap: 8,
-          borderTop: '1px solid var(--border, #f3f4f6)', marginTop: 8,
+          borderTop: '1px solid var(--border, #f3f4f6)', marginTop: 8, flexShrink: 0,
         }}>
           <button
             onClick={onClose}

@@ -240,10 +240,16 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
           opacity: animating ? 1 : 0,
           transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
           overflow: 'hidden',
+          // The industry step lists every option as a chip, so this is the
+          // tallest dialog in the app. Cap it and scroll the step body rather
+          // than letting `overflow: hidden` clip Back/Next off the screen.
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* Progress bar */}
-        <div style={{ height: 3, background: 'var(--border, #e5e7eb)' }}>
+        <div style={{ height: 3, background: 'var(--border, #e5e7eb)', flexShrink: 0 }}>
           <div style={{
             height: '100%',
             width: `${progress}%`,
@@ -254,7 +260,7 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
         </div>
 
         {/* Header */}
-        <div style={{ padding: '24px 28px 0' }}>
+        <div style={{ padding: '24px 28px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
             <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent-dark, #8ab32e)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Step {step + 1} of {STEPS.length}
@@ -287,7 +293,7 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
         </div>
 
         {/* Body */}
-        <div style={{ padding: '0 28px 24px', minHeight: 200 }}>
+        <div style={{ padding: '0 28px 24px', minHeight: 200, overflowY: 'auto' }}>
           {/* Step 0: Industries (multi-select chips) */}
           {step === 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -491,6 +497,7 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
           padding: '16px 28px',
           borderTop: '1px solid var(--border, #e5e7eb)',
           background: 'var(--bg, #F8F9FC)',
+          flexShrink: 0,
         }}>
           <button
             onClick={() => { if (step > 0) setStep(s => s - 1); else onClose(); }}

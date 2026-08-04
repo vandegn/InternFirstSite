@@ -103,9 +103,15 @@ html { scroll-behavior: smooth; }
     }
 }
 
+/* No will-change here, deliberately. `will-change: transform` makes this a
+   containing block for every position:fixed descendant -- permanently, not
+   just while the animation runs. DashboardShell wraps all dashboard content in
+   this class, so with it set, a modal's `position: fixed; inset: 0` resolved
+   against this element (as tall as the page) instead of the viewport, and the
+   dialog was centered somewhere down the document, off-screen. The animation
+   is a half-second fade; it does not need the hint. */
 .page-transition {
     animation: page-fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: opacity, transform;
 }
 
 @media (prefers-reduced-motion: reduce) {

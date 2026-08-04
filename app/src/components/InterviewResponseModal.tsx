@@ -119,9 +119,17 @@ export default function InterviewResponseModal({
           opacity: animating ? 1 : 0,
           transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
           overflow: 'hidden',
+          // A long employer note, the reschedule textarea, and a short laptop
+          // window together ran the dialog past the bottom of the screen, and
+          // `overflow: hidden` clipped the buttons with no way to scroll to
+          // them. Cap the height and let the middle section scroll; the header
+          // and the three actions stay put.
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid var(--border, #f3f4f6)' }}>
+        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid var(--border, #f3f4f6)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, marginBottom: 2 }}>
@@ -148,7 +156,7 @@ export default function InterviewResponseModal({
           </div>
         </div>
 
-        <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
           <div style={{
             padding: '14px 16px', borderRadius: 10, background: 'var(--bg, #f8f9fc)',
             border: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -204,7 +212,7 @@ export default function InterviewResponseModal({
 
         <div style={{
           padding: '16px 28px 20px', display: 'flex', gap: 8,
-          borderTop: '1px solid var(--border, #f3f4f6)',
+          borderTop: '1px solid var(--border, #f3f4f6)', flexShrink: 0,
         }}>
           <button
             onClick={() => handleAction('decline')}

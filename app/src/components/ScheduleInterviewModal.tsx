@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import ModalPortal from '@/components/ModalPortal';
 
 const DURATION_OPTIONS = [15, 30, 45, 60];
 
@@ -128,6 +129,7 @@ export default function ScheduleInterviewModal({
   const tzLabel = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
+    <ModalPortal>
     <div
       ref={backdropRef}
       onClick={e => { if (e.target === backdropRef.current && !submitting) onClose(); }}
@@ -300,5 +302,6 @@ export default function ScheduleInterviewModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

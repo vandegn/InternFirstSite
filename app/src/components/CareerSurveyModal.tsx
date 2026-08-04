@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import ModalPortal from '@/components/ModalPortal';
 
 /* ── Survey data ── */
 const INDUSTRY_OPTIONS = [
@@ -211,6 +212,7 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
   const current = STEPS[step];
 
   return (
+    <ModalPortal>
     <div
       ref={backdropRef}
       onClick={e => { if (e.target === backdropRef.current) onClose(); }}
@@ -558,5 +560,6 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

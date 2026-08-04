@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import ModalPortal from '@/components/ModalPortal';
 
 type Action = 'accept' | 'decline' | 'reschedule';
 
@@ -97,6 +98,7 @@ export default function InterviewResponseModal({
   }
 
   return (
+    <ModalPortal>
     <div
       ref={backdropRef}
       onClick={e => { if (e.target === backdropRef.current && submitting === null) onClose(); }}
@@ -253,5 +255,6 @@ export default function InterviewResponseModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

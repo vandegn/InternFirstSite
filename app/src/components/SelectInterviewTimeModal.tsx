@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import ModalPortal from '@/components/ModalPortal';
 import {
   groupSlotsByDay,
   enumerateStartTimes,
@@ -112,6 +113,7 @@ export default function SelectInterviewTimeModal({
   }
 
   return (
+    <ModalPortal>
     <div
       ref={backdropRef}
       onClick={e => { if (e.target === backdropRef.current && !submitting) onClose(); }}
@@ -312,5 +314,6 @@ export default function SelectInterviewTimeModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

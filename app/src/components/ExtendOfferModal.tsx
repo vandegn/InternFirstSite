@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import ModalPortal from '@/components/ModalPortal';
 
 export type ExtendOfferFormData = {
   letter: File | null;
@@ -103,6 +104,7 @@ export default function ExtendOfferModal({
   }
 
   return (
+    <ModalPortal>
     <div
       ref={backdropRef}
       onClick={e => { if (e.target === backdropRef.current && !submitting) onCancel(); }}
@@ -257,5 +259,6 @@ export default function ExtendOfferModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

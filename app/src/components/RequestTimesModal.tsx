@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import ModalPortal from '@/components/ModalPortal';
 import {
   validateWindow,
   localToday,
@@ -122,6 +123,7 @@ export default function RequestTimesModal({
   const maxEnd = windowStart ? addDays(windowStart, MAX_WINDOW_DAYS - 1) : undefined;
 
   return (
+    <ModalPortal>
     <div
       ref={backdropRef}
       onClick={e => { if (e.target === backdropRef.current && !submitting) onClose(); }}
@@ -321,5 +323,6 @@ export default function RequestTimesModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

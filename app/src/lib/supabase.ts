@@ -241,14 +241,51 @@ export async function getPendingApplicantCount(): Promise<number> {
   return (data as number) ?? 0;
 }
 
+// ---- Employer team membership ----
+// Multi-user employer accounts: employer_members links users to a company
+// with a role bundle (master_admin, recruiting_lead, recruiter,
+// hiring_manager, interviewer, approver). See lib/employer-team.ts and
+// supabase/migrations/20260803_employer_team.sql.
+
+export type EmployerMembership = {
+  memberId: string;
+  employerId: string;
+  role: string;
+};
+
+export async function getMyEmployerMembership(userId: string): Promise<EmployerMembership | null> {
+  const { data } = await supabase
+    .from('employer_members')
+    .select('id, employer_id, role')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (!data) return null;
+  return { memberId: data.id, employerId: data.employer_id, role: data.role };
+}
+
+// Resolves "the employer this user acts for": active team membership first,
+// with the original ownership lookup kept as a fallback for a database the
+// team migration hasn't reached yet. The returned row carries member_role so
+// pages can tailor what each role bundle sees.
 export async function getEmployerByUserId(userId: string) {
+  const membership = await getMyEmployerMembership(userId);
+  if (membership) {
+    const { data } = await supabase
+      .from('employers')
+      .select('*')
+      .eq('id', membership.employerId)
+      .maybeSingle();
+    if (data) return { ...data, member_role: membership.role };
+  }
+
   const { data, error } = await supabase
     .from('employers')
     .select('*')
     .eq('user_id', userId)
     .single();
   if (error || !data) return null;
-  return data;
+  return { ...data, member_role: data.user_id === userId ? 'master_admin' : null };
 }
 
 export async function uploadImage(bucket: string, path: string, file: File) {

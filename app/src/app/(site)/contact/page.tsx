@@ -62,7 +62,7 @@ export default function ContactPage() {
                   </svg>
                 </div>
                 <h3>Email</h3>
-                <p>info@intern-first.com</p>
+                <p>jonahkeshguerian@intern-first.com</p>
               </div>
 
               <div className="contact-card">

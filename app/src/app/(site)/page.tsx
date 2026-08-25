@@ -110,7 +110,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* PARTNERS */}
+      {/* PARTNERS
       <section className="partners">
         <div className="container">
           <div className="partners-track">
@@ -123,7 +123,7 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CATEGORIES */}
       <section className="categories">

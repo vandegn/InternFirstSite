@@ -16,8 +16,13 @@ export function absoluteUrl(path: string) {
 // nothing here is linked from a public page in a way that could get it indexed
 // URL-only, so a robots.txt Disallow is the right (and cheapest) tool.
 export const DISALLOWED_PATHS = [
-  '/dashboard/',
+  // No trailing slash: robots.txt matches on prefix, so '/dashboard' covers
+  // both the exact route and everything under it, while '/dashboard/' would
+  // have let /dashboard itself through.
+  '/dashboard',
   '/api/',
+  // Real routes, both of them: /auth/confirm is the email-link interstitial and
+  // /join/[token] is the employer team invite. Neither has search value.
   '/auth/',
   '/join/',
 ] as const;

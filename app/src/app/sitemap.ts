@@ -15,6 +15,12 @@ const PAGE_SIZE = 1000; // PostgREST's default max rows per request
 
 type StaticRoute = {
   path: string;
+  // The date this page's content last meaningfully changed, hand-maintained.
+  // It must be a real date: emitting `new Date()` here gave all ten URLs the
+  // same lastmod and changed it on every crawl, which teaches Google to ignore
+  // the field across the whole site. Bump the entry when you edit the page; if
+  // you can't say honestly when it changed, drop the field for that route.
+  lastModified: string;
   priority: number;
   changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'];
 };
@@ -22,19 +28,21 @@ type StaticRoute = {
 // Every public, indexable page. Dashboards, admin, the auth flow, /join/[token]
 // and /api/* are deliberately absent — see DISALLOWED_PATHS in lib/site.ts.
 const STATIC_ROUTES: StaticRoute[] = [
-  { path: '/', priority: 1.0, changeFrequency: 'daily' },
-  { path: '/internships', priority: 0.9, changeFrequency: 'daily' },
-  { path: '/career-resources', priority: 0.8, changeFrequency: 'weekly' },
-  { path: '/about', priority: 0.7, changeFrequency: 'monthly' },
-  { path: '/home', priority: 0.6, changeFrequency: 'monthly' },
-  // Placeholder marketing content today. Once real posts exist they belong in
-  // the dynamic block below, keyed off whatever stores them.
-  { path: '/blog', priority: 0.6, changeFrequency: 'weekly' },
-  { path: '/contact', priority: 0.5, changeFrequency: 'yearly' },
-  { path: '/waitlist', priority: 0.5, changeFrequency: 'monthly' },
-  { path: '/privacy', priority: 0.3, changeFrequency: 'yearly' },
-  { path: '/terms', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/', lastModified: '2026-08-03', priority: 1.0, changeFrequency: 'daily' },
+  { path: '/internships', lastModified: '2026-08-27', priority: 0.9, changeFrequency: 'daily' },
+  { path: '/about', lastModified: '2026-08-02', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/contact', lastModified: '2026-08-03', priority: 0.5, changeFrequency: 'yearly' },
+  { path: '/privacy', lastModified: '2026-08-03', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/terms', lastModified: '2026-08-03', priority: 0.3, changeFrequency: 'yearly' },
 ];
+
+// Deliberately NOT listed, and each for a different reason:
+//   /home            — near-duplicate of '/', now 301s there (see next.config.ts)
+//   /career-resources— demo shell, noindex until the content is real
+//   /blog            — placeholder posts, noindex until real posts ship
+//   /waitlist        — superseded by a working /register; product call pending
+// Dashboards, admin, the auth flow, /join/[token] and /api/* are absent too —
+// see DISALLOWED_PATHS in lib/site.ts.
 
 function todayDateStr() {
   const d = new Date();
@@ -94,9 +102,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const listings = await fetchPublicListings();
 
   return [
-    ...STATIC_ROUTES.map(({ path, priority, changeFrequency }) => ({
-      url: `${SITE_URL}${path === '/' ? '' : path}`,
-      lastModified: now,
+    ...STATIC_ROUTES.map(({ path, lastModified, priority, changeFrequency }) => ({
+      // Keep the trailing slash on the homepage so <loc> matches the URL the
+      // site actually serves and canonicalises to.
+      url: `${SITE_URL}${path}`,
+      lastModified: new Date(`${lastModified}T00:00:00Z`),
       changeFrequency,
       priority,
     })),

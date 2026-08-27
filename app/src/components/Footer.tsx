@@ -26,8 +26,17 @@ export default function Footer() {
           <div className="footer-links">
             <h4>Navigation</h4>
             <ul>
-              <li><Link href="/dashboard/student">Students</Link></li>
-              <li><Link href="/dashboard/employer">Employers</Link></li>
+              {/*
+                These pointed at /dashboard/student and /dashboard/employer.
+                robots.txt disallows those, but a Disallow only stops the crawl
+                — a publicly linked URL still gets indexed URL-only, and being
+                linked from every page in the footer is exactly how Google
+                found them. Auth already gates the dashboards; the fix is to
+                stop advertising them. These now point at the public entry
+                points for each audience.
+              */}
+              <li><Link href="/internships">Students</Link></li>
+              <li><Link href="/register">Employers</Link></li>
             </ul>
           </div>
           <div className="footer-links">

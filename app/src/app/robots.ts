@@ -52,6 +52,8 @@ export default function robots(): MetadataRoute.Robots {
       ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: '/', disallow })),
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    // No `host`. It's a Yandex-only directive Google ignores, and it wants a
+    // bare hostname anyway — `host: https://www.intern-first.com` was invalid
+    // on both counts. Apex-to-www canonicalisation is a 301, not a robots line.
   };
 }

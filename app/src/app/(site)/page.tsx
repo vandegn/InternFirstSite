@@ -110,21 +110,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* PARTNERS
-      <section className="partners">
-        <div className="container">
-          <div className="partners-track">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-              <img
-                key={n}
-                src={`https://internfirst-demo.com/wp-content/uploads/2026/02/${n}-150x150.png`}
-                alt={`Partner ${n}`}
-              />
-            ))}
-          </div>
-        </div>
-      </section> */}
-
       {/* CATEGORIES */}
       <section className="categories">
         <div className="container">

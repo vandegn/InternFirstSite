@@ -44,3 +44,76 @@ export const NOINDEX_PATHS = [
 export const noIndexMetadata = {
   robots: { index: false, follow: true },
 } as const;
+
+// ---------------------------------------------------------------------------
+// Page metadata
+// ---------------------------------------------------------------------------
+
+// The site-wide social card. Next does NOT copy a page's `title`/`description`
+// into its Open Graph tags — an og:title set on the root layout is inherited
+// verbatim by every child unless that child overrides it. So rather than let
+// every page share one generic card, `pageMetadata` below builds the canonical,
+// OG and Twitter blocks from the same title/description in one place.
+export const SITE_NAME = 'InternFirst';
+
+// `src/app/opengraph-image.tsx` generates the card via Next's file convention
+// and serves it at this path. The convention injects og:image automatically —
+// but only into segments that don't declare their own `openGraph`. A page that
+// sets openGraph.title replaces the whole inherited object, image included, so
+// every page built by `pageMetadata` has to name the image explicitly. (Verified
+// the hard way: /about, /privacy and /terms shipped with no og:image at all.)
+//
+// To swap in designed artwork, replace opengraph-image.tsx with a 1200x630
+// `opengraph-image.png` and change this url to '/opengraph-image.png'.
+export const OG_IMAGE = {
+  url: '/opengraph-image',
+  width: 1200,
+  height: 630,
+  alt: 'InternFirst — internships for verified students, from reviewed employers.',
+} as const;
+
+type PageMetaInput = {
+  /**
+   * Page title WITHOUT the "| InternFirst" suffix — the root layout's
+   * `%s | InternFirst` template appends it. Passing a title that already
+   * contains the brand is what produced "Privacy Policy | InternFirst |
+   * InternFirst"; use `absoluteTitle` instead when the brand must sit inside
+   * the title.
+   */
+  title?: string;
+  /** Complete title, used verbatim. Bypasses the root template entirely. */
+  absoluteTitle?: string;
+  description: string;
+  /** Site-root-relative path, e.g. '/about'. Becomes the self-referencing canonical. */
+  path: string;
+};
+
+// Every public, indexable page's metadata goes through here so a page can't
+// ship with a canonical but no OG card, or vice versa.
+export function pageMetadata({ title, absoluteTitle, description, path }: PageMetaInput) {
+  const url = absoluteUrl(path);
+  // Social cards have no template to fall back on, so they always carry the
+  // brand explicitly.
+  const fullTitle = absoluteTitle ?? `${title} | ${SITE_NAME}`;
+
+  return {
+    title: absoluteTitle ? { absolute: absoluteTitle } : title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'website' as const,
+      siteName: SITE_NAME,
+      locale: 'en_US',
+      url,
+      title: fullTitle,
+      description,
+      images: [OG_IMAGE],
+    },
+    twitter: {
+      card: 'summary_large_image' as const,
+      title: fullTitle,
+      description,
+      images: [OG_IMAGE.url],
+    },
+  };
+}

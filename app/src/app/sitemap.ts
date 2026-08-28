@@ -31,6 +31,7 @@ const STATIC_ROUTES: StaticRoute[] = [
   { path: '/', lastModified: '2026-08-03', priority: 1.0, changeFrequency: 'daily' },
   { path: '/internships', lastModified: '2026-08-27', priority: 0.9, changeFrequency: 'daily' },
   { path: '/about', lastModified: '2026-08-02', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/career-resources', lastModified: '2026-08-28', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/contact', lastModified: '2026-08-03', priority: 0.5, changeFrequency: 'yearly' },
   { path: '/privacy', lastModified: '2026-08-03', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/terms', lastModified: '2026-08-03', priority: 0.3, changeFrequency: 'yearly' },
@@ -38,7 +39,6 @@ const STATIC_ROUTES: StaticRoute[] = [
 
 // Deliberately NOT listed, and each for a different reason:
 //   /home            — near-duplicate of '/', now 301s there (see next.config.ts)
-//   /career-resources— demo shell, noindex until the content is real
 //   /blog            — placeholder posts, noindex until real posts ship
 //   /waitlist        — superseded by a working /register; product call pending
 // Dashboards, admin, the auth flow, /join/[token] and /api/* are absent too —
@@ -103,9 +103,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...STATIC_ROUTES.map(({ path, lastModified, priority, changeFrequency }) => ({
-      // Keep the trailing slash on the homepage so <loc> matches the URL the
-      // site actually serves and canonicalises to.
-      url: `${SITE_URL}${path}`,
+      // <loc> must byte-match the page's own rel=canonical, or Search Console
+      // reports the sitemap URL as non-canonical. Next normalises the homepage
+      // canonical to a bare origin with no trailing slash, so '/' is special-
+      // cased here to match it rather than emitting `${SITE_URL}/`.
+      url: path === '/' ? SITE_URL : `${SITE_URL}${path}`,
       lastModified: new Date(`${lastModified}T00:00:00Z`),
       changeFrequency,
       priority,

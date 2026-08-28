@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { pageMetadata } from '@/lib/site';
 
 // This page used to render a full mock student dashboard to the public: a fake
 // sidebar linking into /dashboard/*, a demo avatar, and a profile card for
@@ -8,7 +10,18 @@ import Footer from '@/components/Footer';
 // was crawlable, and the sitemap was asking Google to index it. What's left is
 // the only honest part — a description of the resources themselves.
 //
-// Still noindex'd via layout.tsx until these cards link somewhere real.
+// It was noindex'd while those cards linked nowhere. They now point at
+// /register and the services they describe exist behind it (see
+// /dashboard/student/resources), so the page is indexable and back in the
+// sitemap. Note the hero deliberately says "free to start", not "free": the
+// three 1:1 services are listed in-product as "Contact for pricing".
+
+export const metadata: Metadata = pageMetadata({
+  title: 'Career Resources',
+  description:
+    'Resume advice, interview preparation, and career coaching for students searching for an internship — free to start with an InternFirst account.',
+  path: '/career-resources',
+});
 
 const RESOURCES = [
   {
@@ -71,8 +84,9 @@ export default function CareerResources() {
           <div className="hero-badge">Career Resources</div>
           <h1>Tools and guidance for your internship search</h1>
           <p className="hero-subtitle">
-            Everything students need to go from a first draft resume to a signed offer — available
-            free once you create an InternFirst account.
+            Everything students need to go from a first draft resume to a signed offer. Free to
+            start with an InternFirst account, with 1:1 resume review, interview prep, and career
+            coaching available.
           </p>
         </div>
       </section>

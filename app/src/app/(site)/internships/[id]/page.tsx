@@ -1,132 +1,127 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { supabase, getListingById, getProfile, getListingSections, type ListingSection } from '@/lib/supabase';
 import { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
-import { normalizeSectionOrder, CORE_SECTIONS } from '@/components/ListingCoreSections';
+import { normalizeSectionOrder, CORE_SECTIONS } from '@/lib/listing-sections';
+import { SITE_NAME } from '@/lib/site';
+import ApplyButton from './ApplyButton';
+import {
+  getPublicListing,
+  getPublicListingSections,
+  type PublicListing,
+} from '@/lib/listing-public';
+import { jobPostingJsonLd, listingUrl, serializeJsonLd, toMetaDescription } from '@/lib/listing-seo';
 
-type Listing = {
-  id: string;
-  title: string;
-  description: string;
-  location: string | null;
-  is_remote: boolean;
-  is_hybrid: boolean;
-  compensation: string | null;
-  requirements: string | null;
-  industry: string;
-  created_at: string;
-  application_deadline: string | null;
-  key_responsibilities: string | null;
-  section_order: string[] | null;
-  preferred_skills: string[] | null;
-  duration: string | null;
-  role_tags: string[] | null;
-  banner_url: string | null;
-  accent_color: string | null;
-  employers: {
-    company_name: string;
-    logo_url: string | null;
-    website?: string | null;
+// This page was entirely client-rendered: the server sent "Loading internship..."
+// and the role, the company, and the description only existed after the browser
+// ran JS and made two round trips. Every one of these URLs is in sitemap.xml, so
+// we were inviting Google to index thousands of pages whose HTML was one
+// sentence long and whose <title> was the bare site fallback.
+//
+// It's a server component now — same layout, same apply flow (see
+// ApplyButton.tsx), but the listing is in the initial HTML along with a real
+// title, description, canonical, and JobPosting structured data.
+//
+// ISR, matching /internships: listings change on the order of hours, and this
+// keeps crawler traffic off the database.
+export const revalidate = 3600;
+
+type PageProps = { params: Promise<{ id: string }> };
+
+// A listing that isn't live shouldn't sit in the index. RLS already hides
+// non-public rows from the anon client, but status is restated here for the
+// same reason sitemap.ts restates it: a policy change shouldn't be able to
+// quietly start serving indexable pages for closed roles.
+function isPubliclyVisible(listing: PublicListing) {
+  if (listing.status && listing.status !== 'active') return false;
+  if (listing.application_deadline) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (listing.application_deadline < today) return false;
+  }
+  return true;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const listing = await getPublicListing(id);
+
+  if (!listing || !isPubliclyVisible(listing)) {
+    // Nothing to describe, and nothing that should be indexed.
+    return { title: 'Internship not found', robots: { index: false, follow: true } };
+  }
+
+  const company = listing.employers?.company_name ?? SITE_NAME;
+  const where = listing.location ?? (listing.is_remote ? 'Remote' : null);
+
+  // "Marketing Intern at Acme (Chicago, IL)" — the role and the company are what
+  // students actually search, so both go in front of the brand.
+  const title = [`${listing.title} at ${company}`, where ? `(${where})` : null]
+    .filter(Boolean)
+    .join(' ');
+
+  const description = toMetaDescription(
+    listing.description,
+    `${listing.title} at ${company}. Apply on InternFirst — browse and apply with a verified .edu account.`,
+  );
+
+  const url = listingUrl(listing.id);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'article',
+      siteName: SITE_NAME,
+      locale: 'en_US',
+      url,
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      // The employer's own banner makes a far better share card than the
+      // generic site one when they've uploaded a real image.
+      images: listing.banner_url ? [listing.banner_url] : ['/opengraph-image'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      images: [listing.banner_url ?? '/opengraph-image'],
+    },
   };
-};
+}
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString(undefined, {
+  return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'UTC',
   });
 }
 
-export default function PublicListingDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+export default async function PublicListingDetailPage({ params }: PageProps) {
+  const { id } = await params;
 
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [sections, setSections] = useState<ListingSection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [applying, setApplying] = useState(false);
+  const [listing, sections] = await Promise.all([
+    getPublicListing(id),
+    getPublicListingSections(id),
+  ]);
 
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    async function load() {
-      const [data, listingSections] = await Promise.all([
-        getListingById(id!),
-        getListingSections(id!),
-      ]);
-      if (!cancelled) {
-        setListing(data as Listing | null);
-        setSections(listingSections);
-        setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  async function handleApply() {
-    if (!id) return;
-    setApplying(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push(`/login?next=${encodeURIComponent(`/internships/${id}`)}`);
-      return;
-    }
-
-    const profile = await getProfile(user.id);
-    if (profile?.role === 'student') {
-      router.push(`/dashboard/student/internships/${id}`);
-    } else {
-      // Logged in but not a student — send to register (or back home)
-      router.push('/register');
-    }
-  }
-
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <div style={{ padding: '120px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Loading internship...
-        </div>
-        <Footer />
-      </>
-    );
-  }
-
-  if (!listing) {
-    return (
-      <>
-        <Header />
-        <div style={{ padding: '120px 24px', textAlign: 'center' }}>
-          <h1 style={{ fontSize: 28, marginBottom: 12 }}>Internship not found</h1>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-            This role may have been closed or removed.
-          </p>
-          <Link href="/internships" className="btn-primary">
-            Browse all internships
-          </Link>
-        </div>
-        <Footer />
-      </>
-    );
-  }
+  // A real 404, not the soft 404 this page used to serve. A 200 response saying
+  // "Internship not found" is a page Google will index and then flag.
+  if (!listing || !isPubliclyVisible(listing)) notFound();
 
   return (
     <>
+      {/* Structured data for the Google Jobs rich result. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jobPostingJsonLd(listing)) }}
+      />
+
       <Header />
 
       <main style={{ background: 'var(--bg)', padding: '40px 0 80px' }}>
@@ -212,18 +207,7 @@ export default function PublicListingDetailPage() {
             <RoleTagPills tags={listing.role_tags} />
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <button
-                onClick={handleApply}
-                disabled={applying}
-                className="btn-primary"
-                style={{
-                  cursor: applying ? 'wait' : 'pointer',
-                  opacity: applying ? 0.7 : 1,
-                  border: 'none',
-                }}
-              >
-                {applying ? 'Loading…' : 'Apply Now'}
-              </button>
+              <ApplyButton listingId={listing.id} className="btn-primary" />
               <p style={{ color: 'var(--text-light)', fontSize: 13, alignSelf: 'center' }}>
                 You&apos;ll be asked to sign in before applying.
               </p>
@@ -286,14 +270,7 @@ export default function PublicListingDetailPage() {
             <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 20 }}>
               Sign in or create a free .edu account to send your application.
             </p>
-            <button
-              onClick={handleApply}
-              disabled={applying}
-              className="btn-white"
-              style={{ border: 'none', cursor: applying ? 'wait' : 'pointer' }}
-            >
-              {applying ? 'Loading…' : 'Apply Now'}
-            </button>
+            <ApplyButton listingId={listing.id} className="btn-white" />
           </div>
         </div>
       </main>

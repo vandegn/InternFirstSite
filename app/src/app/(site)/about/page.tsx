@@ -1,6 +1,18 @@
+import type { Metadata } from 'next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import { pageMetadata } from '@/lib/site';
+
+// `absoluteTitle` rather than `title`, because the brand belongs inside this
+// one — "About | InternFirst" reads like a section header, "About InternFirst"
+// reads like the page it is.
+export const metadata: Metadata = pageMetadata({
+  absoluteTitle: 'About InternFirst | Our Mission for Early Talent',
+  description:
+    'InternFirst connects verified .edu students with reviewed employers on one closed platform — browse, apply, interview, and hire without ever leaving the site.',
+  path: '/about',
+});
 
 export default function AboutPage() {
   return (

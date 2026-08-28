@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getAnonSupabase } from '@/lib/supabase-server';
-import { absoluteUrl } from '@/lib/site';
+import { pageMetadata } from '@/lib/site';
 import InternshipsBrowser, { type Listing } from './InternshipsBrowser';
 
 // This page used to be a pure client component: the server sent
@@ -17,12 +17,12 @@ export const revalidate = 3600;
 
 const PAGE_SIZE = 24;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Browse Internships',
   description:
     'Browse open internships from reviewed employers on InternFirst. Search by role, company, or industry — no signup needed to look.',
-  alternates: { canonical: absoluteUrl('/internships') },
-};
+  path: '/internships',
+});
 
 // Mirrors getActiveListings(1, PAGE_SIZE) with no filters, which is exactly
 // what the client would have requested on mount. The anon key means RLS decides

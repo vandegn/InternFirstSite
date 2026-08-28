@@ -1,39 +1,28 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { supabase, getProfile, DASHBOARD_ROUTES } from '@/lib/supabase';
+import { pageMetadata } from '@/lib/site';
+import HomeFaq from './HomeFaq';
+import HomeNewsletter from './HomeNewsletter';
 
-const faqData = [
-  {
-    question: 'Do I need an account to browse internships?',
-    answer:
-      'No. Anyone can browse open internships on InternFirst without signing up. You only need to create an account when you want to apply, message an employer, or save listings to your profile.',
-  },
-  {
-    question: 'Who can apply on InternFirst?',
-    answer:
-      'Students with a valid .edu email address can register and apply. We verify every student account to keep the platform high-signal for employers and universities.',
-  },
-  {
-    question: 'How long does the application process take?',
-    answer:
-      'Most students complete their first application in under five minutes once their profile is set up. Employers respond inside the platform — no external emails, no off-platform redirects.',
-  },
-  {
-    question: 'Is InternFirst free for students?',
-    answer:
-      'Yes. Students apply, message, schedule interviews, and track outcomes at no cost.',
-  },
-  {
-    question: 'How are employers verified?',
-    answer:
-      'Our team reviews every employer account before its listings reach students. Until that review clears, a company cannot see applicants or their information.',
-  },
-];
+// This was a client component that rendered nothing but "Loading..." until a
+// Supabase session check resolved. Crawlers got no session and, in Ahrefs'
+// case, never waited for the second render — so the homepage's HTML contained
+// one word and no links. Being a client component also meant '/' could not
+// export metadata at all, which is why its title was the bare root fallback.
+//
+// It's now a static server component. The "send logged-in users to their
+// dashboard" behaviour that useEffect was doing moved into middleware.ts, where
+// it happens as a 302 before any HTML is sent — same UX, no flash, and
+// anonymous visitors (and crawlers) skip the auth call entirely.
+
+export const metadata: Metadata = pageMetadata({
+  absoluteTitle: 'InternFirst | Find Internships for College Students',
+  description:
+    'Browse open internships from reviewed employers — no account needed to look. Students with a .edu email apply, message, and interview entirely on InternFirst.',
+  path: '/',
+});
 
 // Categories are navigation into the real search, not a claim about inventory —
 // the "N open roles" counts that used to sit here were invented.
@@ -49,42 +38,6 @@ const categories = [
 ];
 
 export default function LandingPage() {
-  const router = useRouter();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
-  const [email, setEmail] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    async function redirectIfLoggedIn() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (!session?.user) {
-        setAuthChecked(true);
-        return;
-      }
-      const profile = await getProfile(session.user.id);
-      if (cancelled) return;
-      const route = profile ? DASHBOARD_ROUTES[profile.role] : null;
-      if (route) {
-        router.replace(route);
-        // keep loader visible while the route transition happens
-      } else {
-        setAuthChecked(true);
-      }
-    }
-    redirectIfLoggedIn();
-    return () => { cancelled = true; };
-  }, [router]);
-
-  if (!authChecked) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: '#888' }}>
-        Loading...
-      </div>
-    );
-  }
-
   return (
     <>
       <Header />
@@ -225,33 +178,7 @@ export default function LandingPage() {
       <section className="faq-section">
         <div className="container">
           <h2 className="section-title">Frequently asked questions</h2>
-          <div className="faq-list">
-            {faqData.map((faq, index) => (
-              <div key={index} className={`faq-item${activeFaq === index ? ' active' : ''}`}>
-                <button
-                  className="faq-question"
-                  onClick={() => setActiveFaq(activeFaq === index ? null : index)}
-                >
-                  <span>{faq.question}</span>
-                  <svg
-                    className="faq-icon"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
-                <div className="faq-answer">
-                  <p>{faq.answer}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <HomeFaq />
         </div>
       </section>
 
@@ -260,16 +187,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="newsletter-inner">
             <h2>Get launch updates</h2>
-            <form className="newsletter-form" onSubmit={(e) => e.preventDefault()}>
-              <input
-                type="email"
-                placeholder="you@school.edu"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button type="submit">Subscribe</button>
-            </form>
+            <HomeNewsletter />
           </div>
         </div>
       </section>

@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { DASHBOARD_ROUTES } from '@/lib/routes';
 
+// Two jobs, both auth-shaped:
+//
+//   /dashboard/*  — server-side gate, described below.
+//   /             — send an already-logged-in visitor to their dashboard.
+//
+// The homepage used to do that second one itself, in a useEffect, which meant
+// every visitor (crawlers included) was served "Loading..." while the browser
+// resolved a session. Doing it here instead means the marketing page is static
+// HTML for anyone without a session cookie, and logged-in users get a 302
+// before any HTML is sent — no flash either way.
+//
 // Server-side gate on /dashboard/*. The client-side check in
 // app/dashboard/layout.tsx still runs and still owns the in-app redirects
 // (welcome screen, profile self-heal); this sits in front of it so a URL typed
@@ -13,7 +24,27 @@ import { DASHBOARD_ROUTES } from '@/lib/routes';
 // the markup and data-fetching code for a dashboard the caller has no business
 // seeing never leaves the server.
 
+// Supabase stores its session in `sb-<project-ref>-auth-token`, sometimes split
+// across `.0`/`.1` chunks when the JWT is large. We only need to know whether
+// ANY of them exist, so a prefix match is enough — and it's the whole point of
+// this function: an anonymous visitor or a crawler hitting '/' must not pay for
+// an auth round trip just so we can discover they're anonymous.
+function hasSupabaseSessionCookie(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .some(({ name }) => name.startsWith('sb-') && name.includes('auth-token'));
+}
+
 export async function middleware(request: NextRequest) {
+  const isHome = request.nextUrl.pathname === '/';
+
+  // Fast path: no session cookie on the homepage means there is nothing to
+  // redirect, so hand back the static page without touching Supabase. This is
+  // the common case for ad traffic and every crawler.
+  if (isHome && !hasSupabaseSessionCookie(request)) {
+    return NextResponse.next();
+  }
+
   // Every cookie Supabase refreshes has to ride back on the response we
   // actually return, or the session silently dies mid-navigation. Hence the
   // mutable `response` — see the @supabase/ssr middleware contract.
@@ -43,6 +74,10 @@ export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (!user) {
+    // A stale or expired cookie on the homepage — not a reason to bounce a
+    // visitor to /login. Serve the marketing page.
+    if (isHome) return response;
+
     const login = request.nextUrl.clone();
     login.pathname = '/login';
     login.search = '';
@@ -61,10 +96,23 @@ export async function middleware(request: NextRequest) {
     .maybeSingle();
 
   // No profile row yet: let the request through and leave it to the layout,
-  // which knows how to rebuild one from user_metadata before giving up.
+  // which knows how to rebuild one from user_metadata before giving up. On the
+  // homepage that just means they stay on the marketing page, which is right —
+  // we have nowhere specific to send them.
   if (!profile?.role) return response;
 
   const allowedPath = DASHBOARD_ROUTES[profile.role];
+
+  // Logged in and looking at the homepage: straight to their dashboard. This
+  // replaces the redirect the page component used to do after mount.
+  if (isHome) {
+    if (!allowedPath) return response;
+    const home = request.nextUrl.clone();
+    home.pathname = allowedPath;
+    home.search = '';
+    return NextResponse.redirect(home);
+  }
+
   if (allowedPath && !pathname.startsWith(allowedPath)) {
     const home = request.nextUrl.clone();
     home.pathname = allowedPath;
@@ -76,7 +124,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Scoped to the dashboard on purpose. A broader matcher would put an auth
-  // round trip in front of the marketing pages and the login flow for no gain.
-  matcher: ['/dashboard/:path*'],
+  // The dashboard, plus the homepage. Still deliberately narrow: every other
+  // marketing page and the whole login flow stay off this path, and '/' bails
+  // out on a cookie check before any auth round trip, so the only requests that
+  // actually call Supabase here are ones that already carry a session.
+  matcher: ['/dashboard/:path*', '/'],
 };

@@ -195,7 +195,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
         <div className="dash-header-inner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
             <Link href={DASHBOARD_ROUTES[role] || '/'} className="logo">
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
+              <img src="/internfirst-logo.png" alt="InternFirst" />
             </Link>
             <span className="portal-label">{ROLE_LABELS[role] || 'Dashboard'}</span>
           </div>

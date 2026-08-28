@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="footer-grid">
           <div className="footer-brand">
             <img
-              src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png"
+              src="/internfirst-logo.png"
               alt="InternFirst"
               className="footer-logo"
             />

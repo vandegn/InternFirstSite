@@ -101,7 +101,7 @@ function LoginForm() {
         </button>
         <div className="auth-logo">
           <Link href="/">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
+            <img src="/internfirst-logo.png" alt="InternFirst" />
           </Link>
         </div>
         <h1>Login</h1>

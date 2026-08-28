@@ -186,7 +186,7 @@ export default function AboutPage() {
               </ul>
             </div>
             <div className="about-split-img">
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png" alt="InternFirst" />
+              <img src="/internfirst-logo.png" alt="InternFirst" />
             </div>
           </div>
         </div>

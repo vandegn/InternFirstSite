@@ -37,7 +37,7 @@ export default function Header() {
       <div className="header-inner">
         <Link href={logoHref} className="logo">
           <img
-            src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png"
+            src="/internfirst-logo.png"
             alt="InternFirst"
           />
         </Link>

@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
         <div className="auth-logo">
           <Link href="/">
             <img
-              src="https://internfirst-demo.com/wp-content/uploads/2026/02/Top-Rated-2.png"
+              src="/internfirst-logo.png"
               alt="InternFirst"
             />
           </Link>

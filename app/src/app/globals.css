@@ -282,6 +282,10 @@ img { max-width: 100%; height: auto; display: block; }
     padding: 80px 0 60px;
     text-align: center;
     background: linear-gradient(180deg, #eef0f5 0%, var(--bg) 100%);
+    /* The headline's measure. Shared by .hero h1 and .hero-logo so the logo
+       box and the headline beneath it are exactly the same width. Change it
+       here, never in either rule, or the two silently drift apart. */
+    --hero-headline-width: 700px;
 }
 
 .hero-badge {
@@ -300,9 +304,24 @@ img { max-width: 100%; height: auto; display: block; }
     font-weight: 700;
     line-height: 1.15;
     color: var(--dark);
-    max-width: 700px;
+    max-width: var(--hero-headline-width);
     margin: 0 auto 20px;
     letter-spacing: -1px;
+}
+
+/* Brand lockup sitting between the badge and the headline. It takes the
+   headline's full measure, and the image's own 622x98 aspect ratio sets the
+   height, so it tracks the H1 down through every breakpoint without needing
+   responsive rules of its own. */
+.hero-logo {
+    max-width: var(--hero-headline-width);
+    margin: 0 auto 28px;
+}
+
+.hero-logo img {
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
 .hero-subtitle {

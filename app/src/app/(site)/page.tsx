@@ -46,6 +46,15 @@ export default function LandingPage() {
       <section className="hero">
         <div className="container">
           <div className="hero-badge">#1 platform for early talent</div>
+          {/* alt="" on purpose: the header logo already announces the brand to
+              a screen reader, and the H1 directly below says the same thing in
+              words. A third announcement here would be noise. Intrinsic
+              width/height are set so the browser reserves the space before the
+              image loads — this sits above the fold on the ad landing page,
+              where a late layout shift is what CLS actually measures. */}
+          <div className="hero-logo">
+            <img src="/internfirst-logo.png" alt="" width={622} height={98} />
+          </div>
           <h1>The easiest way to find an internship</h1>
           <p className="hero-subtitle">
             Browse opportunities from reviewed employers — no account needed. Sign in only when you&apos;re ready to apply.

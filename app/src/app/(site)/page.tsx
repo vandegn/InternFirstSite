@@ -63,12 +63,7 @@ export default function LandingPage() {
             <Link href="/internships" className="btn-primary">Browse Internships</Link>
             <Link href="/register" className="btn-secondary">Create Account</Link>
           </div>
-          <div className="hero-image">
-            <img
-              src="https://internfirst-demo.com/wp-content/uploads/2026/01/Frame-1321314341.png"
-              alt="InternFirst platform preview"
-            />
-          </div>
+          
         </div>
       </section>
 

@@ -54,6 +54,19 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/*
+          Leadsy (vtag) visitor-identification pixel for the cold outreach
+          program. Async so it never blocks first paint. Site-wide by request —
+          move it to the (site) layout if we ever want it on the public
+          marketing pages only and off the signed-in dashboards.
+        */}
+        <script
+          id="vtag-ai-js"
+          async
+          src="https://r2.leadsy.ai/tag.js"
+          data-pid="1tnwni6DnA8dXyw94"
+          data-version="062024"
+        />
       </head>
       <body className={inter.variable}>{children}</body>
     </html>

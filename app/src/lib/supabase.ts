@@ -105,22 +105,23 @@ export async function createProfileAndRoleData(
 // created by /auth/callback when the confirmation link is clicked, but some
 // accounts never hit that route (e.g. the email got confirmed via a
 // password-recovery link instead) — for those, this self-heals on next login.
-// Returns true if a profile now exists, false if metadata has no role to
+// Returns 'created' if this call made the profile (i.e. signup just completed),
+// 'existing' if one was already there, or null if metadata has no role to
 // rebuild from. Throws if creation fails.
 export async function ensureProfileFromMetadata(
   client: SupabaseClient,
   user: { id: string; email?: string; user_metadata?: Record<string, string> }
-): Promise<boolean> {
+): Promise<'created' | 'existing' | null> {
   const metadata = user.user_metadata ?? {};
   const role = metadata.role;
-  if (!role) return false;
+  if (!role) return null;
 
   const { data: existing } = await client
     .from('profiles')
     .select('id')
     .eq('user_id', user.id)
     .maybeSingle();
-  if (existing) return true;
+  if (existing) return 'existing';
 
   const roleData: RoleData = {};
   if (role === 'student') {
@@ -142,7 +143,7 @@ export async function ensureProfileFromMetadata(
     phone: metadata.phone,
     roleData,
   });
-  return true;
+  return 'created';
 }
 
 export function isEduEmail(email: string): boolean {

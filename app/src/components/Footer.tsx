@@ -42,9 +42,9 @@ export default function Footer() {
           <div className="footer-links">
             <h4>Resources</h4>
             <ul>
-              <li>1:1 Resume Help</li>
-              <li>Interview Prep</li>
-              <li>Resume Templates</li>
+              <li><Link href="/career-resources#resume-advice">1:1 Resume Help</Link></li>
+              <li><Link href="/career-resources">Interview Prep</Link></li>
+              <li><Link href="/career-resources#resume-building">Resume Templates</Link></li>
             </ul>
           </div>
           <div className="footer-links">

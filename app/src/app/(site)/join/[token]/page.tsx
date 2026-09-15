@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { validatePassword } from '@/lib/password';
+import { analytics } from '@heycatch/sdk';
 
 type InviteInfo = {
   state: 'valid' | 'expired' | 'revoked' | 'accepted';
@@ -92,6 +93,7 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
   // Signed in with a different email: accepting would attach the wrong person.
   async function handleSwitchAccount() {
     await supabase.auth.signOut();
+    analytics.resetIdentity();
     setSessionEmail(null);
   }
 

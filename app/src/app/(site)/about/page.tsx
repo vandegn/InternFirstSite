@@ -30,15 +30,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* About image */}
-      <section className="about-image-section">
-        <div className="container">
-          <div className="about-hero-img">
-            <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/IMG_6644-scaled.jpeg" alt="InternFirst Team" />
-          </div>
-        </div>
-      </section>
-
       {/* Our Mission */}
       <section className="about-block">
         <div className="container">

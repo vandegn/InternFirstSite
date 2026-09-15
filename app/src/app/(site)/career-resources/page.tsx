@@ -14,12 +14,12 @@ import { pageMetadata } from '@/lib/site';
 // /register and the services they describe exist behind it (see
 // /dashboard/student/resources), so the page is indexable and back in the
 // sitemap. Note the hero deliberately says "free to start", not "free": the
-// three 1:1 services are listed in-product as "Contact for pricing".
+// 1:1 services are listed in-product as "Contact for pricing".
 
 export const metadata: Metadata = pageMetadata({
   title: 'Career Resources',
   description:
-    'Resume advice, interview preparation, and career coaching for students searching for an internship — free to start with an InternFirst account.',
+    'Resume advice and resume-building tools for students searching for an internship — free to start with an InternFirst account.',
   path: '/career-resources',
 });
 
@@ -35,28 +35,6 @@ const RESOURCES = [
         <line x1="16" y1="13" x2="8" y2="13" />
         <line x1="16" y1="17" x2="8" y2="17" />
         <polyline points="10 9 9 9 8 9" />
-      </>
-    ),
-  },
-  {
-    title: 'Live Interview Prep',
-    body:
-      'Practice with real interview scenarios, receive instant feedback, and build the confidence you need to ace your next interview.',
-    icon: (
-      <>
-        <polygon points="23 7 16 12 23 17 23 7" />
-        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-      </>
-    ),
-  },
-  {
-    title: 'Career Coaching',
-    body:
-      'One-on-one sessions with experienced career coaches who will guide your professional journey and help you reach your goals.',
-    icon: (
-      <>
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
       </>
     ),
   },
@@ -85,8 +63,7 @@ export default function CareerResources() {
           <h1>Tools and guidance for your internship search</h1>
           <p className="hero-subtitle">
             Everything students need to go from a first draft resume to a signed offer. Free to
-            start with an InternFirst account, with 1:1 resume review, interview prep, and career
-            coaching available.
+            start with an InternFirst account, with 1:1 resume review available.
           </p>
         </div>
       </section>
@@ -95,7 +72,11 @@ export default function CareerResources() {
         <div className="container">
           <div className="resource-grid two-col">
             {RESOURCES.map((r) => (
-              <div key={r.title} className="resource-card large">
+              <div
+                key={r.title}
+                id={r.title.toLowerCase().replace(/\s+/g, '-')}
+                className="resource-card large"
+              >
                 <div className="resource-icon">
                   <svg
                     width="24"

@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=verification_failed`);
   }
 
-  const result = await completeVerifiedSignIn(supabase);
+  const result = await completeVerifiedSignIn(supabase, request);
 
   if ('error' in result) {
     const suffix = result.error === 'missing_role' ? '' : `?error=${result.error}`;

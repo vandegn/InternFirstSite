@@ -2,6 +2,9 @@ import { type SupabaseClient } from '@supabase/supabase-js';
 import { ensureProfileFromMetadata, DASHBOARD_ROUTES } from '@/lib/supabase';
 import { getAdminSupabase } from '@/lib/supabase-server';
 import { computeVerificationSignals } from '@/lib/domain-signals';
+import { analytics } from '@heycatch/sdk';
+
+analytics.init({ projectKey: 'hck_pk_3bfBWKLGSp84zM3Mua6oFurGChCMe2Jl' });
 
 export type PostVerificationResult =
   | { redirectTo: string }
@@ -12,6 +15,7 @@ export type PostVerificationResult =
 // verification from the email template) so the two link formats can't drift.
 export async function completeVerifiedSignIn(
   supabase: SupabaseClient,
+  request?: Request,
 ): Promise<PostVerificationResult> {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -27,7 +31,20 @@ export async function completeVerifiedSignIn(
 
   try {
     // Idempotent: skips creation if the profile already exists
-    await ensureProfileFromMetadata(supabase, user);
+    const profileState = await ensureProfileFromMetadata(supabase, user);
+
+    // The profile being created here is the moment signup completes, and only
+    // the server sees it — so the analytics event goes out from here. A
+    // re-clicked confirmation link finds the profile already there and sends
+    // nothing. Server analytics calls never throw.
+    if (profileState === 'created') {
+      await analytics.setIdentity(
+        user.id,
+        { email: user.email, name: user.user_metadata?.fullName, role },
+        { signup_date: user.created_at },
+      );
+      await analytics.trackEvent('signup_completed', { role }, { userId: user.id, request });
+    }
   } catch (err) {
     console.error('Profile creation failed:', err);
     return { error: 'profile_creation_failed' };

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ redirectTo: '/reset-password' });
   }
 
-  const result = await completeVerifiedSignIn(supabase);
+  const result = await completeVerifiedSignIn(supabase, request);
 
   if ('error' in result) {
     // Verified but couldn't finish setup — send them to login, where the

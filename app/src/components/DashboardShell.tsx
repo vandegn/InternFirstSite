@@ -8,6 +8,7 @@ import NotificationBell from './NotificationBell';
 import FeedbackButton from './FeedbackButton';
 import CommunityBanner from './CommunityBanner';
 import Avatar from './Avatar';
+import { analytics } from '@heycatch/sdk';
 
 type NavItem = {
   href: string;
@@ -176,6 +177,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+    analytics.resetIdentity();
     // Land on the public home page. A single navigation (no push/replace race)
     // means the Back button behaves normally instead of bouncing off a
     // protected /dashboard/* route.

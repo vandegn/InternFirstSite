@@ -1690,22 +1690,6 @@ img { max-width: 100%; height: auto; display: block; }
     padding-bottom: 40px;
 }
 
-.about-image-section {
-    padding: 0 0 60px;
-}
-
-.about-hero-img {
-    max-width: 900px;
-    margin: 0 auto;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-}
-
-.about-hero-img img {
-    width: 100%;
-    border-radius: var(--radius-lg);
-}
-
 .about-block {
     padding: 60px 0;
 }

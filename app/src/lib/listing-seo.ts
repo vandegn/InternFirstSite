@@ -28,18 +28,10 @@ export function listingUrl(id: string) {
   return absoluteUrl(`/internships/${id}`);
 }
 
-// Employer-authored text ends up inside a <script type="application/ld+json">
-// block. JSON.stringify escapes quotes and backslashes but NOT angle brackets,
-// so a listing whose body contains the literal text "</script>" would close the
-// tag early and let everything after it be parsed as markup. Escaping the three
-// characters that matter keeps the JSON valid — < decodes back to '<' for
-// any JSON parser, Google's included — while making tag breakout impossible.
-export function serializeJsonLd(json: Record<string, unknown>) {
-  return JSON.stringify(json)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026');
-}
+// Re-exported so this module's public surface is unchanged, but there is now
+// exactly one implementation (lib/structured-data.ts), shared with the
+// homepage's Organization node.
+export { serializeJsonLd } from '@/lib/structured-data';
 
 function escapeHtml(text: string) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

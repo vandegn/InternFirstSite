@@ -14,6 +14,7 @@ import {
   type PublicListing,
 } from '@/lib/listing-public';
 import { jobPostingJsonLd, listingUrl, serializeJsonLd, toMetaDescription } from '@/lib/listing-seo';
+import { breadcrumbJsonLd } from '@/lib/structured-data';
 
 // This page was entirely client-rendered: the server sent "Loading internship..."
 // and the role, the company, and the description only existed after the browser
@@ -120,6 +121,20 @@ export default async function PublicListingDetailPage({ params }: PageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(jobPostingJsonLd(listing)) }}
+      />
+      {/* These URLs end in a bare UUID, so the raw path tells a searcher
+          nothing. A breadcrumb trail is what Google shows in its place. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(
+            breadcrumbJsonLd([
+              { name: 'Home', path: '/' },
+              { name: 'Internships', path: '/internships' },
+              { name: listing.title, path: `/internships/${listing.id}` },
+            ]),
+          ),
+        }}
       />
 
       <Header />

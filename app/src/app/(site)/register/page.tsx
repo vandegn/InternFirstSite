@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { Suspense, useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
 import PasswordInput from '@/components/PasswordInput';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
@@ -16,9 +16,13 @@ import { getPolicyVersions } from '@/lib/policies';
 
 type Role = 'student' | 'employer';
 
-export default function RegisterPage() {
+function isRole(value: string | null): value is Role {
+  return value === 'student' || value === 'employer';
+}
+
+function RegisterPage({ initialRole }: { initialRole: Role }) {
   const router = useRouter();
-  const [role, setRole] = useState<Role>('student');
+  const [role, setRole] = useState<Role>(initialRole);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -380,5 +384,33 @@ export default function RegisterPage() {
         <p className="auth-footer">Already have an account? <Link href="/login">Sign in</Link></p>
       </div>
     </div>
+  );
+}
+
+// /register?role=employer lands straight on the employer form. Both audiences
+// used to arrive here defaulted to Student, so every employer CTA on the site
+// opened a form asking them for their .edu address and major — which is why the
+// employer-facing links now carry the role. Anything unrecognised falls back to
+// the old default.
+function RegisterPageWithQueryRole() {
+  const searchParams = useSearchParams();
+  const requested = searchParams.get('role');
+  return <RegisterPage initialRole={isRole(requested) ? requested : 'student'} />;
+}
+
+// useSearchParams opts a client component out of prerendering, and Next fails
+// the build unless the boundary is explicit.
+//
+// The fallback renders the real form at the default role rather than `null`.
+// That matters: with a null fallback the prerendered register.html contained no
+// form at all, so the page flashed empty before hydration — on the one page
+// where that costs signups. This way the static HTML is exactly what it was
+// before, and the query string only changes which role is preselected once the
+// client takes over.
+export default function RegisterPageWrapper() {
+  return (
+    <Suspense fallback={<RegisterPage initialRole="student" />}>
+      <RegisterPageWithQueryRole />
+    </Suspense>
   );
 }

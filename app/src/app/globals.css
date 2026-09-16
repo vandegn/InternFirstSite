@@ -902,7 +902,8 @@ img { max-width: 100%; height: auto; display: block; }
     margin: 0 auto 20px;
 }
 
-.step-icon img {
+.step-icon img,
+.step-icon svg {
     width: 40px;
     height: 40px;
     object-fit: contain;
@@ -927,9 +928,11 @@ img { max-width: 100%; height: auto; display: block; }
     padding-top: 36px;
 }
 
-.step-connector img {
+.step-connector img,
+.step-connector svg {
     width: 80px;
     opacity: 0.4;
+    color: var(--text-secondary);
 }
 
 /* ========================================
@@ -1097,7 +1100,28 @@ img { max-width: 100%; height: auto; display: block; }
     font-size: 32px;
     font-weight: 700;
     color: #fff;
-    margin-bottom: 28px;
+    margin-bottom: 12px;
+}
+
+.newsletter-sub {
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 520px;
+    margin: 0 auto 28px;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* Confirmation / error text under the subscribe form. Sits on the dark
+   gradient panel, so it can't inherit the page's body colour. */
+.newsletter-status {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 15px;
+    margin: 16px auto 0;
+    max-width: 480px;
+}
+
+.newsletter-status-error {
+    color: #FFB4A8;
 }
 
 .newsletter-form {

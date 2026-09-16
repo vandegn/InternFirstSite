@@ -35,6 +35,21 @@ const faqData = [
     answer:
       'Our team reviews every employer account before its listings reach students. Until that review clears, a company cannot see applicants or their information.',
   },
+  {
+    question: 'Where does InternFirst operate?',
+    answer:
+      'The United States only, for now. Every listing on the platform is a U.S.-based or U.S.-remote role, and registration is open to students at U.S. institutions. We are not accepting international students or employers yet.',
+  },
+  {
+    question: 'What if my school email is not a .edu address?',
+    answer:
+      'A .edu email is required to register as a student today, because it is how we verify enrollment. If your institution issues a different domain, contact us and we will look at your account individually — but we cannot promise an exception yet.',
+  },
+  {
+    question: 'What does InternFirst cost employers?',
+    answer:
+      'Nothing during the current pilot. Employers post roles, review applicants, message students, schedule interviews and extend offers at no charge while the pilot runs. We will give existing employers notice before any of that changes.',
+  },
 ];
 
 export default function HomeFaq() {

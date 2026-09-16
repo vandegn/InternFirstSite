@@ -94,7 +94,7 @@ export default function CareerResources() {
                 </div>
                 <h4>{r.title}</h4>
                 <p>{r.body}</p>
-                <Link href="/register" className="resource-link">
+                <Link href="/register?role=student" className="resource-link">
                   Get Started &rarr;
                 </Link>
               </div>

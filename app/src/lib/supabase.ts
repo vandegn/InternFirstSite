@@ -2617,6 +2617,22 @@ export async function joinWaitlist(opts: {
   return { error };
 }
 
+// The homepage "Get internship alerts" form. Same table as the waitlist — these
+// are the same people, an address given so we can tell them when relevant roles
+// go live — but with no name and no role, because the form asks for neither.
+// Both columns are nullable; only `email` is NOT NULL and unique.
+//
+// A repeat address is a success, not an error: the person asked to hear from us
+// and they already will. 23505 is Postgres' unique_violation.
+export async function subscribeToInternshipAlerts(email: string) {
+  const { error } = await supabase
+    .from('waitlist')
+    .insert({ email: email.trim().toLowerCase() });
+
+  if (error && error.code !== '23505') return { error };
+  return { error: null };
+}
+
 export type WaitlistEntry = {
   id: string;
   email: string;

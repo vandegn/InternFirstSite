@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { pageMetadata } from '@/lib/site';
+import { organizationJsonLd, serializeJsonLd } from '@/lib/structured-data';
 import HomeFaq from './HomeFaq';
 import HomeNewsletter from './HomeNewsletter';
 
@@ -40,6 +41,15 @@ const categories = [
 export default function LandingPage() {
   return (
     <>
+      {/* schema.org Organization. This is the entity Google and the AI answer
+          engines attach the brand's name, logo and social profiles to — without
+          it "InternFirst" is just a string on a page. Homepage only: one
+          Organization node per site, on the page its @id points at. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationJsonLd()) }}
+      />
+
       <Header />
 
       {/* HERO */}
@@ -61,7 +71,7 @@ export default function LandingPage() {
           </p>
           <div className="cta-buttons" style={{ marginTop: 8, marginBottom: 40 }}>
             <Link href="/internships" className="btn-primary">Browse Internships</Link>
-            <Link href="/register" className="btn-secondary">Create Account</Link>
+            <Link href="/register?role=student" className="btn-secondary">Create Account</Link>
           </div>
           
         </div>
@@ -124,7 +134,7 @@ export default function LandingPage() {
             </ul>
             <div className="cta-buttons">
               <Link href="/internships" className="btn-primary">Browse Internships</Link>
-              <Link href="/register" className="btn-secondary">Post an Internship</Link>
+              <Link href="/register?role=employer" className="btn-secondary">Post an Internship</Link>
             </div>
           </div>
         </div>
@@ -137,27 +147,32 @@ export default function LandingPage() {
           <div className="steps">
             <div className="step">
               <div className="step-icon">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Group.png" alt="Browse" />
+                <StepIcon>
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </StepIcon>
               </div>
               <h3>1. Browse openly</h3>
               <p>Explore live internships from reviewed employers — no signup required.</p>
             </div>
-            <div className="step-connector">
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Vector-30.png" alt="" />
-            </div>
+            <StepConnector />
             <div className="step">
               <div className="step-icon">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Group-1.png" alt="Create" />
+                <StepIcon>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </StepIcon>
               </div>
               <h3>2. Create your profile</h3>
               <p>Set up a verified .edu profile when you find a role worth applying for.</p>
             </div>
-            <div className="step-connector">
-              <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Vector-30.png" alt="" />
-            </div>
+            <StepConnector />
             <div className="step">
               <div className="step-icon">
-                <img src="https://internfirst-demo.com/wp-content/uploads/2026/02/Group-2.png" alt="Apply" />
+                <StepIcon>
+                  <path d="M9 11l3 3L22 4" />
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                </StepIcon>
               </div>
               <h3>3. Apply in one click</h3>
               <p>Apply, message, and interview — all inside InternFirst.</p>
@@ -186,11 +201,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* NEWSLETTER, currently doesn't do anything, come here for newsletter stuff in future*/}
+      {/* NEWSLETTER — see HomeNewsletter.tsx; this now actually records the
+          address rather than swallowing it. */}
       <section className="newsletter">
         <div className="container">
           <div className="newsletter-inner">
-            <h2>Get launch updates</h2>
+            <h2>Get internship alerts</h2>
+            <p className="newsletter-sub">
+              New roles land every week. We&apos;ll email you when listings that fit go live —
+              no spam, and nothing off-platform.
+            </p>
             <HomeNewsletter />
           </div>
         </div>
@@ -198,5 +218,37 @@ export default function LandingPage() {
 
       <Footer />
     </>
+  );
+}
+
+// The three "how it works" icons and the arrows between them used to be hot-
+// linked from internfirst-demo.com, which now answers 503 — so the section
+// rendered three empty circles and two gaps in production. Inline SVG instead:
+// no third-party host to go dark, no extra requests, and it matches how the
+// rest of the site draws icons.
+function StepIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--primary)"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+function StepConnector() {
+  return (
+    <div className="step-connector" aria-hidden="true">
+      <svg viewBox="0 0 80 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="1" y1="4" x2="73" y2="4" strokeDasharray="4 4" />
+        <polyline points="70 1 74 4 70 7" />
+      </svg>
+    </div>
   );
 }

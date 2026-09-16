@@ -36,7 +36,7 @@ export default function Footer() {
                 points for each audience.
               */}
               <li><Link href="/internships">Students</Link></li>
-              <li><Link href="/register">Employers</Link></li>
+              <li><Link href="/register?role=employer">Employers</Link></li>
             </ul>
           </div>
           <div className="footer-links">

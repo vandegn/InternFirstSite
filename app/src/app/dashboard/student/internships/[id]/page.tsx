@@ -1,5 +1,6 @@
 'use client';
 
+import { trackProductEvent } from '@/lib/product-analytics-client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -371,7 +372,8 @@ export default function InternshipDetail() {
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <button
                   className="btn-primary"
-                  onClick={() => setShowApplyForm(true)}
+                  data-analytics-cta="apply"
+                  onClick={() => { trackProductEvent('application_started', { listingId: id }); setShowApplyForm(true); }}
                   style={{ padding: '12px 32px', fontSize: '1rem' }}
                 >
                   Apply Now

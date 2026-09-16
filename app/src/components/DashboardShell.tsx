@@ -84,6 +84,7 @@ const EMPLOYER_NAV: NavItem[] = [
 ];
 
 const ADMIN_NAV: NavItem[] = [
+  { href: '/dashboard/admin/analytics', label: 'Analytics', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18M7 17v-4m5 4V7m5 10V4" /></svg> },
   {
     href: '/dashboard/admin',
     label: 'View Waitlist',

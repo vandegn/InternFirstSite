@@ -70,6 +70,7 @@ function ApplyCta({
   return (
     <Link
       href={`/dashboard/student/internships/${listingId}`}
+      data-analytics-cta={applied ? undefined : 'apply'}
       aria-label={applied ? 'Applied — view your application' : 'Apply to this internship'}
       style={{
         display: 'inline-flex',

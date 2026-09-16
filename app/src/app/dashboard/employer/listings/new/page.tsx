@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { trackProductEvent } from '@/lib/product-analytics-client';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -35,6 +36,11 @@ import LocationPicker, { EMPTY_LOCATION, type LocationValue } from '@/components
 
 export default function NewListingPage() {
   const router = useRouter();
+  const analyticsFlow = useRef<string | null>(null);
+  function startPosting() {
+    analyticsFlow.current ??= crypto.randomUUID();
+    trackProductEvent('job_posting_started', { flowId: analyticsFlow.current });
+  }
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState<LocationValue>(EMPTY_LOCATION);
@@ -187,7 +193,9 @@ export default function NewListingPage() {
       // listing gets its window when publish_due_listings flips it to active,
       // so scheduling three weeks out doesn't burn three weeks of run time; a
       // draft has no window at all until it's published.
+      startPosting();
       const listing = await createListing({
+        analytics_flow_id: analyticsFlow.current!,
         ...base,
         ...(publishMode === 'now'
           ? { status: 'active', expires_at: new Date(Date.now() + postingDays * 86400_000).toISOString() }
@@ -231,7 +239,7 @@ export default function NewListingPage() {
         {/* ── Left: Form ── */}
         <div className="profile-card" style={{ padding: '28px' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px' }}>Listing Details</h2>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} onChange={startPosting}>
             <div className="form-grid">
               <div className="form-group">
                 <label htmlFor="title">Job Title</label>

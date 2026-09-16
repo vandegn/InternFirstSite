@@ -134,7 +134,7 @@ export default function LandingPage() {
             </ul>
             <div className="cta-buttons">
               <Link href="/internships" className="btn-primary">Browse Internships</Link>
-              <Link href="/register?role=employer" className="btn-secondary">Post an Internship</Link>
+              <Link href="/register?role=employer" data-analytics-cta="post_job" className="btn-secondary">Post an Internship</Link>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { trackProductEvent } from '@/lib/product-analytics-client';
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
@@ -314,6 +315,7 @@ export async function updateEmployer(employerId: string, fields: {
 }
 
 export async function createListing(listing: {
+  analytics_flow_id?: string;
   employer_id: string;
   title: string;
   description: string;
@@ -1495,6 +1497,7 @@ export async function getListingViewCounts(employerId: string) {
 // zero without anything surfacing. See
 // supabase/migrations/20260802_fix_application_stage_and_views.sql.
 export async function trackListingView(listingId: string) {
+  trackProductEvent('listing_viewed', { listingId });
   const { error } = await supabase.rpc('record_listing_view', {
     p_listing_id: listingId,
   });

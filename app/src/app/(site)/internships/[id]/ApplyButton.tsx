@@ -44,6 +44,7 @@ export default function ApplyButton({
 
   return (
     <button
+      data-analytics-cta="apply"
       onClick={handleApply}
       disabled={applying}
       className={className}

@@ -1,3 +1,4 @@
+import ProductAnalytics from '@/components/ProductAnalytics';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -68,7 +69,7 @@ export default function RootLayout({
           data-version="062024"
         />
       </head>
-      <body className={inter.variable}>{children}</body>
+      <body className={inter.variable}>{children}<ProductAnalytics /></body>
     </html>
   );
 }

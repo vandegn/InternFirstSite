@@ -14,6 +14,8 @@ import SchoolPicker, { EMPTY_SCHOOL, type SchoolValue } from '@/components/Schoo
 import PolicyAgreementModal from '@/components/PolicyAgreementModal';
 import { getPolicyVersions } from '@/lib/policies';
 
+import { registrationFlow, trackProductEvent } from '@/lib/product-analytics-client';
+
 type Role = 'student' | 'employer';
 
 function isRole(value: string | null): value is Role {
@@ -118,7 +120,7 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
 
     try {
       // Build user_metadata with role-specific fields
-      const metadata: Record<string, string> = { role, fullName, phone };
+      const metadata: Record<string, string> = { role, fullName, phone, analyticsFlowId: registrationFlow() };
 
       // Which document versions were on screen when the user clicked I Agree.
       // /auth/callback turns this into a durable policy_acceptances row once
@@ -195,7 +197,7 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
 
         {error && <div className="auth-error" style={{ display: 'block' }}>{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} onChange={() => trackProductEvent('registration_started', { role, flowId: registrationFlow() })}>
           <div className="form-grid">
             <div className="form-group">
               <label htmlFor="fullName">Full Name</label>

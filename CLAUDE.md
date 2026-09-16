@@ -46,6 +46,8 @@ npm run lint     # ESLint
 
 **Public pages:** `/about`, `/blog`, `/career-resources`, `/contact`, `/home` — marketing and informational pages outside the dashboard.
 
+**Admin analytics:** `/dashboard/admin/analytics` reports first-party listing views, key CTA clicks, registration/application/posting funnels, daily activity, and existing-record totals. Browser events go through `/api/analytics/events`; completion events come from database triggers. Apply `migrations/20260916_product_analytics.sql` before deploying (adds `internship_listings.analytics_flow_id`). See `docs/product-analytics.md` for definitions and rollout.
+
 **Feedback:** the floating Feedback button on every student/employer dashboard page posts to `/api/feedback`, which writes a row to `feedback_submissions`. Admins review it at `/dashboard/admin/feedback` and mark items new → reviewed → resolved. Submitter email/name/role are snapshotted onto the row so feedback survives account deletion. RLS restricts reads to `intern_first_admin`; there is no recipient lookup and no email routing.
 
 **Route protection:** `src/app/dashboard/layout.tsx` wraps all dashboard routes with client-side auth checks. It verifies the user is logged in, has a profile, and is accessing the correct dashboard for their role. Unauthorized users get redirected to `/login`, `/register`, or their correct dashboard. There is no middleware — all checks run in a `useEffect`.

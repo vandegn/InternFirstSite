@@ -12,7 +12,7 @@ create table profiles(user_id uuid primary key, role text, created_at timestampt
 create function is_intern_first_admin(uid uuid) returns boolean language sql stable security definer as $$ select exists(select 1 from profiles where user_id=uid and role='intern_first_admin') $$;
 create table students(id uuid primary key, user_id uuid);
 create table internship_listings(id uuid primary key, status text, created_at timestamptz default now());
-create table applications(id uuid primary key, student_id uuid, listing_id uuid, created_at timestamptz default now());
+create table applications(id uuid primary key, student_id uuid, listing_id uuid, applied_at timestamptz default now());
 create table listing_views(viewed_at timestamptz default now());
 create table waitlist(role text, created_at timestamptz default now());
 \ir ../migrations/20260916_product_analytics.sql

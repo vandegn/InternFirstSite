@@ -99,7 +99,7 @@ begin
     'funnels',coalesce((select jsonb_agg(funnels) from funnels),'[]'::jsonb),
     'totals',jsonb_build_object(
       'registrations',(select count(*) from profiles where role in ('student','employer') and created_at >= p_start and created_at < p_end and (p_role = 'all' or role = p_role)),
-      'applications',(select count(*) from applications where created_at >= p_start and created_at < p_end and p_role in ('all','student')),
+      'applications',(select count(*) from applications where applied_at >= p_start and applied_at < p_end and p_role in ('all','student')),
       'listings',(select count(*) from internship_listings where created_at >= p_start and created_at < p_end and p_role in ('all','employer')),
       'uniqueListingViews',(select count(*) from listing_views where viewed_at >= p_start and viewed_at < p_end and p_role in ('all','student')),
       'waitlist',(select count(*) from waitlist where created_at >= p_start and created_at < p_end and (p_role = 'all' or role = p_role))

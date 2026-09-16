@@ -48,7 +48,19 @@ export default function AboutPage() {
           <div className="about-content-centered">
             <h2>Why We Built InternFirst</h2>
             <p>
-              The internship landscape is fragmented. Students juggle multiple apps for applications, interviews, messaging, and resume help. Employers manage job boards and spreadsheets. Universities rely on outdated systems to track outcomes. InternFirst consolidates applications, messaging, analytics, events, surveys, and workflow management into one seamless platform.
+              InternFirst began with a common frustration among our peers: finding an internship shouldn’t feel like a full-time job.
+            </p>
+            <p>
+              After experiencing the internship search firsthand, we saw how often students were left navigating outdated listings, unclear expectations, unanswered applications, and platforms that treated them like another résumé in a database. At the same time, employers struggled to reach qualified, genuinely interested students without sorting through piles of low-signal applications.
+            </p>
+            <p>
+              We knew there had to be a better way.
+            </p>
+            <p>
+              That’s why we built InternFirst, a platform designed to make internship recruiting simpler, more transparent, and more human. Students can discover meaningful opportunities that fit their goals, while employers can connect with verified candidates who are looking for meaningful experiences to kick off their professional careers.
+            </p>
+            <p>
+              InternFirst isn’t just another job board. It’s the platform we wished existed when we began our own careers: one built around opportunity, real connections, and helping the next generation take its first step forward.
             </p>
           </div>
         </div>

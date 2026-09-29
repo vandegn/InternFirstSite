@@ -139,7 +139,7 @@ export default async function PublicListingDetailPage({ params }: PageProps) {
 
       <Header />
 
-      <main style={{ background: 'var(--bg)', padding: '40px 0 80px' }}>
+      <main id="main-content" style={{ background: 'var(--bg)', padding: '40px 0 80px' }}>
         <div className="container" style={{ maxWidth: 880 }}>
           <Link
             href="/internships"

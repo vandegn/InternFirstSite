@@ -56,6 +56,7 @@ export default function CareerResources() {
   return (
     <>
       <Header />
+      <main id="main-content">
 
       <section className="hero" style={{ padding: '64px 0 32px' }}>
         <div className="container">
@@ -102,6 +103,7 @@ export default function CareerResources() {
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </>

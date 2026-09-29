@@ -69,6 +69,7 @@ export default function WaitlistPage() {
   return (
     <>
       <Header />
+      <main id="main-content">
 
       <section className="hero">
         <div className="container">
@@ -188,6 +189,7 @@ export default function WaitlistPage() {
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </>

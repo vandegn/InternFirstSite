@@ -61,7 +61,10 @@ export default async function PublicInternshipsPage() {
   return (
     <>
       <Header />
+      <main id="main-content">
       <InternshipsBrowser initialListings={listings} initialTotalCount={totalCount} />
+      </main>
+
       <Footer />
     </>
   );

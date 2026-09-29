@@ -42,6 +42,7 @@ export default function ContactPage() {
   return (
     <>
       <Header />
+      <main id="main-content">
 
       <section className="hero">
         <div className="container">
@@ -206,6 +207,7 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </>

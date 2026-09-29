@@ -1032,10 +1032,11 @@ export default function StudentProfile() {
                           borderRadius: '8px', zIndex: 10, boxShadow: 'var(--shadow-md)',
                         }}>
                           {filteredSkills.map((s) => (
-                            <div key={s} onClick={() => handleAddSkill(s)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem' }}
+                            <button type="button" key={s} onClick={() => handleAddSkill(s)}
+                              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem' }}
                               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                            >{s}</div>
+                            >{s}</button>
                           ))}
                         </div>
                       )}

@@ -5,6 +5,7 @@ export default function BlogPage() {
   return (
     <>
       <Header />
+      <main id="main-content">
 
       <section className="hero">
         <div className="container">
@@ -113,6 +114,7 @@ export default function BlogPage() {
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </>

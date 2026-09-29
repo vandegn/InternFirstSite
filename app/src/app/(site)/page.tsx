@@ -51,6 +51,7 @@ export default function LandingPage() {
       />
 
       <Header />
+      <main id="main-content">
 
       {/* HERO */}
       <section className="hero">
@@ -215,6 +216,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </>

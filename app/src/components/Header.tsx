@@ -33,6 +33,8 @@ export default function Header() {
   }, []);
 
   return (
+    <>
+    <a href="#main-content" className="skip-link">Skip to main content</a>
     <header className="header">
       <div className="header-inner">
         <Link href={logoHref} className="logo">
@@ -67,6 +69,7 @@ export default function Header() {
         <button
           className={`mobile-menu-toggle${menuOpen ? ' active' : ''}`}
           aria-label="Toggle menu"
+          aria-expanded={menuOpen}
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <span></span>
@@ -75,5 +78,6 @@ export default function Header() {
         </button>
       </div>
     </header>
+    </>
   );
 }

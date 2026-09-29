@@ -18,6 +18,7 @@ export default function AboutPage() {
   return (
     <>
       <Header />
+      <main id="main-content">
 
       {/* Hero */}
       <section className="hero about-hero">
@@ -204,6 +205,7 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </>

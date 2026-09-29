@@ -9,6 +9,43 @@
     box-sizing: border-box;
 }
 
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+/* One visible focus ring for keyboard users everywhere. !important so
+   inline `outline: 'none'` styles on individual inputs can't hide it. */
+:focus-visible {
+    outline: 2px solid #2563eb !important;
+    outline-offset: 2px;
+}
+
+/* Hidden until focused — the first Tab on any page lands here. */
+.skip-link {
+    position: absolute;
+    left: 12px;
+    top: -100px;
+    z-index: 10000;
+    padding: 10px 16px;
+    background: var(--panel-dark);
+    color: #fff;
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 :root {
     --primary: #1A2D49;
     --primary-dark: #0f1d33;
@@ -44,7 +81,7 @@
 
     /* Foreground for text sitting on a --primary / --accent fill */
     --on-primary: #ffffff;
-    --on-accent: #ffffff;
+    --on-accent: #1A2D49; /* white on the green is ~2:1 — fails WCAG AA */
 
     /* Always-navy panels (dark CTA blocks) — never flips with the theme */
     --panel-dark: #1A2D49;
@@ -1138,7 +1175,6 @@ img { max-width: 100%; height: auto; display: block; }
     flex: 1;
     padding: 14px 20px;
     border: none;
-    outline: none;
     font-size: 15px;
     font-family: inherit;
     color: var(--text);
@@ -1675,7 +1711,7 @@ img { max-width: 100%; height: auto; display: block; }
 
 .footer-socials a:hover {
     background: var(--accent);
-    color: #fff;
+    color: var(--primary);
     transform: translateY(-2px);
 }
 
@@ -1939,7 +1975,6 @@ img { max-width: 100%; height: auto; display: block; }
     font-family: inherit;
     color: var(--text);
     transition: border-color 0.2s;
-    outline: none;
     resize: vertical;
 }
 
@@ -2238,7 +2273,6 @@ img { max-width: 100%; height: auto; display: block; }
 .dash-search input {
     border: none;
     background: none;
-    outline: none;
     font-size: 14px;
     font-family: inherit;
     color: var(--text);
@@ -2247,6 +2281,15 @@ img { max-width: 100%; height: auto; display: block; }
 
 .dash-avatar {
     position: relative;
+    cursor: pointer;
+}
+
+.dash-avatar-trigger {
+    display: flex;
+    padding: 0;
+    border: none;
+    background: none;
+    border-radius: 50%;
     cursor: pointer;
 }
 
@@ -3505,7 +3548,6 @@ img { max-width: 100%; height: auto; display: block; }
     color: #0f172a;
     background: transparent;
     transition: border-color 0.2s;
-    outline: none;
     caret-color: #0f172a;
 }
 

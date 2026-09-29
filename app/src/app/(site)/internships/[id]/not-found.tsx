@@ -16,6 +16,7 @@ export default function ListingNotFound() {
   return (
     <>
       <Header />
+      <main id="main-content">
       <div style={{ padding: '120px 24px', textAlign: 'center' }}>
         <h1 style={{ fontSize: 28, marginBottom: 12 }}>Internship not found</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
@@ -25,6 +26,8 @@ export default function ListingNotFound() {
           Browse all internships
         </Link>
       </div>
+      </main>
+
       <Footer />
     </>
   );

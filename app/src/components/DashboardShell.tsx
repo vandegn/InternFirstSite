@@ -190,6 +190,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
 
   return (
     <div className="dashboard-body">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       {/* Platform-level notice. Admins run the place, so they don't need it. */}
       {role !== 'intern_first_admin' && <CommunityBanner />}
 
@@ -204,8 +205,21 @@ export default function DashboardShell({ children, role }: { children: React.Rea
           </div>
           <div className="dash-header-right">
             <NotificationBell />
-            <div className="dash-avatar" ref={avatarRef} onClick={() => setAvatarOpen(!avatarOpen)}>
-              <Avatar src={profileAvatar} name={profileName} size={36} />
+            <div
+              className="dash-avatar"
+              ref={avatarRef}
+              onKeyDown={e => { if (e.key === 'Escape') setAvatarOpen(false); }}
+            >
+              <button
+                type="button"
+                className="dash-avatar-trigger"
+                onClick={() => setAvatarOpen(!avatarOpen)}
+                aria-label="Account menu"
+                aria-haspopup="true"
+                aria-expanded={avatarOpen}
+              >
+                <Avatar src={profileAvatar} name={profileName} size={36} />
+              </button>
               {avatarOpen && (
                 <div className="avatar-dropdown">
                   {role !== 'intern_first_admin' && (
@@ -287,6 +301,8 @@ export default function DashboardShell({ children, role }: { children: React.Rea
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.label : undefined}
+                  aria-label={collapsed ? item.label : undefined}
+                  aria-current={active ? 'page' : undefined}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -331,7 +347,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
         </aside>
 
         {/* Main content */}
-        <main style={{ flex: 1, overflow: 'auto' }}>
+        <main id="main-content" style={{ flex: 1, overflow: 'auto' }}>
           <div key={pathname} className="page-transition">
             {children}
           </div>

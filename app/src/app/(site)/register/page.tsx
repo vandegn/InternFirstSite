@@ -171,7 +171,7 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
   }
 
   return (
-    <div className="auth-page">
+    <main className="auth-page">
       <div className="auth-container" style={{ maxWidth: 680 }}>
         <button
           type="button"
@@ -239,6 +239,7 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label htmlFor="school">School</label>
                   <SchoolPicker
+                    id="school"
                     value={school}
                     onChange={setSchool}
                     placeholder="Search your college or university..."
@@ -385,7 +386,7 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
 
         <p className="auth-footer">Already have an account? <Link href="/login">Sign in</Link></p>
       </div>
-    </div>
+    </main>
   );
 }
 

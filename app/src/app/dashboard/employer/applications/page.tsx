@@ -213,7 +213,7 @@ export default function EmployerApplications() {
       <>
       {/* Filters */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <select
+        <select aria-label="Filter by listing"
           value={filterListing}
           onChange={(e) => setFilterListing(e.target.value)}
           style={{ padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.85rem', background: 'var(--bg)' }}
@@ -423,7 +423,7 @@ export default function EmployerApplications() {
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Move to:</span>
-                      <select
+                      <select aria-label="Pipeline stage"
                         value={app.stage_id ?? ''}
                         onChange={(e) => handleStageChange(app.id, e.target.value)}
                         disabled={updating === app.id || listingStages.length === 0}

@@ -93,7 +93,7 @@ export default function CareerResources() {
                     {r.icon}
                   </svg>
                 </div>
-                <h4>{r.title}</h4>
+                <h2>{r.title}</h2>
                 <p>{r.body}</p>
                 <Link href="/register?role=student" className="resource-link">
                   Get Started &rarr;

@@ -31,7 +31,7 @@ export default function BlogPage() {
                   <span>New York</span>
                   <span>March 20, 2024</span>
                 </div>
-                <h3>Strategies for success: customer engagement art copy</h3>
+                <h2>Strategies for success: customer engagement art copy</h2>
                 <a href="#" className="blog-link">Learn more &rarr;</a>
               </div>
             </article>
@@ -46,7 +46,7 @@ export default function BlogPage() {
                   <span>Texas</span>
                   <span>March 11, 2024</span>
                 </div>
-                <h3>Smart growth essentials: data-driven content optimization</h3>
+                <h2>Smart growth essentials: data-driven content optimization</h2>
                 <a href="#" className="blog-link">Learn more &rarr;</a>
               </div>
             </article>
@@ -61,7 +61,7 @@ export default function BlogPage() {
                   <span>California</span>
                   <span>March 2, 2024</span>
                 </div>
-                <h3>The power of connection: brand storytelling that converts</h3>
+                <h2>The power of connection: brand storytelling that converts</h2>
                 <a href="#" className="blog-link">Learn more &rarr;</a>
               </div>
             </article>
@@ -76,7 +76,7 @@ export default function BlogPage() {
                   <span>New York</span>
                   <span>February 20, 2024</span>
                 </div>
-                <h3>Maximizing ROI: how to measure your internship program success</h3>
+                <h2>Maximizing ROI: how to measure your internship program success</h2>
                 <a href="#" className="blog-link">Learn more &rarr;</a>
               </div>
             </article>
@@ -91,7 +91,7 @@ export default function BlogPage() {
                   <span>Texas</span>
                   <span>February 15, 2024</span>
                 </div>
-                <h3>Strategies for success: customer engagement art copy</h3>
+                <h2>Strategies for success: customer engagement art copy</h2>
                 <a href="#" className="blog-link">Learn more &rarr;</a>
               </div>
             </article>
@@ -106,7 +106,7 @@ export default function BlogPage() {
                   <span>California</span>
                   <span>February 8, 2024</span>
                 </div>
-                <h3>Building a strong foundation: networking tips for interns</h3>
+                <h2>Building a strong foundation: networking tips for interns</h2>
                 <a href="#" className="blog-link">Learn more &rarr;</a>
               </div>
             </article>

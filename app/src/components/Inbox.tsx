@@ -348,7 +348,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
 
                 {/* Input */}
                 <form onSubmit={handleSend} style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
-                  <input
+                  <input aria-label="Message"
                     ref={composerRef}
                     type="text"
                     value={newMessage}

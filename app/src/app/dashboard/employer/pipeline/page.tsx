@@ -755,7 +755,7 @@ function EmployerPipelineInner() {
           </span>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
+          <select aria-label="Listing"
             value={selectedListing}
             onChange={(e) => setSelectedListing(e.target.value)}
             style={{
@@ -1081,7 +1081,18 @@ function EmployerPipelineInner() {
                         </div>
 
                         <p style={{ fontSize: '0.68rem', color: 'var(--text-light)' }}>
-                          Applied {timeAgo(app.applied_at)} · {isExpanded ? 'click to collapse' : 'click for details'}
+                          Applied {timeAgo(app.applied_at)} ·{' '}
+                          {/* The whole card toggles on click; this is the
+                              keyboard/screen-reader route to the same thing. */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : app.id); }}
+                            aria-expanded={isExpanded}
+                            aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${app.student.profile.full_name}`}
+                            style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}
+                          >
+                            {isExpanded ? 'hide details' : 'show details'}
+                          </button>
                         </p>
 
                         {isExpanded && (
@@ -1132,6 +1143,22 @@ function EmployerPipelineInner() {
                                   ))}
                               </div>
                             )}
+                            {/* Keyboard alternative to dragging the card. It
+                                proposes the same move a drop does, so the
+                                confirm dialog and the Offered gate still apply. */}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-light)', margin: '8px 0' }}>
+                              Move to
+                              <select
+                                value={app.stage_id ?? ''}
+                                onChange={(e) => {
+                                  const toStage = stages.find(st => st.id === e.target.value);
+                                  if (toStage && toStage.id !== app.stage_id) setPendingMove({ app, toStage });
+                                }}
+                                style={{ flex: 1, fontSize: '0.72rem', padding: '3px 6px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                              >
+                                {stages.map(st => <option key={st.id} value={st.id}>{st.label}</option>)}
+                              </select>
+                            </label>
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                               {/* Step 1 / step 3 of the availability handshake.
                                   While we're waiting on the candidate the
@@ -1380,7 +1407,7 @@ function EmployerPipelineInner() {
                         >⋮⋮</span>
                       )}
                       <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color_text, flexShrink: 0 }} />
-                      <input
+                      <input aria-label="Column name"
                         value={s.label}
                         // Applied and Offered are the board's fixed endpoints —
                         // stage_type drives the dashboard stats and the student's
@@ -1451,7 +1478,7 @@ function EmployerPipelineInner() {
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
               <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>Add a column</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <select
+                <select aria-label="Add a column"
                   value={newStagePreset}
                   onChange={e => {
                     const label = e.target.value;
@@ -1590,7 +1617,7 @@ function EmployerPipelineInner() {
                       <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 6 }}>
                         Move candidates to:
                       </label>
-                      <select
+                      <select aria-label="Move candidates to:"
                         value={reassignTo}
                         onChange={e => setReassignTo(e.target.value)}
                         style={{

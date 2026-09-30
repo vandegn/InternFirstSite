@@ -14,7 +14,7 @@ export default function Footer() {
             <p>Internship recruitment made simple.</p>
           </div>
           <div className="footer-links">
-            <h4>Pages</h4>
+            <h2>Pages</h2>
             <ul>
               <li><Link href="/">Home</Link></li>
               <li><Link href="/about">About Us</Link></li>
@@ -24,7 +24,7 @@ export default function Footer() {
             </ul>
           </div>
           <div className="footer-links">
-            <h4>Navigation</h4>
+            <h2>Navigation</h2>
             <ul>
               {/*
                 These pointed at /dashboard/student and /dashboard/employer.
@@ -40,14 +40,14 @@ export default function Footer() {
             </ul>
           </div>
           <div className="footer-links">
-            <h4>Resources</h4>
+            <h2>Resources</h2>
             <ul>
               <li><Link href="/career-resources#resume-advice">Resume Advice</Link></li>
               <li><Link href="/career-resources#resume-building">Resume Building</Link></li>
             </ul>
           </div>
           <div className="footer-links">
-            <h4>Follow Us</h4>
+            <h2>Follow Us</h2>
             <div className="footer-socials">
               <a
                 href="https://www.linkedin.com/company/intern1st/"
@@ -87,6 +87,7 @@ export default function Footer() {
           <ul>
             <li><a href="/privacy">Privacy Policy</a></li>
             <li><a href="/terms">Terms &amp; Conditions</a></li>
+            <li><a href="/accessibility">Accessibility</a></li>
           </ul>
         </div>
       </div>

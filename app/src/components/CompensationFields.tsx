@@ -124,7 +124,7 @@ export default function CompensationFields({ value, onChange }: {
       )}
 
       {value.comp_type !== '' && (
-        <input
+        <input aria-label={value.comp_type === 'other' ? 'Compensation description' : 'Compensation note'}
           type="text"
           placeholder={value.comp_type === 'other' ? 'Describe the compensation' : 'Note, e.g. plus housing stipend (optional)'}
           value={value.comp_note}

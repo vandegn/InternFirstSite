@@ -4,8 +4,9 @@ import { useCallback } from 'react';
 
 // Textarea that grows to fit its content. Extracted from the new-listing page
 // so the listing editors can share it.
-export default function AutoResizeTextarea({ id, placeholder, required, rows, value, onChange, style }: {
+export default function AutoResizeTextarea({ id, ariaLabel, placeholder, required, rows, value, onChange, style }: {
   id?: string;
+  ariaLabel?: string;
   placeholder: string;
   required?: boolean;
   rows: number;
@@ -24,6 +25,7 @@ export default function AutoResizeTextarea({ id, placeholder, required, rows, va
     <textarea
       ref={ref}
       id={id}
+      aria-label={ariaLabel}
       placeholder={placeholder}
       required={required}
       rows={rows}

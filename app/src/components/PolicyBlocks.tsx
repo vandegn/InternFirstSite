@@ -15,7 +15,7 @@ export default function PolicyBlocksView({ blocks }: { blocks: PolicyBlock[] }) 
 
 function PolicyLine({ block }: { block: PolicyBlock }) {
   if (block.type === 'h') {
-    return <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '18px 0 6px' }}>{block.text}</h4>;
+    return <h3 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '18px 0 6px' }}>{block.text}</h3>;
   }
   if (block.type === 'li') {
     return (

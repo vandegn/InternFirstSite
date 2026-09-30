@@ -44,7 +44,7 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="auth-page">
+    <main className="auth-page">
       <div className="auth-container narrow">
         <button
           type="button"
@@ -115,7 +115,7 @@ function VerifyEmailContent() {
           Already verified? <Link href="/login">Sign in</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 

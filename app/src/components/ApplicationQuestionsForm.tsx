@@ -101,7 +101,7 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
               {!question.help_text && <div style={{ height: 8 }} />}
 
               {question.question_type === 'short_text' && (
-                <input
+                <input aria-label={question.prompt}
                   type="text"
                   value={answer.text}
                   onChange={(e) => set(question.id, { text: e.target.value })}
@@ -110,7 +110,7 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
               )}
 
               {question.question_type === 'long_text' && (
-                <textarea
+                <textarea aria-label={question.prompt}
                   rows={4}
                   value={answer.text}
                   onChange={(e) => set(question.id, { text: e.target.value })}

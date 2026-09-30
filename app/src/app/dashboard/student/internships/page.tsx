@@ -414,7 +414,7 @@ export default function BrowseInternships() {
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <input
+            <input aria-label="Search internships"
               type="text"
               placeholder="Search role, company, or skill..."
               value={searchQuery}
@@ -449,7 +449,7 @@ export default function BrowseInternships() {
             >
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
             </svg>
-            <input
+            <input aria-label="Location"
               type="text"
               placeholder="Location..."
               value={locationFilter}
@@ -716,7 +716,7 @@ export default function BrowseInternships() {
                       >
                         <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                       </svg>
-                      <input
+                      <input aria-label="Search industries"
                         type="text"
                         placeholder="Search industries..."
                         value={industrySearch}

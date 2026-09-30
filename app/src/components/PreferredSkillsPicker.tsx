@@ -109,7 +109,7 @@ export default function PreferredSkillsPicker({ value, onChange }: {
         </p>
       ) : (
         <div style={{ position: 'relative' }} ref={dropdownRef}>
-          <input
+          <input aria-label="Search skills"
             type="text"
             placeholder="Browse or search skills..."
             value={search}

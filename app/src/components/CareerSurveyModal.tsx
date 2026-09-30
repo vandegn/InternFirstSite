@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
 import ModalPortal from '@/components/ModalPortal';
 
 /* ── Survey data ── */
@@ -264,7 +265,7 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
         {/* Header */}
         <div style={{ padding: '24px 28px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent-dark, #8ab32e)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent-text)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Step {step + 1} of {STEPS.length}
             </span>
             <button
@@ -462,7 +463,7 @@ export default function CareerSurveyModal({ open, onClose, onSubmit, initialData
           {/* Step 4: Career goals (text area) */}
           {step === 4 && (
             <div>
-              <textarea
+              <textarea aria-label="Your career goals"
                 value={goals}
                 onChange={e => setGoals(e.target.value)}
                 placeholder="e.g., I want to break into product management at a mid-size tech company after graduation, focusing on B2B SaaS products..."

@@ -656,29 +656,29 @@ export default function StudentProfile() {
       <div style={inlineFormStyle}>
         <div style={{ marginBottom: '10px' }}>
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>{titleLabel}</label>
-          <input style={inputStyle} type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} />
+          <input aria-label={titleLabel.replace(' *', '')} style={inputStyle} type="text" value={expForm.title || ''} onChange={(e) => setExpForm({ ...expForm, title: e.target.value })} />
         </div>
         {showOrg && (
           <div style={{ marginBottom: '10px' }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>{orgLabel}</label>
-            <input style={inputStyle} type="text" value={expForm.organization || ''} onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })} />
+            <input aria-label={orgLabel.replace(' *', '')} style={inputStyle} type="text" value={expForm.organization || ''} onChange={(e) => setExpForm({ ...expForm, organization: e.target.value })} />
           </div>
         )}
         {showLoc && (
           <div style={{ marginBottom: '10px' }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Location</label>
-            <input style={inputStyle} type="text" value={expForm.location || ''} onChange={(e) => setExpForm({ ...expForm, location: e.target.value })} />
+            <input aria-label="Location" style={inputStyle} type="text" value={expForm.location || ''} onChange={(e) => setExpForm({ ...expForm, location: e.target.value })} />
           </div>
         )}
         {showDates && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Start</label>
-              <input style={inputStyle} type="month" value={expForm.start_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value ? e.target.value + '-01' : '' })} />
+              <input aria-label="Start" style={inputStyle} type="month" value={expForm.start_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value ? e.target.value + '-01' : '' })} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>End</label>
-              <input style={inputStyle} type="month" value={expForm.end_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value ? e.target.value + '-01' : '' })} disabled={expForm.is_current} />
+              <input aria-label="End" style={inputStyle} type="month" value={expForm.end_date?.slice(0, 7) || ''} onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value ? e.target.value + '-01' : '' })} disabled={expForm.is_current} />
             </div>
           </div>
         )}
@@ -691,18 +691,18 @@ export default function StudentProfile() {
         {showTech && (
           <div style={{ marginBottom: '10px' }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Technologies</label>
-            <input style={inputStyle} type="text" value={expForm.technologies || ''} onChange={(e) => setExpForm({ ...expForm, technologies: e.target.value })} placeholder="React, Node.js, etc." />
+            <input aria-label="Technologies" style={inputStyle} type="text" value={expForm.technologies || ''} onChange={(e) => setExpForm({ ...expForm, technologies: e.target.value })} placeholder="React, Node.js, etc." />
           </div>
         )}
         {showLink && (
           <div style={{ marginBottom: '10px' }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Link</label>
-            <input style={inputStyle} type="url" value={expForm.link || ''} onChange={(e) => setExpForm({ ...expForm, link: e.target.value })} />
+            <input aria-label="Link" style={inputStyle} type="url" value={expForm.link || ''} onChange={(e) => setExpForm({ ...expForm, link: e.target.value })} />
           </div>
         )}
         <div style={{ marginBottom: '10px' }}>
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description</label>
-          <textarea rows={2} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' as const }} />
+          <textarea aria-label="Description" rows={2} value={expForm.description || ''} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' as const }} />
         </div>
         {expError && errorBanner(expError)}
         <div style={{ display: 'flex', gap: '6px' }}>
@@ -722,7 +722,7 @@ export default function StudentProfile() {
       <div style={inlineFormStyle}>
         <div style={{ marginBottom: '10px' }}>
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Type</label>
-          <select style={inputStyle} value={type} onChange={(e) => setOrgForm({ ...orgForm, type: e.target.value })}>
+          <select aria-label="Type" style={inputStyle} value={type} onChange={(e) => setOrgForm({ ...orgForm, type: e.target.value })}>
             {ORG_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
@@ -730,26 +730,26 @@ export default function StudentProfile() {
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
             {type === 'greek_life' ? 'Organization *' : 'Name *'}
           </label>
-          <input style={inputStyle} type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder={type === 'greek_life' ? 'e.g. Sigma Chi' : 'e.g. Finance Club'} />
+          <input aria-label={type === 'greek_life' ? 'Organization' : 'Name'} style={inputStyle} type="text" value={orgForm.name || ''} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder={type === 'greek_life' ? 'e.g. Sigma Chi' : 'e.g. Finance Club'} />
         </div>
         {type === 'greek_life' && (
           <div style={{ marginBottom: '10px' }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Chapter</label>
-            <input style={inputStyle} type="text" value={orgForm.chapter || ''} onChange={(e) => setOrgForm({ ...orgForm, chapter: e.target.value })} />
+            <input aria-label="Chapter" style={inputStyle} type="text" value={orgForm.chapter || ''} onChange={(e) => setOrgForm({ ...orgForm, chapter: e.target.value })} />
           </div>
         )}
         <div style={{ marginBottom: '10px' }}>
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Role</label>
-          <input style={inputStyle} type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} placeholder="e.g. Treasurer, Member" />
+          <input aria-label="Role" style={inputStyle} type="text" value={orgForm.role || ''} onChange={(e) => setOrgForm({ ...orgForm, role: e.target.value })} placeholder="e.g. Treasurer, Member" />
         </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Joined</label>
-            <input style={inputStyle} type="month" value={orgForm.join_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, join_date: e.target.value ? e.target.value + '-01' : '' })} />
+            <input aria-label="Joined" style={inputStyle} type="month" value={orgForm.join_date?.slice(0, 7) || ''} onChange={(e) => setOrgForm({ ...orgForm, join_date: e.target.value ? e.target.value + '-01' : '' })} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>End</label>
-            <input
+            <input aria-label="End"
               style={{ ...inputStyle, opacity: orgForm.is_current ? 0.5 : 1 }}
               type="month"
               value={orgForm.end_date?.slice(0, 7) || ''}
@@ -768,7 +768,7 @@ export default function StudentProfile() {
         </label>
         <div style={{ marginBottom: '10px' }}>
           <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description</label>
-          <textarea rows={2} value={orgForm.description || ''} onChange={(e) => setOrgForm({ ...orgForm, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="What you do there..." />
+          <textarea aria-label="Description" rows={2} value={orgForm.description || ''} onChange={(e) => setOrgForm({ ...orgForm, description: e.target.value })} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="What you do there..." />
         </div>
         {orgError && errorBanner(orgError)}
         <div style={{ display: 'flex', gap: '6px' }}>
@@ -855,7 +855,7 @@ export default function StudentProfile() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '6px' }}>
                 {editingHero ? (
-                  <input
+                  <input aria-label="Full name"
                     style={{ ...inputStyle, fontSize: '1.2rem', fontWeight: 700, padding: '6px 10px', maxWidth: '320px' }}
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
@@ -888,7 +888,7 @@ export default function StudentProfile() {
               {editingHero ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>School</label>
+                    <label htmlFor="profile-school" style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>School</label>
                     <SchoolPicker
                       id="profile-school"
                       value={draftSchool}
@@ -900,7 +900,7 @@ export default function StudentProfile() {
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, position: 'relative' }} ref={majorDropdownRef}>
                       <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Major</label>
-                      <input
+                      <input aria-label="Major"
                         style={inputStyle}
                         value={draftMajorSearch}
                         onChange={(e) => { setDraftMajorSearch(e.target.value); setShowMajorDropdown(true); }}
@@ -928,16 +928,16 @@ export default function StudentProfile() {
                     </div>
                     <div style={{ width: '120px' }}>
                       <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Grad Year</label>
-                      <input style={inputStyle} type="number" min={2020} max={2035} value={draftGradYear} onChange={(e) => setDraftGradYear(e.target.value ? parseInt(e.target.value) : '')} />
+                      <input aria-label="Grad Year" style={inputStyle} type="number" min={2020} max={2035} value={draftGradYear} onChange={(e) => setDraftGradYear(e.target.value ? parseInt(e.target.value) : '')} />
                     </div>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Phone</label>
-                    <input style={{ ...inputStyle, maxWidth: '220px' }} type="text" value={draftPhone} onChange={(e) => setDraftPhone(e.target.value)} placeholder="(555) 123-4567" />
+                    <input aria-label="Phone" style={{ ...inputStyle, maxWidth: '220px' }} type="text" value={draftPhone} onChange={(e) => setDraftPhone(e.target.value)} placeholder="(555) 123-4567" />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Bio</label>
-                    <textarea rows={3} value={draftBio} onChange={(e) => setDraftBio(e.target.value)} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="Tell employers about yourself..." />
+                    <textarea aria-label="Bio" rows={3} value={draftBio} onChange={(e) => setDraftBio(e.target.value)} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="Tell employers about yourself..." />
                   </div>
                 </div>
               ) : (
@@ -1016,7 +1016,7 @@ export default function StudentProfile() {
                 {editingSkills && skills.length < MAX_STUDENT_SKILLS && (
                   <div style={{ marginTop: '12px' }}>
                     <div style={{ position: 'relative', marginBottom: '8px' }} ref={skillDropdownRef}>
-                      <input
+                      <input aria-label="Search skills"
                         style={inputStyle}
                         type="text"
                         placeholder="Browse or search skills..."
@@ -1087,7 +1087,7 @@ export default function StudentProfile() {
                   <form onSubmit={handleUploadResume} style={{ marginTop: '12px', padding: '14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg)' }}>
                     <div style={{ marginBottom: '8px' }}>
                       <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Display Name</label>
-                      <input style={inputStyle} type="text" placeholder="e.g. Fall 2026 Resume" required value={resumeName} onChange={(e) => setResumeName(e.target.value)} />
+                      <input aria-label="Display Name" style={inputStyle} type="text" placeholder="e.g. Fall 2026 Resume" required value={resumeName} onChange={(e) => setResumeName(e.target.value)} />
                     </div>
                     <div style={{ marginBottom: '10px' }}>
                       <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>File</label>
@@ -1168,11 +1168,11 @@ export default function StudentProfile() {
                   <form onSubmit={handleUploadCertification} style={{ marginTop: '12px', padding: '14px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg)' }}>
                     <div style={{ marginBottom: '8px' }}>
                       <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Certification Name</label>
-                      <input style={inputStyle} type="text" placeholder="e.g. Lean Six Sigma Green Belt" required value={certName} onChange={(e) => setCertName(e.target.value)} />
+                      <input aria-label="Certification Name" style={inputStyle} type="text" placeholder="e.g. Lean Six Sigma Green Belt" required value={certName} onChange={(e) => setCertName(e.target.value)} />
                     </div>
                     <div style={{ marginBottom: '8px' }}>
                       <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>Certification Number</label>
-                      <input style={inputStyle} type="text" placeholder="As printed on the certificate" required value={certNumber} onChange={(e) => setCertNumber(e.target.value)} />
+                      <input aria-label="Certification Number" style={inputStyle} type="text" placeholder="As printed on the certificate" required value={certNumber} onChange={(e) => setCertNumber(e.target.value)} />
                     </div>
                     <div style={{ marginBottom: '10px' }}>
                       <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '3px' }}>File (PDF)</label>
@@ -1349,7 +1349,7 @@ export default function StudentProfile() {
                                 {exp.technologies.split(',').map((t, i) => (
                                   <span key={i} style={{
                                     padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem',
-                                    background: 'var(--accent-light)', color: 'var(--accent-dark)', fontWeight: 500,
+                                    background: 'var(--accent-light)', color: 'var(--accent-text)', fontWeight: 500,
                                   }}>{t.trim()}</span>
                                 ))}
                               </div>

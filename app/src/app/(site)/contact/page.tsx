@@ -62,7 +62,7 @@ export default function ContactPage() {
                     <rect x="2" y="6" width="28" height="20" rx="3" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <h3>Email</h3>
+                <h2>Email</h2>
                 <p>jonahkeshguerian@intern-first.com</p>
               </div>
 
@@ -73,7 +73,7 @@ export default function ContactPage() {
                     <circle cx="16" cy="14" r="4" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <h3>Location</h3>
+                <h2>Location</h2>
                 <p>United States</p>
               </div>
 
@@ -84,7 +84,7 @@ export default function ContactPage() {
                     <path d="M28 4L19 28L14 18L4 13L28 4Z" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <h3>Follow Us</h3>
+                <h2>Follow Us</h2>
                 <div className="contact-socials">
                   <a
                     href="https://www.linkedin.com/company/intern1st/"

@@ -170,7 +170,7 @@ export default function EeoFields({
           onChange={(v) => set('gender', v as EeoValue['gender'])}
         />
         {value.gender === 'self_describe' && (
-          <input
+          <input aria-label="Gender self-description"
             type="text"
             placeholder="Please describe"
             value={value.genderSelfDescribe}

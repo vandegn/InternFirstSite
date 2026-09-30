@@ -219,7 +219,7 @@ export default function StudentSettings() {
 
         <div className="form-group" style={{ marginBottom: '20px' }}>
           <label>Email</label>
-          <input
+          <input aria-label="Email"
             type="email"
             value={email}
             disabled
@@ -290,7 +290,7 @@ export default function StudentSettings() {
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Industries</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
                   {careerSurvey.industries.map(ind => (
-                    <span key={ind} style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, background: 'var(--accent-light, #eef5da)', color: 'var(--accent-dark, #8ab32e)', border: '1px solid rgba(159, 198, 60, 0.25)' }}>{ind}</span>
+                    <span key={ind} style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, background: 'var(--accent-light, #eef5da)', color: 'var(--accent-text)', border: '1px solid rgba(159, 198, 60, 0.25)' }}>{ind}</span>
                   ))}
                 </div>
               </div>

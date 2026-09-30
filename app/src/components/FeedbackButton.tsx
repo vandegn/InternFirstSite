@@ -152,7 +152,7 @@ export default function FeedbackButton() {
                   })}
                 </div>
 
-                <textarea
+                <textarea aria-label="Feedback message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={5}

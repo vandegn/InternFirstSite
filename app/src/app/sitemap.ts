@@ -35,6 +35,7 @@ const STATIC_ROUTES: StaticRoute[] = [
   { path: '/contact', lastModified: '2026-08-03', priority: 0.5, changeFrequency: 'yearly' },
   { path: '/privacy', lastModified: '2026-08-03', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/terms', lastModified: '2026-08-03', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/accessibility', lastModified: '2026-09-29', priority: 0.3, changeFrequency: 'yearly' },
 ];
 
 // Deliberately NOT listed, and each for a different reason:

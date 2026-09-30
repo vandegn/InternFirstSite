@@ -190,7 +190,7 @@ export default function EmployerSettings() {
 
         <div className="form-group" style={{ marginBottom: '16px' }}>
           <label>Email</label>
-          <input
+          <input aria-label="Email"
             type="email"
             value={email}
             disabled

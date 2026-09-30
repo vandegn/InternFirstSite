@@ -53,12 +53,17 @@
     --accent: #9FC63C;
     --accent-dark: #8ab32e;
     --accent-light: #eef5da;
+    /* The brand green as *text* on light fills — #9FC63C itself is ~2:1 on white */
+    --accent-text: #557F16;
+    /* Auth/form ink — slate on white, remapped for dark */
+    --ink: #0f172a;
+    --ink-muted: #667085;
     --grey-light: #DFE0E1;
     --dark: #1A2D49;
     --dark-2: #0f1d33;
     --text: #2d2d2d;
-    --text-secondary: #6b7280;
-    --text-light: #6d7584;
+    --text-secondary: #5b616e;
+    --text-light: #646b79;
     --bg: #F8F9FC;
     --bg-light: #F8F9FC;
     --bg-section: #f0f2f7;
@@ -556,7 +561,7 @@ img { max-width: 100%; height: auto; display: block; }
     padding: 16px;
 }
 
-.internship-body h3 {
+.internship-body h2 {
     font-size: 16px;
     font-weight: 600;
     color: var(--dark);
@@ -679,7 +684,7 @@ img { max-width: 100%; height: auto; display: block; }
 
 .cta-content .cta-buttons .btn-primary {
     background: var(--accent);
-    color: var(--primary);
+    color: var(--on-accent);
 }
 
 .cta-content .cta-buttons .btn-primary:hover {
@@ -1031,7 +1036,7 @@ img { max-width: 100%; height: auto; display: block; }
     font-weight: 500;
 }
 
-.blog-body h3 {
+.blog-body h2 {
     font-size: 15px;
     font-weight: 600;
     color: var(--dark);
@@ -1643,7 +1648,7 @@ img { max-width: 100%; height: auto; display: block; }
     max-width: 260px;
 }
 
-.footer-links h4 {
+.footer-links h2 {
     font-size: 15px;
     font-weight: 600;
     margin-bottom: 16px;
@@ -1921,7 +1926,7 @@ img { max-width: 100%; height: auto; display: block; }
     margin-bottom: 12px;
 }
 
-.contact-card h3 {
+.contact-card h2 {
     font-size: 16px;
     font-weight: 600;
     color: var(--dark);
@@ -3085,7 +3090,7 @@ img { max-width: 100%; height: auto; display: block; }
     margin-bottom: 16px;
 }
 
-.resource-card h4 {
+.resource-card h2 {
     font-size: 16px;
     font-weight: 600;
     color: var(--dark);
@@ -3412,7 +3417,7 @@ img { max-width: 100%; height: auto; display: block; }
 .auth-container h1 {
     font-size: 32px;
     font-weight: 900;
-    color: #0f172a;
+    color: var(--ink);
     text-align: center;
     letter-spacing: -0.03em;
     margin-bottom: 8px;
@@ -3421,7 +3426,7 @@ img { max-width: 100%; height: auto; display: block; }
 .auth-subtitle {
     text-align: center;
     font-size: 14px;
-    color: #667085;
+    color: var(--ink-muted);
     margin-bottom: 32px;
 }
 
@@ -3494,7 +3499,7 @@ img { max-width: 100%; height: auto; display: block; }
 .role-label-text {
     font-size: 13px;
     font-weight: 600;
-    color: #0f172a;
+    color: var(--ink);
 }
 
 /* minmax(0, 1fr) rather than 1fr: grid items default to min-width:auto, so a
@@ -3533,7 +3538,7 @@ img { max-width: 100%; height: auto; display: block; }
 .form-group label {
     font-size: 13px;
     font-weight: 600;
-    color: #0f172a;
+    color: var(--ink);
     margin-bottom: 6px;
 }
 
@@ -3545,10 +3550,10 @@ img { max-width: 100%; height: auto; display: block; }
     border-bottom: 2px solid rgba(15, 23, 42, 0.12);
     font-size: 14px;
     font-family: inherit;
-    color: #0f172a;
+    color: var(--ink);
     background: transparent;
     transition: border-color 0.2s;
-    caret-color: #0f172a;
+    caret-color: var(--ink);
 }
 
 .form-group textarea {
@@ -3691,12 +3696,12 @@ img { max-width: 100%; height: auto; display: block; }
 
 .checkbox-group label {
     font-size: 13px;
-    color: #667085;
+    color: var(--ink-muted);
     cursor: pointer;
 }
 
 .checkbox-group a {
-    color: var(--auth-green);
+    color: var(--accent-text);
     text-decoration: none;
     font-weight: 600;
 }
@@ -3739,9 +3744,9 @@ img { max-width: 100%; height: auto; display: block; }
 
 .remember-me { display: flex; align-items: center; gap: 8px; }
 .remember-me input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--auth-green); cursor: pointer; }
-.remember-me label { font-size: 13px; color: #667085; cursor: pointer; }
+.remember-me label { font-size: 13px; color: var(--ink-muted); cursor: pointer; }
 
-.forgot-link { font-size: 13px; color: var(--auth-green); text-decoration: none; font-weight: 600; }
+.forgot-link { font-size: 13px; color: var(--accent-text); text-decoration: none; font-weight: 600; }
 
 .divider {
     display: flex;
@@ -3757,7 +3762,7 @@ img { max-width: 100%; height: auto; display: block; }
     background: rgba(15, 23, 42, 0.12);
 }
 
-.divider span { font-size: 12px; color: #94a3b8; font-weight: 600; }
+.divider span { font-size: 12px; color: var(--text-light); font-weight: 600; }
 
 .btn-google {
     display: flex;
@@ -3767,7 +3772,7 @@ img { max-width: 100%; height: auto; display: block; }
     width: 100%;
     padding: 13px 18px;
     background: var(--surface);
-    color: #0f172a;
+    color: var(--ink);
     font-size: 14px;
     font-weight: 600;
     border: 2px solid rgba(15, 23, 42, 0.12);
@@ -3780,8 +3785,8 @@ img { max-width: 100%; height: auto; display: block; }
 .btn-google:hover { background: #f8fafc; border-color: rgba(15, 23, 42, 0.2); }
 .btn-google svg { width: 18px; height: 18px; }
 
-.auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: #667085; }
-.auth-footer a { color: var(--auth-green); text-decoration: none; font-weight: 600; }
+.auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: var(--ink-muted); }
+.auth-footer a { color: var(--accent-text); text-decoration: none; font-weight: 600; }
 
 .auth-error {
     background: #fef2f2;
@@ -3927,6 +3932,9 @@ img { max-width: 100%; height: auto; display: block; }
    with the brand green promoted to the primary call-to-action color.
    ======================================== */
 [data-theme="dark"] {
+    --accent-text: #9FC63C;
+    --ink: var(--text);
+    --ink-muted: var(--text-secondary);
     --on-primary: #0A121F;
     --on-accent: #0A121F;
     --panel-dark: #17253C;

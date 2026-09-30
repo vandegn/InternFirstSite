@@ -45,7 +45,7 @@ export default function ListingSectionsEditor({ sections, onChange }: {
           }}
         >
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
-            <input
+            <input aria-label={`Section ${i + 1} heading`}
               type="text"
               placeholder="Section heading, e.g. Benefits"
               value={section.heading}
@@ -80,6 +80,7 @@ export default function ListingSectionsEditor({ sections, onChange }: {
             </button>
           </div>
           <AutoResizeTextarea
+            ariaLabel={`Section ${i + 1} content`}
             placeholder="Section content...&#10;&#10;Tip: Use - for bullet points"
             rows={3}
             value={section.body}

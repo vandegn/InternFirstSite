@@ -104,7 +104,7 @@ export default function ListingQuestionsEditor({ questions, onChange, mode = 'sc
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-light)', flexShrink: 0 }}>
                 Q{i + 1}
               </span>
-              <input
+              <input aria-label={`Question ${i + 1}`}
                 type="text"
                 placeholder="Question, e.g. Why do you want this role?"
                 value={question.prompt}
@@ -123,7 +123,7 @@ export default function ListingQuestionsEditor({ questions, onChange, mode = 'sc
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '10px' }}>
-              <select
+              <select aria-label={`Question ${i + 1} answer type`}
                 value={question.question_type}
                 onChange={(e) => changeType(i, e.target.value as QuestionType)}
                 style={{ flex: '1 1 180px' }}
@@ -143,7 +143,7 @@ export default function ListingQuestionsEditor({ questions, onChange, mode = 'sc
               </label>
             </div>
 
-            <input
+            <input aria-label={`Question ${i + 1} helper text`}
               type="text"
               placeholder="Helper text (optional)"
               value={question.help_text ?? ''}
@@ -156,7 +156,7 @@ export default function ListingQuestionsEditor({ questions, onChange, mode = 'sc
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-light)', textTransform: 'uppercase' }}>Options</span>
                 {options.map((opt, oi) => (
                   <div key={oi} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
-                    <input
+                    <input aria-label={`Question ${i + 1}, option ${oi + 1}`}
                       type="text"
                       placeholder={`Option ${oi + 1}`}
                       value={opt}

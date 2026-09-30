@@ -205,7 +205,7 @@ function PipelineAllInner() {
                       </p>
                     </div>
                   </Link>
-                  <select
+                  <select aria-label="Pipeline stage"
                     value={app.stage_id ?? ''}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => requestMove(app, e.target.value)}

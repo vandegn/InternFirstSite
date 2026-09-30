@@ -237,7 +237,7 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
             ))}
           </div>
 
-          <textarea
+          <textarea aria-label="Note to the employer (optional)"
             value={note}
             onChange={e => setNote(e.target.value)}
             placeholder="Anything they should know? (optional)"

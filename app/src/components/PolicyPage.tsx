@@ -21,6 +21,7 @@ export default function PolicyPage({ kind }: { kind: PolicyKind }) {
   return (
     <>
       <Header />
+      <main id="main-content">
 
       <section className="hero" style={{ paddingBottom: '24px' }}>
         <div className="container">
@@ -40,7 +41,7 @@ export default function PolicyPage({ kind }: { kind: PolicyKind }) {
             style={{
               marginTop: '20px', padding: '28px 32px',
               border: '1px solid var(--border)', borderRadius: '16px',
-              background: '#fff', fontSize: '0.9rem', lineHeight: 1.65,
+              background: 'var(--surface)', fontSize: '0.9rem', lineHeight: 1.65,
             }}
           >
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 2px' }}>{doc.title}</h2>
@@ -51,6 +52,7 @@ export default function PolicyPage({ kind }: { kind: PolicyKind }) {
           </article>
         </div>
       </section>
+      </main>
 
       <Footer />
     </>

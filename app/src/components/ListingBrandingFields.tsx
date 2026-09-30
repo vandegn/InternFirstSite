@@ -123,7 +123,7 @@ export default function ListingBrandingFields({
               }}
             />
           ))}
-          <input
+          <input aria-label="Accent color hex code"
             type="text"
             placeholder="#RRGGBB"
             value={accentColor ?? ''}
@@ -170,7 +170,7 @@ export default function ListingBrandingFields({
             ))}
           </div>
         )}
-        <input
+        <input aria-label="Add a tag"
           type="text"
           placeholder="e.g. Frontend, Startup, Mentorship — press Enter to add"
           value={tagDraft}

@@ -255,7 +255,7 @@ export default function AdminEmployerReviewPage() {
                   </p>
                 )}
 
-                <textarea
+                <textarea aria-label="Note to the employer"
                   placeholder="Note to the employer (required to reject or request info)…"
                   rows={2}
                   value={notes[e.id] ?? ''}

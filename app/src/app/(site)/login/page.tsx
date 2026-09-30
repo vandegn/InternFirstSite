@@ -85,7 +85,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="auth-page">
+    <main className="auth-page">
       <div className="auth-container">
         <button
           type="button"
@@ -154,7 +154,7 @@ function LoginForm() {
 
         <p className="auth-footer">Don&apos;t have an account? <Link href="/register">Create one</Link></p>
       </div>
-    </div>
+    </main>
   );
 }
 

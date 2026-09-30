@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="auth-page">
+    <main className="auth-page">
       <div className="auth-container narrow">
         <button
           type="button"
@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--auth-green)',
+                  color: 'var(--accent-text)',
                   fontWeight: 600,
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -126,6 +126,6 @@ export default function ForgotPasswordPage() {
           </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

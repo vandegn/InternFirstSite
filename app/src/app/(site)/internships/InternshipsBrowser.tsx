@@ -126,7 +126,7 @@ export default function InternshipsBrowser({
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
-              <input
+              <input aria-label="Search internships"
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -142,7 +142,7 @@ export default function InternshipsBrowser({
                 }}
               />
             </div>
-            <select
+            <select aria-label="Filter by industry"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
               style={{
@@ -211,9 +211,9 @@ export default function InternshipsBrowser({
                 margin: '0 auto',
               }}
             >
-              <h3 style={{ fontSize: 20, color: 'var(--dark)', marginBottom: 8 }}>
+              <h2 style={{ fontSize: 20, color: 'var(--dark)', marginBottom: 8 }}>
                 No internships found
-              </h3>
+              </h2>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
                 {search || industry
                   ? 'No open internships match your search or filters right now. Try adjusting them.'
@@ -271,7 +271,7 @@ export default function InternshipsBrowser({
                       </div>
                     </div>
                     <div className="internship-body">
-                      <h3>{l.title}</h3>
+                      <h2>{l.title}</h2>
                       <p className="location">
                         {l.is_remote
                           ? 'Remote'

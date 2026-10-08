@@ -24,6 +24,7 @@ import CareerSurveyModal from '@/components/CareerSurveyModal';
 import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 import InterviewBanner from '@/components/InterviewBanner';
 import InterviewResponseModal from '@/components/InterviewResponseModal';
+import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
 
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
@@ -94,6 +95,8 @@ type StudentInterview = {
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
   employer_notes: string | null;
+  format?: InterviewFormat | null;
+  meeting_url?: string | null;
   listing: { id: string; title: string };
   employer: { id: string; company_name: string; logo_url: string | null; user_id?: string } | null;
 };
@@ -435,16 +438,23 @@ export default function StudentDashboard() {
             {studentInterviews.filter(i => i.status === 'accepted').map(interview => {
               const ws = joinWindowStatus(interview.scheduled_at, interview.duration_minutes);
               const canJoin = ws === 'open';
+              const format = interviewFormatOf(interview);
+              const externalUrl = format === 'external_link' ? interview.meeting_url : null;
               const start = new Date(interview.scheduled_at);
               const timeStr = start.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
               return (
                 <div key={interview.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>{interview.employer?.company_name ?? 'Employer'} — {interview.listing.title}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>{timeStr} · {interview.duration_minutes} min</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                      {timeStr} · {interview.duration_minutes} min
+                      {format === 'phone' && ' · Phone screen — they’ll call you'}
+                    </div>
                   </div>
+                  {format !== 'phone' && (
                   <Link
-                    href={canJoin ? `/dashboard/student/interviews/${interview.id}` : '#'}
+                    href={canJoin ? (externalUrl ?? `/dashboard/student/interviews/${interview.id}`) : '#'}
+                    {...(externalUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     onClick={e => { if (!canJoin) e.preventDefault(); }}
                     style={{
                       padding: '6px 16px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none',
@@ -457,6 +467,7 @@ export default function StudentDashboard() {
                   >
                     {ws === 'too_early' ? 'Not yet open' : ws === 'ended' ? 'Ended' : 'Join Interview'}
                   </Link>
+                  )}
                 </div>
               );
             })}
@@ -814,6 +825,8 @@ export default function StudentDashboard() {
           scheduledAt={interviewModalRow.scheduled_at}
           durationMinutes={interviewModalRow.duration_minutes}
           notes={interviewModalRow.employer_notes}
+          format={interviewFormatOf(interviewModalRow)}
+          meetingUrl={interviewModalRow.meeting_url}
         />
       )}
     </>

@@ -12,6 +12,7 @@ import {
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { supabase } from '@/lib/supabase';
+import { interviewFormatOf } from '@/lib/interview-format';
 
 type TokenResponse = {
   token: string;
@@ -22,12 +23,14 @@ type TokenResponse = {
   isHost: boolean;
 };
 
-type WindowStatus = 'loading' | 'too_early' | 'open' | 'ended' | 'error';
+type WindowStatus = 'loading' | 'too_early' | 'open' | 'ended' | 'error' | 'off_platform';
 
 type InterviewRow = {
   scheduled_at: string;
   duration_minutes: number;
   status: string;
+  format?: string | null;
+  meeting_url?: string | null;
   listing?: { title?: string } | { title?: string }[];
   employer?: { company_name?: string } | { company_name?: string }[];
   student?: { profile?: { full_name?: string } | { full_name?: string }[] } | { profile?: { full_name?: string } | { full_name?: string }[] }[];
@@ -72,10 +75,10 @@ export default function InterviewRoom({
 
       const selectFields =
         role === 'student'
-          ? `scheduled_at, duration_minutes, status,
+          ? `*,
              listing:internship_listings(title),
              employer:employers(company_name)`
-          : `scheduled_at, duration_minutes, status,
+          : `*,
              listing:internship_listings(title),
              student:students(profile:profiles!inner(full_name))`;
 
@@ -90,6 +93,9 @@ export default function InterviewRoom({
       if (typed.status !== 'accepted') { setStatus('error'); setErrorMsg('This interview is not confirmed.'); return; }
 
       setInterview(typed);
+
+      // Own-link and phone interviews don't use the InternFirst room.
+      if (interviewFormatOf(typed) !== 'internfirst') { setStatus('off_platform'); return; }
 
       const ws = getWindowStatus(typed.scheduled_at, typed.duration_minutes);
       if (ws !== 'open') { setStatus(ws); return; }
@@ -145,6 +151,36 @@ export default function InterviewRoom({
   }
 
   if (status === 'ended') return renderMessage('✅', 'Interview ended', 'The join window for this interview has closed.');
+
+  if (status === 'off_platform' && interview) {
+    const when = new Date(interview.scheduled_at).toLocaleString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
+    if (interviewFormatOf(interview) === 'phone') {
+      return renderMessage(
+        '📞',
+        'Phone screening',
+        role === 'student'
+          ? `${counterpartName} will call you on ${when}. Make sure you've replied in your inbox with the best number to reach you.`
+          : `Call ${counterpartName} on ${when}. Their phone number will arrive as a reply in your inbox.`,
+      );
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16, textAlign: 'center', padding: 32 }}>
+        <div style={{ fontSize: '3rem' }}>🔗</div>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>This interview uses an external meeting link</h2>
+        <p style={{ color: 'var(--text-secondary)', maxWidth: 420 }}>Scheduled for {when}.</p>
+        {interview.meeting_url && (
+          <a href={interview.meeting_url} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
+            Open meeting link
+          </a>
+        )}
+        <Link href={leaveUrl} style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          Back to dashboard
+        </Link>
+      </div>
+    );
+  }
 
   if (status === 'error') return renderMessage('⚠️', 'Something went wrong', errorMsg || 'Please try refreshing the page.');
 

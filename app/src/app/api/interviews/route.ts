@@ -6,6 +6,8 @@ import {
   interviewScheduledStudentEmail,
   interviewScheduledEmployerEmail,
 } from '@/lib/email-templates';
+import { validateInterviewFormat, interviewFormatColumns } from '@/lib/interview-format';
+import { sendInterviewFormatMessage } from '@/lib/interview-format-message';
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
@@ -31,11 +33,17 @@ export async function POST(req: NextRequest) {
     scheduledAt,
     durationMinutes,
     notes,
+    format,
+    meetingUrl,
+    timeZone,
   } = await req.json();
 
   if (!applicationId || !employerId || !studentId || !listingId || !scheduledAt || !durationMinutes) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
+
+  const formatCheck = validateInterviewFormat({ format, meetingUrl });
+  if (!formatCheck.ok) return NextResponse.json({ error: formatCheck.error }, { status: 400 });
 
   const { data: employer } = await supabase
     .from('employers')
@@ -55,6 +63,7 @@ export async function POST(req: NextRequest) {
       scheduled_at: scheduledAt,
       duration_minutes: durationMinutes,
       employer_notes: notes ?? null,
+      ...interviewFormatColumns(formatCheck.format, formatCheck.meetingUrl),
       status: 'pending',
     })
     .select()
@@ -70,6 +79,16 @@ export async function POST(req: NextRequest) {
   // applications.status here would be a no-op at best: status is a denormalized
   // mirror of the stage label, so a raw write is overwritten by the next stage
   // change and is invisible to every surface that renders the stage.
+
+  // Off-platform interviews (own link / phone screen) land in the student's
+  // chat with the date, time and link — or the ask for a phone number.
+  if (formatCheck.format !== 'internfirst') {
+    await sendInterviewFormatMessage(supabase, {
+      senderUserId: user.id,
+      interviewId: interview.id,
+      timeZone,
+    });
+  }
 
   void sendScheduleEmails(interview.id);
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import ModalPortal from '@/components/ModalPortal';
+import InterviewFormatPicker from '@/components/InterviewFormatPicker';
+import { validateInterviewFormat, type InterviewFormat } from '@/lib/interview-format';
 import {
   groupSlotsByDay,
   enumerateStartTimes,
@@ -18,7 +20,14 @@ type Props = {
   request: AvailabilityRequest | null;
   candidateName?: string;
   listingTitle?: string;
-  onConfirm: (data: { scheduledAt: string; durationMinutes: number; notes: string }) => Promise<void> | void;
+  onConfirm: (data: {
+    scheduledAt: string;
+    durationMinutes: number;
+    notes: string;
+    format: InterviewFormat;
+    meetingUrl: string | null;
+    timeZone: string;
+  }) => Promise<void> | void;
   /** None of the offered times work — withdraw so a new window can be asked for. */
   onRequestNewWindow: () => Promise<void> | void;
 };
@@ -42,6 +51,8 @@ export default function SelectInterviewTimeModal({
   const [error, setError] = useState('');
   const [picked, setPicked] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [format, setFormat] = useState<InterviewFormat>('internfirst');
+  const [meetingUrl, setMeetingUrl] = useState('');
   const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,6 +60,8 @@ export default function SelectInterviewTimeModal({
     setError('');
     setPicked('');
     setNotes('');
+    setFormat('internfirst');
+    setMeetingUrl('');
   }, [open, request?.id]);
 
   useEffect(() => {
@@ -90,9 +103,21 @@ export default function SelectInterviewTimeModal({
       setError(check.error);
       return;
     }
+    const formatCheck = validateInterviewFormat({ format, meetingUrl });
+    if (!formatCheck.ok) {
+      setError(formatCheck.error);
+      return;
+    }
     setSubmitting(true);
     try {
-      await onConfirm({ scheduledAt: picked, durationMinutes: duration, notes: notes.trim() });
+      await onConfirm({
+        scheduledAt: picked,
+        durationMinutes: duration,
+        notes: notes.trim(),
+        format: formatCheck.format,
+        meetingUrl: formatCheck.meetingUrl,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
@@ -249,6 +274,16 @@ export default function SelectInterviewTimeModal({
                     })}
                   </div>
                 ))}
+              </div>
+
+              <div style={{ marginTop: 14 }}>
+                <InterviewFormatPicker
+                  format={format}
+                  meetingUrl={meetingUrl}
+                  onFormatChange={f => { setFormat(f); setError(''); }}
+                  onMeetingUrlChange={u => { setMeetingUrl(u); setError(''); }}
+                  disabled={submitting}
+                />
               </div>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 14 }}>

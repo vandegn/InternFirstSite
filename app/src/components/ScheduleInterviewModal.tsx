@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import ModalPortal from '@/components/ModalPortal';
+import InterviewFormatPicker from '@/components/InterviewFormatPicker';
+import { validateInterviewFormat, type InterviewFormat } from '@/lib/interview-format';
 
 const DURATION_OPTIONS = [15, 30, 45, 60];
 
@@ -9,6 +11,10 @@ export type ScheduleInterviewFormData = {
   scheduledAt: string; // ISO string in UTC
   durationMinutes: number;
   notes: string;
+  format: InterviewFormat;
+  meetingUrl: string | null;
+  /** The employer's zone, so the chat message reads in the time they picked. */
+  timeZone: string;
 };
 
 type Props = {
@@ -18,7 +24,13 @@ type Props = {
   candidateName?: string;
   listingTitle?: string;
   mode?: 'create' | 'reschedule';
-  initialData?: { scheduledAt: string; durationMinutes: number; notes: string } | null;
+  initialData?: {
+    scheduledAt: string;
+    durationMinutes: number;
+    notes: string;
+    format?: InterviewFormat;
+    meetingUrl?: string | null;
+  } | null;
 };
 
 function toLocalInputValue(iso: string): { date: string; time: string } {
@@ -50,6 +62,8 @@ export default function ScheduleInterviewModal({
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState(30);
   const [notes, setNotes] = useState('');
+  const [format, setFormat] = useState<InterviewFormat>('internfirst');
+  const [meetingUrl, setMeetingUrl] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +74,8 @@ export default function ScheduleInterviewModal({
       setTime(t);
       setDuration(initialData.durationMinutes);
       setNotes(initialData.notes);
+      setFormat(initialData.format ?? 'internfirst');
+      setMeetingUrl(initialData.meetingUrl ?? '');
     } else {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -69,6 +85,8 @@ export default function ScheduleInterviewModal({
       setTime(t);
       setDuration(30);
       setNotes('');
+      setFormat('internfirst');
+      setMeetingUrl('');
     }
   }, [open, initialData]);
 
@@ -112,12 +130,20 @@ export default function ScheduleInterviewModal({
       setError('Pick a time at least 5 minutes from now');
       return;
     }
+    const formatCheck = validateInterviewFormat({ format, meetingUrl });
+    if (!formatCheck.ok) {
+      setError(formatCheck.error);
+      return;
+    }
     setSubmitting(true);
     try {
       await onSubmit({
         scheduledAt: localDate.toISOString(),
         durationMinutes: duration,
         notes: notes.trim(),
+        format: formatCheck.format,
+        meetingUrl: formatCheck.meetingUrl,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -241,6 +267,14 @@ export default function ScheduleInterviewModal({
               ))}
             </div>
           </label>
+
+          <InterviewFormatPicker
+            format={format}
+            meetingUrl={meetingUrl}
+            onFormatChange={f => { setFormat(f); setError(''); }}
+            onMeetingUrlChange={u => { setMeetingUrl(u); setError(''); }}
+            disabled={submitting}
+          />
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' }}>Notes for the candidate (optional)</span>

@@ -314,6 +314,40 @@ describe('Step 3 — SelectInterviewTimeModal', () => {
       scheduledAt: chosen,
       durationMinutes: 30,
       notes: 'Bring a portfolio.',
+      format: 'internfirst',
+      meetingUrl: null,
+      timeZone: expect.any(String),
+    });
+  });
+
+  it('lets the employer use their own link instead of the InternFirst room', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SelectInterviewTimeModal
+        open
+        onClose={() => {}}
+        request={respondedRequest}
+        onConfirm={onConfirm}
+        onRequestNewWindow={vi.fn()}
+      />,
+    );
+    const chosen = enumerateStartTimes(offered[0], 30)[0];
+    await user.click(screen.getByRole('button', { name: formatTime(chosen) }));
+    await user.click(screen.getByRole('radio', { name: 'Your own link' }));
+
+    // No link yet — refused.
+    await user.click(screen.getByRole('button', { name: 'Confirm Interview' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/meeting link/i);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await user.type(screen.getByPlaceholderText(/zoom\.us/i), 'zoom.us/j/42');
+    await user.click(screen.getByRole('button', { name: 'Confirm Interview' }));
+    await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
+    expect(onConfirm.mock.calls[0][0]).toMatchObject({
+      scheduledAt: chosen,
+      format: 'external_link',
+      meetingUrl: 'https://zoom.us/j/42',
     });
   });
 

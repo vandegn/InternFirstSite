@@ -18,6 +18,7 @@ import {
 } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
 import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
+import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
 import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
 
 type ListingWithStats = {
@@ -100,6 +101,8 @@ type Interview = {
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
   employer_notes: string | null;
+  format?: InterviewFormat | null;
+  meeting_url?: string | null;
 };
 
 function joinWindowStatus(scheduledAt: string, durationMinutes: number): 'too_early' | 'open' | 'ended' {
@@ -219,6 +222,9 @@ export default function PostedJobsPage() {
         scheduledAt: data.scheduledAt,
         durationMinutes: data.durationMinutes,
         notes: data.notes,
+        format: data.format,
+        meetingUrl: data.meetingUrl,
+        timeZone: data.timeZone,
       });
       setInterviews(prev => prev.map(i => i.id === updated.id ? (updated as unknown as Interview) : i));
     } else {
@@ -230,6 +236,9 @@ export default function PostedJobsPage() {
         scheduledAt: data.scheduledAt,
         durationMinutes: data.durationMinutes,
         notes: data.notes,
+        format: data.format,
+        meetingUrl: data.meetingUrl,
+        timeZone: data.timeZone,
       });
       setInterviews(prev => [...prev, created as unknown as Interview]);
       setApplications(prev => prev.map(a =>
@@ -713,11 +722,14 @@ export default function PostedJobsPage() {
                               </span>
                               <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                 {formatInterviewWhen(interview.scheduled_at)} · {interview.duration_minutes} min
+                                {interviewFormatOf(interview) === 'phone' && ' · Phone screen'}
+                                {interviewFormatOf(interview) === 'external_link' && ' · Own link'}
                               </span>
                               <div style={{ flex: 1 }} />
-                              {interview.status === 'accepted' && (
+                              {interview.status === 'accepted' && interviewFormatOf(interview) !== 'phone' && (
                                 <Link
-                                  href={canJoin ? `/dashboard/employer/interviews/${interview.id}` : '#'}
+                                  href={canJoin ? (interviewFormatOf(interview) === 'external_link' && interview.meeting_url ? interview.meeting_url : `/dashboard/employer/interviews/${interview.id}`) : '#'}
+                                  {...(interviewFormatOf(interview) === 'external_link' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                                   onClick={e => { if (!canJoin) e.preventDefault(); }}
                                   title={ws === 'too_early' ? `Joinable at ${new Date(new Date(interview.scheduled_at).getTime() - 10 * 60 * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ws === 'ended' ? 'Interview ended' : 'Join Interview'}
                                   style={{
@@ -775,6 +787,8 @@ export default function PostedJobsPage() {
           scheduledAt: scheduleModalInterview.scheduled_at,
           durationMinutes: scheduleModalInterview.duration_minutes,
           notes: scheduleModalInterview.employer_notes || '',
+          format: scheduleModalInterview.format ?? 'internfirst',
+          meetingUrl: scheduleModalInterview.meeting_url ?? null,
         } : null}
       />
     </div>

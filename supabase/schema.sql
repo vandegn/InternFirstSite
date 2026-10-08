@@ -666,10 +666,17 @@ create table interview_schedules (
   status text not null default 'pending' check (status in
     ('pending', 'accepted', 'declined', 'reschedule_requested', 'cancelled', 'completed')),
   employer_notes text,
+  -- How the interview happens: the InternFirst video room, the employer's own
+  -- link (sent to the student in chat), or a phone screen.
+  format text not null default 'internfirst'
+    check (format in ('internfirst', 'external_link', 'phone')),
+  meeting_url text,
   cancelled_by text check (cancelled_by in ('employer', 'student')),
   cancelled_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint interview_schedules_meeting_url_check
+    check (format <> 'external_link' or (meeting_url is not null and meeting_url ~* '^https?://'))
 );
 
 -- Only one active interview per application at a time

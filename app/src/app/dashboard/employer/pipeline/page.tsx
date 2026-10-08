@@ -30,6 +30,7 @@ import {
 } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
 import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
+import type { InterviewFormat } from '@/lib/interview-format';
 import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
 import RequestTimesModal from '@/components/RequestTimesModal';
 import type { RequestTimesFormData } from '@/components/RequestTimesModal';
@@ -80,6 +81,8 @@ type Interview = {
   duration_minutes: number;
   employer_notes: string | null;
   status: string;
+  format?: InterviewFormat | null;
+  meeting_url?: string | null;
 };
 
 const APPLIED_DISPLAY_LIMIT = 10;
@@ -455,6 +458,9 @@ function EmployerPipelineInner() {
         scheduledAt: data.scheduledAt,
         durationMinutes: data.durationMinutes,
         notes: data.notes,
+        format: data.format,
+        meetingUrl: data.meetingUrl,
+        timeZone: data.timeZone,
       });
       setInterviews(prev => prev.map(i => i.id === updated.id ? (updated as Interview) : i));
     } else {
@@ -466,6 +472,9 @@ function EmployerPipelineInner() {
         scheduledAt: data.scheduledAt,
         durationMinutes: data.durationMinutes,
         notes: data.notes,
+        format: data.format,
+        meetingUrl: data.meetingUrl,
+        timeZone: data.timeZone,
       });
       setInterviews(prev => [...prev, created as Interview]);
       // The card stays where the employer put it — scheduling no longer moves
@@ -515,13 +524,23 @@ function EmployerPipelineInner() {
   }
 
   // Step 3 — lock in one of the offered times.
-  async function handleConfirmTime(data: { scheduledAt: string; durationMinutes: number; notes: string }) {
+  async function handleConfirmTime(data: {
+    scheduledAt: string;
+    durationMinutes: number;
+    notes: string;
+    format: InterviewFormat;
+    meetingUrl: string | null;
+    timeZone: string;
+  }) {
     const request = pickTimeApp ? latestRequestForApp(pickTimeApp.id) : null;
     if (!request || !employerId) return;
     const updated = await confirmInterviewTime(request.id, {
       scheduledAt: data.scheduledAt,
       durationMinutes: data.durationMinutes,
-      notes: data.notes,
+        notes: data.notes,
+        format: data.format,
+        meetingUrl: data.meetingUrl,
+        timeZone: data.timeZone,
     });
     upsertRequest({ ...request, ...updated });
     setPickTimeApp(null);
@@ -1832,6 +1851,8 @@ function EmployerPipelineInner() {
           scheduledAt: scheduleInterview.scheduled_at,
           durationMinutes: scheduleInterview.duration_minutes,
           notes: scheduleInterview.employer_notes || '',
+          format: scheduleInterview.format ?? 'internfirst',
+          meetingUrl: scheduleInterview.meeting_url ?? null,
         } : null}
       />
 

@@ -22,6 +22,11 @@ import {
   type AvailabilitySlot,
   type AvailabilityStatus,
 } from './interview-availability';
+import {
+  validateInterviewFormat,
+  buildInterviewFormatMessage,
+  type InterviewFormat,
+} from './interview-format';
 
 export type ServiceResult<T = unknown> = { status: number; body: T };
 
@@ -66,7 +71,8 @@ export type AvailabilityRepo = {
     receiver_id: string;
     body: string;
     application_id: string | null;
-    availability_request_id: string;
+    /** Set only for the picker message; plain chat messages leave it out. */
+    availability_request_id?: string | null;
   }): Promise<{ id: string }>;
   createNotification(row: {
     user_id: string;
@@ -84,6 +90,8 @@ export type AvailabilityRepo = {
     scheduled_at: string;
     duration_minutes: number;
     employer_notes: string | null;
+    format: InterviewFormat;
+    meeting_url: string | null;
   }): Promise<{ id: string }>;
   getContext(requestId: string): Promise<RequestContext | null>;
 };
@@ -281,6 +289,10 @@ export async function confirmInterviewTime(
     scheduledAt: string;
     durationMinutes?: number;
     notes?: string;
+    format?: InterviewFormat;
+    meetingUrl?: string | null;
+    /** The employer's zone, so the chat message reads in the time they picked. */
+    timeZone?: string;
   },
 ): Promise<ServiceResult> {
   const request = await repo.getRequest(input.requestId);
@@ -288,6 +300,9 @@ export async function confirmInterviewTime(
 
   const employerId = await repo.getEmployerIdForUser(input.userId);
   if (!employerId || employerId !== request.employer_id) return err(403, 'Forbidden');
+
+  const formatCheck = validateInterviewFormat({ format: input.format, meetingUrl: input.meetingUrl });
+  if (!formatCheck.ok) return err(400, formatCheck.error);
 
   if (!canTransition(request.status, 'scheduled')) {
     return err(409, `This interview request is not ready to be scheduled (it is "${request.status}")`);
@@ -309,6 +324,8 @@ export async function confirmInterviewTime(
     scheduled_at: input.scheduledAt,
     duration_minutes: durationMinutes,
     employer_notes: input.notes?.trim() || null,
+    format: formatCheck.format,
+    meeting_url: formatCheck.meetingUrl,
   });
 
   const updated = await repo.updateRequest(request.id, {
@@ -328,6 +345,27 @@ export async function confirmInterviewTime(
       body: `${context.companyName} booked your ${context.listingTitle} interview from the times you offered.`,
       link: '/dashboard/student/applications',
     });
+
+    // Off-platform interviews: the link (or the ask for a phone number) goes
+    // to the student's chat alongside the date and time.
+    const body = buildInterviewFormatMessage({
+      format: formatCheck.format,
+      companyName: context.companyName,
+      listingTitle: context.listingTitle,
+      scheduledAt: input.scheduledAt,
+      durationMinutes,
+      meetingUrl: formatCheck.meetingUrl,
+      timeZone: input.timeZone,
+      notes: input.notes,
+    });
+    if (body) {
+      await repo.insertMessage({
+        sender_id: input.userId,
+        receiver_id: context.studentUserId,
+        body,
+        application_id: request.application_id,
+      });
+    }
   }
 
   return { status: 200, body: { ...updated, interview_id: interview.id } };

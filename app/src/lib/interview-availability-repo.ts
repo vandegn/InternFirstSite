@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AvailabilityRepo, RequestContext } from './interview-availability-service';
 import type { AvailabilityRequest, AvailabilitySlot } from './interview-availability';
 import { LIVE_AVAILABILITY_STATUSES } from './interview-availability';
+import { interviewFormatColumns } from './interview-format';
 
 // PostgREST hands embedded rows back as an object or a one-element array
 // depending on the relationship it infers — same helper the pipeline uses.
@@ -149,10 +150,10 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
       if (error) console.error('[availability notification]', error.message);
     },
 
-    async createInterview(row) {
+    async createInterview({ format, meeting_url, ...row }) {
       const { data, error } = await supabase
         .from('interview_schedules')
-        .insert({ ...row, status: 'pending' })
+        .insert({ ...row, ...interviewFormatColumns(format, meeting_url), status: 'pending' })
         .select('id')
         .single();
       if (error || !data) throw new Error(error?.message ?? 'Failed to schedule the interview');

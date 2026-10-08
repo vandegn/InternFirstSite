@@ -6,6 +6,8 @@ import {
   interviewScheduledStudentEmail,
   interviewScheduledEmployerEmail,
 } from '@/lib/email-templates';
+import { validateInterviewFormat, interviewFormatColumns } from '@/lib/interview-format';
+import { sendInterviewFormatMessage } from '@/lib/interview-format-message';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,9 +26,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { scheduledAt, durationMinutes, notes } = await req.json();
+  const { scheduledAt, durationMinutes, notes, format, meetingUrl, timeZone } = await req.json();
   if (!scheduledAt || !durationMinutes) {
     return NextResponse.json({ error: 'scheduledAt and durationMinutes are required' }, { status: 400 });
+  }
+  // Callers that don't send a format leave the interview's current one alone.
+  const formatCheck = format === undefined ? null : validateInterviewFormat({ format, meetingUrl });
+  if (formatCheck && !formatCheck.ok) {
+    return NextResponse.json({ error: formatCheck.error }, { status: 400 });
   }
 
   const { data: existing } = await supabase
@@ -46,6 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       scheduled_at: scheduledAt,
       duration_minutes: durationMinutes,
       employer_notes: notes ?? null,
+      ...(formatCheck?.ok ? interviewFormatColumns(formatCheck.format, formatCheck.meetingUrl) : {}),
       status: 'pending',
     })
     .eq('id', id)
@@ -54,6 +62,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (error || !updated) {
     return NextResponse.json({ error: error?.message ?? 'Failed to update' }, { status: 500 });
+  }
+
+  if (formatCheck?.ok && formatCheck.format === 'internfirst') {
+    // Switching back to the InternFirst room. Written separately and
+    // best-effort so a database without the format columns still reschedules.
+    await supabase
+      .from('interview_schedules')
+      .update({ format: 'internfirst', meeting_url: null })
+      .eq('id', id)
+      .neq('format', 'internfirst');
+  } else if (formatCheck?.ok) {
+    await sendInterviewFormatMessage(supabase, {
+      senderUserId: user.id,
+      interviewId: updated.id,
+      timeZone,
+      rescheduled: true,
+    });
   }
 
   void sendRescheduleEmails(updated.id);

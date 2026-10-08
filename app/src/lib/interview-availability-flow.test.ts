@@ -33,9 +33,16 @@ const WINDOW_START = '2026-09-07';
 const WINDOW_END = '2026-09-11';
 
 type Captured = {
-  messages: Array<{ id: string; sender_id: string; receiver_id: string; body: string; availability_request_id: string }>;
+  messages: Array<{ id: string; sender_id: string; receiver_id: string; body: string; availability_request_id?: string | null }>;
   notifications: Array<{ user_id: string; actor_id: string; title: string; body: string; link: string }>;
-  interviews: Array<{ id: string; application_id: string; scheduled_at: string; duration_minutes: number }>;
+  interviews: Array<{
+    id: string;
+    application_id: string;
+    scheduled_at: string;
+    duration_minutes: number;
+    format?: string;
+    meeting_url?: string | null;
+  }>;
   requests: Map<string, AvailabilityRequest>;
   slots: Map<string, AvailabilitySlot[]>;
 };
@@ -138,6 +145,8 @@ function makeRepo() {
         application_id: row.application_id,
         scheduled_at: row.scheduled_at,
         duration_minutes: row.duration_minutes,
+        format: row.format,
+        meeting_url: row.meeting_url,
       });
       return { id };
     },
@@ -631,5 +640,77 @@ describe('guards', () => {
       userId: STUDENT_USER, requestId: 'nope', slots: goodSlots(),
     });
     expect(result.status).toBe(404);
+  });
+});
+
+describe('interview format — own link and phone screen', () => {
+  // buildSlot frames are wall-clock, so compare in the machine's own zone.
+  const localTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  async function readyToConfirm() {
+    const { repo, captured } = makeRepo();
+    const { body: created } = await openRequest(repo);
+    const id = (created as AvailabilityRequest).id;
+    await submitAvailability(repo, { userId: STUDENT_USER, requestId: id, slots: goodSlots() });
+    const slots = await repo.getSlots(id);
+    const chosen = enumerateStartTimes(slots[0], 30)[2];
+    const messagesBefore = captured.messages.length;
+    return { repo, captured, id, chosen, messagesBefore };
+  }
+
+  it('defaults to the InternFirst room and sends no extra chat message', async () => {
+    const { repo, captured, id, chosen, messagesBefore } = await readyToConfirm();
+    const result = await confirmInterviewTime(repo, { userId: EMPLOYER_USER, requestId: id, scheduledAt: chosen });
+    expect(result.status).toBe(200);
+    expect(captured.interviews[0]).toMatchObject({ format: 'internfirst', meeting_url: null });
+    expect(captured.messages).toHaveLength(messagesBefore);
+  });
+
+  it('own link: stores the link and sends the date, time and link to the student in chat', async () => {
+    const { repo, captured, id, chosen, messagesBefore } = await readyToConfirm();
+    const result = await confirmInterviewTime(repo, {
+      userId: EMPLOYER_USER,
+      requestId: id,
+      scheduledAt: chosen,
+      format: 'external_link',
+      meetingUrl: 'https://zoom.us/j/123456',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    expect(result.status).toBe(200);
+    expect(captured.interviews[0]).toMatchObject({ format: 'external_link', meeting_url: 'https://zoom.us/j/123456' });
+
+    expect(captured.messages).toHaveLength(messagesBefore + 1);
+    const msg = captured.messages[captured.messages.length - 1];
+    expect(msg).toMatchObject({ sender_id: EMPLOYER_USER, receiver_id: STUDENT_USER });
+    expect(msg.availability_request_id ?? null).toBeNull();
+    expect(msg.body).toContain('Date: Monday, September 7, 2026');
+    expect(msg.body).toContain(`Time: ${localTime(chosen)}`);
+    expect(msg.body).toContain('Link: https://zoom.us/j/123456');
+  });
+
+  it('own link: refuses a missing link without scheduling anything', async () => {
+    const { repo, captured, id, chosen } = await readyToConfirm();
+    const result = await confirmInterviewTime(repo, {
+      userId: EMPLOYER_USER, requestId: id, scheduledAt: chosen, format: 'external_link', meetingUrl: '  ',
+    });
+    expect(result.status).toBe(400);
+    expect(captured.interviews).toHaveLength(0);
+  });
+
+  it('phone screen: asks the student for their number and gives the time', async () => {
+    const { repo, captured, id, chosen, messagesBefore } = await readyToConfirm();
+    const result = await confirmInterviewTime(repo, {
+      userId: EMPLOYER_USER, requestId: id, scheduledAt: chosen, format: 'phone', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    expect(result.status).toBe(200);
+    expect(captured.interviews[0]).toMatchObject({ format: 'phone', meeting_url: null });
+
+    expect(captured.messages).toHaveLength(messagesBefore + 1);
+    const body = captured.messages[captured.messages.length - 1].body;
+    expect(body).toContain('Phone screening');
+    expect(body).toContain('Date: Monday, September 7, 2026');
+    expect(body).toContain(`Time: ${localTime(chosen)}`);
+    expect(body).toContain('best phone number');
   });
 });

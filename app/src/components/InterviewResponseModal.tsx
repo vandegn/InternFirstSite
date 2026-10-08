@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import ModalPortal from '@/components/ModalPortal';
+import type { InterviewFormat } from '@/lib/interview-format';
 
 type Action = 'accept' | 'decline' | 'reschedule';
 
@@ -14,6 +15,8 @@ type Props = {
   scheduledAt: string;
   durationMinutes: number;
   notes?: string | null;
+  format?: InterviewFormat;
+  meetingUrl?: string | null;
 };
 
 function formatWhen(iso: string, durationMinutes: number) {
@@ -37,6 +40,8 @@ export default function InterviewResponseModal({
   scheduledAt,
   durationMinutes,
   notes,
+  format = 'internfirst',
+  meetingUrl,
 }: Props) {
   const [visible, setVisible] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -175,6 +180,15 @@ export default function InterviewResponseModal({
                 {when.range} ({when.tz}) · {durationMinutes} min
               </div>
             </div>
+          </div>
+
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Where: </strong>
+            {format === 'phone' && <>Phone screen — {companyName} will call you. Reply in your inbox with the best number to reach you.</>}
+            {format === 'external_link' && (meetingUrl
+              ? <a href={meetingUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', wordBreak: 'break-all' }}>{meetingUrl}</a>
+              : 'Meeting link sent in your inbox')}
+            {format === 'internfirst' && 'InternFirst video room — join from your dashboard when it opens.'}
           </div>
 
           {notes && (

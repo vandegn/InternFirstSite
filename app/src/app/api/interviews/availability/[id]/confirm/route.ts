@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { scheduledAt, durationMinutes, notes } = await req.json();
+  const { scheduledAt, durationMinutes, notes, format, meetingUrl, timeZone } = await req.json();
 
   try {
     const { status, body } = await confirmInterviewTime(createAvailabilityRepo(supabase), {
@@ -19,6 +19,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       scheduledAt,
       durationMinutes,
       notes,
+      format,
+      meetingUrl,
+      timeZone,
     });
     return NextResponse.json(body, { status });
   } catch (e) {

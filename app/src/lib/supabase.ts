@@ -4,6 +4,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
 import { MAX_STUDENT_SKILLS, surveyIndustriesToListingIndustries, type CompType, type QuestionType } from '@/lib/constants';
 import { isFreeEmailProvider } from '@/lib/domain-signals';
+import type { InterviewFormat } from '@/lib/interview-format';
 import {
   localToday,
   type AvailabilityRequest,
@@ -2023,6 +2024,9 @@ export async function createInterview(opts: {
   scheduledAt: string;
   durationMinutes: number;
   notes?: string;
+  format?: InterviewFormat;
+  meetingUrl?: string | null;
+  timeZone?: string;
 }) {
   const res = await fetch('/api/interviews', {
     method: 'POST',
@@ -2182,7 +2186,14 @@ export async function cancelInterview(interviewId: string, cancelledBy: 'employe
 
 export async function rescheduleInterview(
   interviewId: string,
-  fields: { scheduledAt: string; durationMinutes: number; notes?: string },
+  fields: {
+    scheduledAt: string;
+    durationMinutes: number;
+    notes?: string;
+    format?: InterviewFormat;
+    meetingUrl?: string | null;
+    timeZone?: string;
+  },
 ) {
   const res = await fetch(`/api/interviews/${interviewId}/reschedule`, {
     method: 'POST',
@@ -2262,7 +2273,14 @@ export async function submitStudentAvailability(
 // Step 3 — employer locks in one of the offered times.
 export async function confirmInterviewTime(
   requestId: string,
-  opts: { scheduledAt: string; durationMinutes?: number; notes?: string },
+  opts: {
+    scheduledAt: string;
+    durationMinutes?: number;
+    notes?: string;
+    format?: InterviewFormat;
+    meetingUrl?: string | null;
+    timeZone?: string;
+  },
 ) {
   const res = await fetch(`/api/interviews/availability/${requestId}/confirm`, {
     method: 'POST',

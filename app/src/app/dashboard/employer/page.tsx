@@ -13,6 +13,7 @@ import {
 } from '@/lib/supabase';
 import Pagination from '@/components/Pagination';
 import Avatar from '@/components/Avatar';
+import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
 
 type Listing = {
   id: string;
@@ -31,6 +32,8 @@ type EmployerInterview = {
   scheduled_at: string;
   duration_minutes: number;
   status: 'pending' | 'accepted' | 'declined' | 'reschedule_requested' | 'cancelled' | 'completed';
+  format?: InterviewFormat | null;
+  meeting_url?: string | null;
   listing: { id: string; title: string };
   student: { profile: { full_name: string; avatar_url: string | null } };
 };
@@ -190,6 +193,7 @@ export default function EmployerDashboard() {
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       {iv.listing.title} · {formatInterviewWhen(iv.scheduled_at)} · {iv.duration_minutes} min
+                      {interviewFormatOf(iv) === 'phone' && ' · Phone screen'}
                     </div>
                   </div>
                   {badge && (
@@ -200,8 +204,11 @@ export default function EmployerDashboard() {
                       {badge.label}
                     </span>
                   )}
-                  {iv.status === 'accepted' && joinWindowOpen(iv.scheduled_at, iv.duration_minutes) && (
-                    <Link href={`/dashboard/employer/interviews/${iv.id}`} style={{
+                  {iv.status === 'accepted' && interviewFormatOf(iv) !== 'phone' && joinWindowOpen(iv.scheduled_at, iv.duration_minutes) && (
+                    <Link
+                      href={interviewFormatOf(iv) === 'external_link' && iv.meeting_url ? iv.meeting_url : `/dashboard/employer/interviews/${iv.id}`}
+                      {...(interviewFormatOf(iv) === 'external_link' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      style={{
                       fontSize: '0.75rem', fontWeight: 700, padding: '5px 14px', borderRadius: 8,
                       background: 'var(--primary)', color: 'var(--on-primary)', textDecoration: 'none', flexShrink: 0,
                     }}>

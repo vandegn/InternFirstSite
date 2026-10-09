@@ -50,6 +50,8 @@ npm run lint     # ESLint
 
 **Feedback:** the floating Feedback button on every student/employer dashboard page posts to `/api/feedback`, which writes a row to `feedback_submissions`. Admins review it at `/dashboard/admin/feedback` and mark items new → reviewed → resolved. Submitter email/name/role are snapshotted onto the row so feedback survives account deletion. RLS restricts reads to `intern_first_admin`; there is no recipient lookup and no email routing.
 
+**Career events:** an auto-updating calendar at `/dashboard/student/events` (nav: "Career Events"). Admins register iCal feeds in `event_sources` on `/dashboard/admin/events`. Each feed is tagged to one school (campus events) or to a state, optionally with a city (local events). `/api/career-events/sync` pulls every active feed and upserts `career_events` by `(source_id, external_id)`. Each feed is isolated, so a broken one only sets its own `last_error`. Auth is `x-cron-secret` / `Bearer $CRON_SECRET` (hourly pg_cron in `migrations/20261009_career_events_cron.sql`) or an admin session. A student sees their own campus's events (`school_id` match), events in their school's state (no school, matching `state`), and online events (neither set). The same run sends bell notifications of type `career_event`: favorite reminders ~24h before start, and newly flagged major events. Every send claims a `career_event_notifications` row first, so nobody is notified twice. The sync never writes `is_major`. Pure logic (iCal reader, relevance, notification planning) lives in `lib/career-events.ts`, with the service/repo seam in `-service.ts`/`-repo.ts` and browser helpers in `-client.ts`. Apply `migrations/20261009_career_events.sql`. See `docs/career-events.md`.
+
 **Route protection:** `src/app/dashboard/layout.tsx` wraps all dashboard routes with client-side auth checks. It verifies the user is logged in, has a profile, and is accessing the correct dashboard for their role. Unauthorized users get redirected to `/login`, `/register`, or their correct dashboard. There is no middleware — all checks run in a `useEffect`.
 
 **Auth flow:** Supabase Auth (email/password + Google OAuth) → email verification required (Supabase built-in, skipped for OAuth) → `/auth/callback` server route creates profile + role data from `user_metadata` → role-based redirect to dashboard. Unverified users are redirected to `/verify-email`. `.edu` email required for students. Key auth helpers are in `src/lib/supabase.ts` (`getProfile`, `createProfileAndRoleData`, `isEduEmail`).
@@ -91,6 +93,7 @@ npm run lint     # ESLint
 - `/applications` — track application statuses
 - `/profile` — manage profile, skills, experiences, organizations
 - `/inbox` — in-platform messaging with employers
+- `/events` — career events: campus + state + online events, calendar view, favorites, notification switches
 - `/resources` — career resources hub (resume guide, interview tips, career articles)
 - `/settings` — account settings
 

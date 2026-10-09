@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { uploadApplicationFile, type ListingQuestion, type ApplicationAnswerInput } from '@/lib/supabase';
 
 export type AnswerState = Record<string, { text: string; options: string[]; storagePath: string | null }>;
@@ -36,6 +36,57 @@ export function toAnswerInputs(questions: ListingQuestion[], answers: AnswerStat
         storage_path: q.question_type === 'file' ? answer.storagePath : null,
       };
     });
+}
+
+// Text answers are always multi-line: the box starts at `rows` lines, grows
+// with the content (up to a cap, then scrolls), and keeps a vertical resize
+// handle. It only ever grows on input, so a height the student dragged to
+// isn't snapped back while they type.
+const TEXTAREA_MAX_HEIGHT = 420;
+
+function AutoGrowTextarea({ label, rows, value, required, invalid, onChange }: {
+  label: string;
+  rows: number;
+  value: string;
+  required: boolean;
+  invalid: boolean;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const needed = Math.min(el.scrollHeight + (el.offsetHeight - el.clientHeight), TEXTAREA_MAX_HEIGHT);
+    if (needed > el.offsetHeight) el.style.height = `${needed}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      aria-label={label}
+      aria-required={required || undefined}
+      aria-invalid={invalid || undefined}
+      rows={rows}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{
+        width: '100%',
+        minHeight: `${rows * 1.5 + 1}em`,
+        maxHeight: TEXTAREA_MAX_HEIGHT,
+        resize: 'vertical',
+        lineHeight: 1.5,
+        overflowY: 'auto',
+        padding: '8px 10px',
+        border: invalid ? '1.5px solid #e53e3e' : '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'transparent',
+        color: 'inherit',
+        fontFamily: 'inherit',
+        fontSize: '0.88rem',
+      }}
+    />
+  );
 }
 
 export default function ApplicationQuestionsForm({ questions, answers, onChange, studentId, showErrors }: {
@@ -100,21 +151,14 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
               )}
               {!question.help_text && <div style={{ height: 8 }} />}
 
-              {question.question_type === 'short_text' && (
-                <input aria-label={question.prompt}
-                  type="text"
+              {(question.question_type === 'short_text' || question.question_type === 'long_text') && (
+                <AutoGrowTextarea
+                  label={question.prompt}
+                  rows={question.question_type === 'long_text' ? 5 : 2}
                   value={answer.text}
-                  onChange={(e) => set(question.id, { text: e.target.value })}
-                  style={{ width: '100%' }}
-                />
-              )}
-
-              {question.question_type === 'long_text' && (
-                <textarea aria-label={question.prompt}
-                  rows={4}
-                  value={answer.text}
-                  onChange={(e) => set(question.id, { text: e.target.value })}
-                  style={{ width: '100%', resize: 'vertical' }}
+                  required={question.required}
+                  invalid={missing}
+                  onChange={(text) => set(question.id, { text })}
                 />
               )}
 

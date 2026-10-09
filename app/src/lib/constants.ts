@@ -114,7 +114,7 @@ export type Duration = (typeof DURATIONS)[number];
 
 // Custom screening questions employers can attach to a listing.
 export const QUESTION_TYPES = [
-  { value: 'short_text', label: 'Short answer', hint: 'One line of text' },
+  { value: 'short_text', label: 'Short answer', hint: 'A sentence or two' },
   { value: 'long_text', label: 'Long answer', hint: 'A paragraph' },
   { value: 'single_select', label: 'Multiple choice', hint: 'Pick one option' },
   { value: 'multi_select', label: 'Checkboxes', hint: 'Pick any number of options' },

@@ -1155,7 +1155,7 @@ function EmployerPipelineInner() {
                                       <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-light)' }}>
                                         {ans.question?.prompt ?? 'Question'}
                                       </p>
-                                      <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                                      <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
                                         {answerText(ans)}
                                       </p>
                                     </div>

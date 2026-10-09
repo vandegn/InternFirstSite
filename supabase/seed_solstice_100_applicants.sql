@@ -111,7 +111,7 @@ begin
       uid, target_listing, applied_stage_id,
       now() - ((100 - i) || ' minutes')::interval, now()
     )
-    on conflict (student_id, listing_id) do nothing;
+    on conflict (student_id, listing_id) where detached_at is null do nothing;
   end loop;
 end $$;
 

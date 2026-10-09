@@ -57,6 +57,9 @@ export default function EditListingPage() {
   const [industry, setIndustry] = useState('');
   const [duration, setDuration] = useState('');
   const [status, setStatus] = useState('active');
+  // Archived postings (Archive/End Hiring) stay closed until unarchived from
+  // Posted Jobs; the database refuses a direct reopen.
+  const [archivedAt, setArchivedAt] = useState<string | null>(null);
   const [applicationDeadline, setApplicationDeadline] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -118,6 +121,7 @@ export default function EditListingPage() {
         setIndustry(listing.industry || '');
         setDuration(listing.duration || '');
         setStatus(listing.status || 'active');
+        setArchivedAt(listing.archived_at ?? null);
         setApplicationDeadline(listing.application_deadline || '');
         setApplicantCount(listing.applicant_count ?? 0);
         setBannerUrl(listing.banner_url ?? null);
@@ -482,7 +486,16 @@ export default function EditListingPage() {
                   </button>
                 </>
               )}
-              {status === 'closed' && (
+              {status === 'closed' && archivedAt && (
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  This posting is archived and hiring has ended. Unarchive it from{' '}
+                  <Link href="/dashboard/employer/posted-jobs" style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                    Posted Jobs
+                  </Link>{' '}
+                  before reopening it.
+                </p>
+              )}
+              {status === 'closed' && !archivedAt && (
                 <button
                   onClick={handleToggleStatus}
                   disabled={togglingStatus}

@@ -254,7 +254,12 @@ function EmployerPipelineInner() {
       setInterviews(interviewsData as unknown as Interview[]);
       setAvailabilityRequests(availabilityData);
       setOffers(offersData);
-      const ls = listingsData.data.map((l: any) => ({ id: l.id, title: l.title }));
+      // Archived postings have ended hiring — their candidates can't be moved
+      // (the database refuses it), so they don't get a board. They stay
+      // readable under Posted Jobs → Archived.
+      const ls = listingsData.data
+        .filter((l: { archived_at?: string | null }) => !l.archived_at)
+        .map((l: any) => ({ id: l.id, title: l.title }));
       setListings(ls);
 
       // The candidate we were linked to wins over the ?listing= param, which

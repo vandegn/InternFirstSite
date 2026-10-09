@@ -47,10 +47,15 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
     async getApplication(applicationId) {
       const { data } = await supabase
         .from('applications')
-        .select('id, listing_id, student_id, listing:internship_listings(employer_id)')
+        // `*` rather than naming detached_at, so this still works before the
+        // 20261009_listing_archive_end_hiring migration is applied.
+        .select('*, listing:internship_listings(employer_id)')
         .eq('id', applicationId)
         .maybeSingle();
       if (!data) return null;
+      // This repo runs as the service role, so RLS doesn't hide applications
+      // detached from an unarchived posting — refuse them here instead.
+      if ((data as Record<string, unknown>).detached_at != null) return null;
       const listing = one<{ employer_id: string } | null>((data as Record<string, unknown>).listing);
       return {
         id: data.id,

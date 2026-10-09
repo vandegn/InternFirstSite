@@ -116,7 +116,7 @@ begin
         uid, listing_row.id, applied_stage_id,
         now() - ((100 - i) || ' minutes')::interval, now()
       )
-      on conflict (student_id, listing_id) do nothing;
+      on conflict (student_id, listing_id) where detached_at is null do nothing;
 
       if found then
         total_apps_inserted := total_apps_inserted + 1;

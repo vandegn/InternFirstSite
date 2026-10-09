@@ -120,6 +120,8 @@
     --chip-blue-bg: #dbeafe;    --chip-blue-ink: #1e40af;
     --chip-violet-bg: #f5f3ff;  --chip-violet-ink: #7c3aed;
     --chip-neutral-bg: #f3f4f6; --chip-neutral-ink: #4b5563;
+    /* Seeded Interviewing column color (see lib/stage-colors.ts) */
+    --chip-purple-bg: #ede9fe;  --chip-purple-ink: #5b21b6;
     --warning-bg: #fffbeb;
     --warning-fg: #92400e;
     --warning-border: #fde68a;
@@ -4032,6 +4034,7 @@ img { max-width: 100%; height: auto; display: block; }
     --chip-blue-bg: rgba(110, 160, 230, 0.18);   --chip-blue-ink: #93BEF0;
     --chip-violet-bg: rgba(175, 145, 240, 0.20); --chip-violet-ink: #CDB8FA;
     --chip-neutral-bg: rgba(200, 185, 165, 0.14);--chip-neutral-ink: #CFC3B2;
+    --chip-purple-bg: var(--chip-violet-bg);     --chip-purple-ink: var(--chip-violet-ink);
 
     --on-fill: #1A1410;
     --success-text: #B7D867;
@@ -4340,6 +4343,20 @@ img { max-width: 100%; height: auto; display: block; }
 [data-theme="dark"] .auth-container {
     border: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
+}
+
+/* Green pill with --primary type: on dark --primary is amber, so pin the ink */
+[data-theme="dark"] .btn-auth {
+    color: var(--on-accent);
+    box-shadow: 0 10px 24px -6px rgba(159, 198, 60, 0.28);
+}
+
+[data-theme="dark"] .btn-auth:hover {
+    box-shadow: 0 12px 28px -6px rgba(159, 198, 60, 0.36);
+}
+
+[data-theme="dark"] .footer-socials a:hover {
+    color: var(--on-accent);
 }
 
 [data-theme="dark"] .auth-error {

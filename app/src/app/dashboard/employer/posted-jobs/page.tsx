@@ -32,6 +32,7 @@ import Avatar from '@/components/Avatar';
 import ConfirmActionModal from '@/components/ConfirmActionModal';
 import CandidateApplicationModal from '@/components/CandidateApplicationModal';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
+import { stageColor } from '@/lib/stage-colors';
 
 type ListingWithStats = {
   id: string;
@@ -673,8 +674,8 @@ export default function PostedJobsPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {selectedApps.map(app => {
-                    const pillBg = app.stage?.color_bg ?? FALLBACK_PILL.bg;
-                    const pillColor = app.stage?.color_text ?? FALLBACK_PILL.color;
+                    const pillBg = stageColor(app.stage?.color_bg) ?? FALLBACK_PILL.bg;
+                    const pillColor = stageColor(app.stage?.color_text) ?? FALLBACK_PILL.color;
                     const pillLabel = app.stage?.label ?? app.status ?? FALLBACK_PILL.label;
                     const interview = activeInterviewForApp(app.id);
                     const interviewBadge = interview ? INTERVIEW_STATUS_COLORS[interview.status] : null;

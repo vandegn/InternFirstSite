@@ -27,6 +27,7 @@ import {
 import { useApplicationArchive } from '@/lib/use-application-archive';
 import ApplicationRowAction from '@/components/ApplicationRowAction';
 import ArchiveToast from '@/components/ArchiveToast';
+import { stageColor } from '@/lib/stage-colors';
 
 type Application = {
   id: string;
@@ -396,8 +397,8 @@ export default function MyApplications() {
           {visible.map((app) => {
             const employer = app.listing.employers;
             const fallback = STAGE_TYPE_FALLBACK[applicationStageType(app)];
-            const statusBg = app.stage?.color_bg ?? fallback.bg;
-            const statusColor = app.stage?.color_text ?? fallback.color;
+            const statusBg = stageColor(app.stage?.color_bg) ?? fallback.bg;
+            const statusColor = stageColor(app.stage?.color_text) ?? fallback.color;
             const statusLabel = app.stage?.label ?? app.status ?? fallback.label;
             const archived = !!app.archived_at;
 

@@ -15,6 +15,7 @@ import {
 import VerificationBanner from '@/components/VerificationBanner';
 import Avatar from '@/components/Avatar';
 import CandidateApplicationModal from '@/components/CandidateApplicationModal';
+import { stageColor } from '@/lib/stage-colors';
 
 type ApplicationAnswer = {
   id: string;
@@ -245,8 +246,8 @@ export default function EmployerApplications() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((app) => {
             const isExpanded = expandedId === app.id;
-            const pillBg = app.stage?.color_bg ?? FALLBACK_PILL.bg;
-            const pillColor = app.stage?.color_text ?? FALLBACK_PILL.color;
+            const pillBg = stageColor(app.stage?.color_bg) ?? FALLBACK_PILL.bg;
+            const pillColor = stageColor(app.stage?.color_text) ?? FALLBACK_PILL.color;
             const pillLabel = app.stage?.label ?? app.status ?? FALLBACK_PILL.label;
             return (
               <div

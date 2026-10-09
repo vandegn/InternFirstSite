@@ -27,6 +27,7 @@ import {
   type SchedulingView,
 } from '@/lib/interview-availability';
 import { interviewFormatOf, INTERVIEW_FORMAT_LABELS } from '@/lib/interview-format';
+import { stageColor } from '@/lib/stage-colors';
 
 type Props = {
   /** The application to show; null keeps the modal closed. */
@@ -237,7 +238,7 @@ export default function CandidateApplicationModal({ applicationId, onClose, onCh
             {/* ---- Category, status, match ---- */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', margin: '14px 0 4px' }}>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-light)' }}>Category</span>
-              <span style={{ ...chip, background: app.stage?.color_bg ?? 'var(--chip-indigo-bg)', color: app.stage?.color_text ?? 'var(--chip-indigo-ink)' }}>
+              <span style={{ ...chip, background: stageColor(app.stage?.color_bg) ?? 'var(--chip-indigo-bg)', color: stageColor(app.stage?.color_text) ?? 'var(--chip-indigo-ink)' }}>
                 {app.stage?.label ?? app.status ?? 'Applied'}
               </span>
               {view.kind !== 'hidden' && (

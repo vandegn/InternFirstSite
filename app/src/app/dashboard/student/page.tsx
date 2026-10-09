@@ -28,6 +28,7 @@ import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format'
 import { useApplicationArchive } from '@/lib/use-application-archive';
 import ApplicationRowAction from '@/components/ApplicationRowAction';
 import ArchiveToast from '@/components/ArchiveToast';
+import { stageColor } from '@/lib/stage-colors';
 
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
@@ -696,7 +697,7 @@ export default function StudentDashboard() {
                   // straight off the stage the candidate sits in. statusConfig
                   // only covers legacy rows with no stage joined.
                   const status = app.stage
-                    ? { label: app.stage.label, color: app.stage.color_text, bg: app.stage.color_bg }
+                    ? { label: app.stage.label, color: stageColor(app.stage.color_text), bg: stageColor(app.stage.color_bg) }
                     : statusConfig[app.status] || { label: app.status, color: 'var(--chip-muted-ink)', bg: 'var(--chip-neutral-bg)' };
                   const listing = app.listing;
                   const employer = listing?.employers;

@@ -37,6 +37,7 @@ import {
   type SchedulingView,
 } from '@/lib/interview-availability';
 import { PIPELINE_STAGE_PRESETS, type PipelineStagePreset } from '@/lib/constants';
+import { stageColor } from '@/lib/stage-colors';
 
 type ApplicationAnswer = {
   id: string;
@@ -803,19 +804,19 @@ function EmployerPipelineInner() {
               >
                 <div style={{
                   padding: '12px 16px',
-                  borderBottom: '2px solid ' + col.color_bg,
+                  borderBottom: '2px solid ' + stageColor(col.color_bg),
                   display: 'flex', justifyContent: 'space-between',
                   alignItems: 'center', background: 'var(--surface)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{
-                      width: 8, height: 8, borderRadius: '50%', background: col.color_text,
+                      width: 8, height: 8, borderRadius: '50%', background: stageColor(col.color_text),
                     }} />
                     <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{col.label}</span>
                   </div>
                   <span style={{
                     fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '10px',
-                    background: col.color_bg, color: col.color_text,
+                    background: stageColor(col.color_bg), color: stageColor(col.color_text),
                   }}>
                     {allColApps.length}
                   </span>
@@ -999,9 +1000,9 @@ function EmployerPipelineInner() {
                         padding: '10px 8px',
                         margin: '4px',
                         borderRadius: 'var(--radius-sm)',
-                        border: `1px dashed ${col.color_text}`,
-                        background: col.color_bg,
-                        color: col.color_text,
+                        border: `1px dashed ${stageColor(col.color_text)}`,
+                        background: stageColor(col.color_bg),
+                        color: stageColor(col.color_text),
                         fontSize: '0.78rem',
                         fontWeight: 600,
                         textDecoration: 'none',
@@ -1122,7 +1123,7 @@ function EmployerPipelineInner() {
                           }}
                         >⋮⋮</span>
                       )}
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color_text, flexShrink: 0 }} />
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: stageColor(s.color_text), flexShrink: 0 }} />
                       <input aria-label="Column name"
                         value={s.label}
                         // Applied and Offered are the board's fixed endpoints —

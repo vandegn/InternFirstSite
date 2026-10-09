@@ -90,7 +90,7 @@ export default function FeedbackButton() {
           onClick={(e) => { if (e.target === e.currentTarget && !submitting) close(); }}
           style={{
             position: 'fixed', inset: 0, zIndex: 950, padding: 24,
-            background: 'rgba(15,23,42,0.45)',
+            background: 'var(--scrim-45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >

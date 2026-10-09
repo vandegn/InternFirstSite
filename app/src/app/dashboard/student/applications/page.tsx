@@ -666,7 +666,7 @@ export default function MyApplications() {
         <div
           onClick={() => { if (!respondingTo) setDecliningOffer(null); }}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+            position: 'fixed', inset: 0, background: 'var(--scrim-55)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: '24px',
           }}
         >

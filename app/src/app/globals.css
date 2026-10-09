@@ -142,6 +142,10 @@
     --chip-muted-ink: #6b7280;
     --step-future-ink: #c0c4cc;
     --interview-accent: #6366f1;
+    /* Modal backdrops */
+    --scrim-45: rgba(15, 23, 42, 0.45);
+    --scrim-50: rgba(15, 23, 42, 0.5);
+    --scrim-55: rgba(15, 23, 42, 0.55);
 }
 
 html { scroll-behavior: smooth; }
@@ -4046,6 +4050,9 @@ img { max-width: 100%; height: auto; display: block; }
     --chip-muted-ink: #B8AB9A;
     --step-future-ink: var(--text-light);
     --interview-accent: #9AA2F8;
+    --scrim-45: rgba(5, 3, 2, 0.6);
+    --scrim-50: rgba(5, 3, 2, 0.62);
+    --scrim-55: rgba(5, 3, 2, 0.65);
 
     /* Never defined in light mode, where their fallbacks / inheritance are the
        intended look. On dark those fallbacks were a #f5f5f5 panel, navy text
@@ -4713,7 +4720,7 @@ img { max-width: 100%; height: auto; display: block; }
     align-items: center;
     justify-content: center;
     padding: 16px;
-    background: rgba(15, 23, 42, 0.55);
+    background: var(--scrim-55);
 }
 
 .confirm-modal {

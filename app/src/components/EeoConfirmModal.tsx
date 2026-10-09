@@ -149,7 +149,7 @@ export default function EeoConfirmModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(15,23,42,0.5)',
+        background: 'var(--scrim-50)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -173,7 +173,7 @@ export default function EeoConfirmModal({
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(15,23,42,0.28)',
+          boxShadow: '0 20px 60px rgba(15, 23, 42, 0.28)',
         }}
       >
         <div style={{ padding: '22px 24px 14px', borderBottom: '1px solid var(--border)' }}>

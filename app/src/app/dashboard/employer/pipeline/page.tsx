@@ -1023,7 +1023,7 @@ function EmployerPipelineInner() {
         <div
           onClick={closeEditModal}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
+            position: 'fixed', inset: 0, background: 'var(--scrim-45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
           }}
         >
@@ -1310,7 +1310,7 @@ function EmployerPipelineInner() {
           <div
             onClick={() => setDeleteTarget(null)}
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+              position: 'fixed', inset: 0, background: 'var(--scrim-55)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60,
             }}
           >
@@ -1419,7 +1419,7 @@ function EmployerPipelineInner() {
           <div
             onClick={() => { if (!movingApp) setPendingMove(null); }}
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+              position: 'fixed', inset: 0, background: 'var(--scrim-55)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70,
             }}
           >
@@ -1478,7 +1478,7 @@ function EmployerPipelineInner() {
         <div
           onClick={() => { if (!deletingApp) { setTrashTarget(null); setRemoveError(''); } }}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+            position: 'fixed', inset: 0, background: 'var(--scrim-55)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70,
           }}
         >

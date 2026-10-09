@@ -110,7 +110,7 @@ export default function InterviewResponseModal({
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: animating ? 'rgba(15, 23, 42, 0.45)' : 'rgba(15, 23, 42, 0)',
+        background: animating ? 'var(--scrim-45)' : 'rgba(15, 23, 42, 0)',
         backdropFilter: animating ? 'blur(4px)' : 'blur(0px)',
         WebkitBackdropFilter: animating ? 'blur(4px)' : 'blur(0px)',
         transition: 'background 0.24s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.24s cubic-bezier(0.16, 1, 0.3, 1)',

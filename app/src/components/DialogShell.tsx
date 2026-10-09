@@ -86,7 +86,7 @@ export default function DialogShell({
         style={{
           position: 'fixed', inset: 0, zIndex,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(15, 23, 42, 0.5)', padding: 'clamp(8px, 3vw, 24px)',
+          background: 'var(--scrim-50)', padding: 'clamp(8px, 3vw, 24px)',
         }}
       >
         <div

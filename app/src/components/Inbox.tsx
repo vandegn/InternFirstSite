@@ -52,7 +52,16 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
   // Set when we arrive via ?to=… so the caller lands in the composer with the
   // cursor already blinking, instead of having to click the thread first.
   const [focusComposer, setFocusComposer] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // The scrollable thread. We scroll it to the bottom exactly once per
+  // conversation — when it first loads — and after the user's own send. Never
+  // on the 5s poll: re-rendering the same messages used to yank the student
+  // away from the availability picker they were in the middle of filling in.
+  const threadRef = useRef<HTMLDivElement>(null);
+  const scrolledForRef = useRef<string | null>(null);
+  const [scrollRequest, setScrollRequest] = useState(0);
+  // Which conversation `messages` currently belongs to, so switching threads
+  // doesn't count the previous thread's messages as "this one has loaded".
+  const [messagesFor, setMessagesFor] = useState<string | null>(null);
   const composerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -84,9 +93,13 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
 
   useEffect(() => {
     if (!userId || !selectedUserId) return;
+    let cancelled = false;
     async function fetchMessages() {
       const msgs = await getMessagesWith(userId!, selectedUserId!);
+      // A poll for the conversation we just left must not land in this one.
+      if (cancelled) return;
       setMessages(msgs as Message[]);
+      setMessagesFor(selectedUserId);
       const markedCount = await markMessagesAsRead(userId!, selectedUserId!);
       if (markedCount > 0) {
         // Update unread count in conversations list
@@ -99,12 +112,26 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
     fetchMessages();
     // Poll for new messages every 5 seconds
     const interval = setInterval(fetchMessages, 5000);
-    return () => clearInterval(interval);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [userId, selectedUserId]);
 
+  // Scroll the thread container (not the page — scrollIntoView also moved the
+  // window) to the bottom the first time a conversation's messages arrive.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!selectedUserId || messagesFor !== selectedUserId || messages.length === 0) return;
+    if (scrolledForRef.current === selectedUserId) return;
+    const el = threadRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    scrolledForRef.current = selectedUserId;
+  }, [messages, messagesFor, selectedUserId]);
+
+  // The user just sent something: show it to them. Explicit, user-initiated.
+  useEffect(() => {
+    if (scrollRequest === 0) return;
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [scrollRequest]);
 
   // The composer only mounts once the thread is on screen, so wait for the
   // loading state to clear before reaching for it. Fires once per arrival.
@@ -128,6 +155,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
       setNewMessage('');
       const msgs = await getMessagesWith(userId, selectedUserId);
       setMessages(msgs as Message[]);
+      setScrollRequest(n => n + 1);
       // Update last message in conversations
       const convs = await getConversations(userId);
       setConversations(convs);
@@ -284,7 +312,7 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                 </div>
 
                 {/* Messages */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div ref={threadRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {messages.length === 0 && (
                     <p style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '280px', lineHeight: 1.5 }}>
                       No messages yet. Edit the draft below and send when you&apos;re ready.
@@ -343,7 +371,6 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                       </div>
                     );
                   })}
-                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input */}

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
 import PasswordInput from '@/components/PasswordInput';
 import { supabase, getProfile, DASHBOARD_ROUTES, isEduEmail } from '@/lib/supabase';
+import BrandLogo from '@/components/BrandLogo';
 
 type Role = 'student' | 'employer';
 
@@ -101,7 +102,7 @@ function LoginForm() {
         </button>
         <div className="auth-logo">
           <Link href="/">
-            <img src="/internfirst-logo.png" alt="InternFirst" />
+            <BrandLogo />
           </Link>
         </div>
         <h1>Login</h1>

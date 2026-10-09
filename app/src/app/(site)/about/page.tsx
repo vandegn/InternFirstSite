@@ -3,6 +3,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
+import BrandLogo from '@/components/BrandLogo';
 
 // `absoluteTitle` rather than `title`, because the brand belongs inside this
 // one — "About | InternFirst" reads like a section header, "About InternFirst"
@@ -190,7 +191,7 @@ export default function AboutPage() {
               </ul>
             </div>
             <div className="about-split-img">
-              <img src="/internfirst-logo.png" alt="InternFirst" />
+              <BrandLogo />
             </div>
           </div>
         </div>

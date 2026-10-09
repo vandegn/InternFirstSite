@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 
 export default function Footer() {
   return (
@@ -6,11 +7,7 @@ export default function Footer() {
       <div className="container">
         <div className="footer-grid">
           <div className="footer-brand">
-            <img
-              src="/internfirst-logo.png"
-              alt="InternFirst"
-              className="footer-logo"
-            />
+            <BrandLogo className="footer-logo" />
             <p>Internship recruitment made simple.</p>
           </div>
           <div className="footer-links">

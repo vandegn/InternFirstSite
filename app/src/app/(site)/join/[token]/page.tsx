@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { validatePassword } from '@/lib/password';
 import { analytics } from '@heycatch/sdk';
+import BrandLogo from '@/components/BrandLogo';
 
 type InviteInfo = {
   state: 'valid' | 'expired' | 'revoked' | 'accepted';
@@ -103,7 +104,7 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
         <div className="auth-container" style={{ maxWidth: 480 }}>
           <div className="auth-logo">
             <Link href="/">
-              <img src="/internfirst-logo.png" alt="InternFirst" />
+              <BrandLogo />
             </Link>
           </div>
           {children}

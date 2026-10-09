@@ -7,6 +7,7 @@ import PasswordInput from '@/components/PasswordInput';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
 import { validatePassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
 import { supabase } from '@/lib/supabase';
+import BrandLogo from '@/components/BrandLogo';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -83,10 +84,7 @@ export default function ResetPasswordPage() {
         </button>
         <div className="auth-logo">
           <Link href="/">
-            <img
-              src="/internfirst-logo.png"
-              alt="InternFirst"
-            />
+            <BrandLogo />
           </Link>
         </div>
 

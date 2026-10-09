@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import BrandLogo from '@/components/BrandLogo';
 
 // Interstitial for email confirmation and password-reset links. The email
 // lands here with ?token_hash=&type=, but verification only fires when the
@@ -56,10 +57,7 @@ function ConfirmEmailContent() {
       <div className="auth-container narrow">
         <div className="auth-logo">
           <Link href="/">
-            <img
-              src="/internfirst-logo.png"
-              alt="InternFirst"
-            />
+            <BrandLogo />
           </Link>
         </div>
 

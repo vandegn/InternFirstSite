@@ -15,6 +15,7 @@ import PolicyAgreementModal from '@/components/PolicyAgreementModal';
 import { getPolicyVersions } from '@/lib/policies';
 
 import { registrationFlow, trackProductEvent } from '@/lib/product-analytics-client';
+import BrandLogo from '@/components/BrandLogo';
 
 type Role = 'student' | 'employer';
 
@@ -187,7 +188,7 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
         </button>
         <div className="auth-logo">
           <Link href="/">
-            <img src="/internfirst-logo.png" alt="InternFirst" />
+            <BrandLogo />
           </Link>
         </div>
         <h1>Register</h1>

@@ -30,7 +30,7 @@ const MoonIcon = () => (
 function Preview({ mode }: { mode: Theme }) {
   const c =
     mode === 'dark'
-      ? { bg: '#0A121F', card: '#141F33', line: '#26385A', accent: '#9FC63C', text: '#7BA7E8' }
+      ? { bg: '#15120F', card: '#211C18', line: '#3D352D', accent: '#9FC63C', text: '#F1E8DA' }
       : { bg: '#F8F9FC', card: '#ffffff', line: '#e5e7eb', accent: '#9FC63C', text: '#1A2D49' };
 
   return (

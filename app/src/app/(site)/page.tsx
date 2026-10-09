@@ -6,6 +6,7 @@ import { pageMetadata } from '@/lib/site';
 import { organizationJsonLd, serializeJsonLd } from '@/lib/structured-data';
 import HomeFaq from './HomeFaq';
 import HomeNewsletter from './HomeNewsletter';
+import BrandLogo from '@/components/BrandLogo';
 
 // This was a client component that rendered nothing but "Loading..." until a
 // Supabase session check resolved. Crawlers got no session and, in Ahrefs'
@@ -64,7 +65,7 @@ export default function LandingPage() {
               image loads — this sits above the fold on the ad landing page,
               where a late layout shift is what CLS actually measures. */}
           <div className="hero-logo">
-            <img src="/internfirst-logo.png" alt="" width={622} height={98} />
+            <BrandLogo alt="" width={622} height={98} />
           </div>
           <h1>The easiest way to find an internship</h1>
           <p className="hero-subtitle">

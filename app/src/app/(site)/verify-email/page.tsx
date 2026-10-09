@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import BrandLogo from '@/components/BrandLogo';
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -60,10 +61,7 @@ function VerifyEmailContent() {
         </button>
         <div className="auth-logo">
           <Link href="/">
-            <img
-              src="/internfirst-logo.png"
-              alt="InternFirst"
-            />
+            <BrandLogo />
           </Link>
         </div>
 

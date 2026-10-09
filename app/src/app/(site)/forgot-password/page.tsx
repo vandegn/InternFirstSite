@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import BrandLogo from '@/components/BrandLogo';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -48,10 +49,7 @@ export default function ForgotPasswordPage() {
         </button>
         <div className="auth-logo">
           <Link href="/">
-            <img
-              src="/internfirst-logo.png"
-              alt="InternFirst"
-            />
+            <BrandLogo />
           </Link>
         </div>
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase, getProfile, DASHBOARD_ROUTES } from '@/lib/supabase';
+import BrandLogo from '@/components/BrandLogo';
 
 const navLinks = [
   { href: '/about', label: 'About' },
@@ -38,10 +39,7 @@ export default function Header() {
     <header className="header">
       <div className="header-inner">
         <Link href={logoHref} className="logo">
-          <img
-            src="/internfirst-logo.png"
-            alt="InternFirst"
-          />
+          <BrandLogo />
         </Link>
         <nav className={`main-nav${menuOpen ? ' open' : ''}`}>
           <ul>

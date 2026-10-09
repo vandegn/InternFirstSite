@@ -9,6 +9,7 @@ import FeedbackButton from './FeedbackButton';
 import CommunityBanner from './CommunityBanner';
 import Avatar from './Avatar';
 import { analytics } from '@heycatch/sdk';
+import BrandLogo from '@/components/BrandLogo';
 
 type NavItem = {
   href: string;
@@ -219,7 +220,7 @@ export default function DashboardShell({ children, role }: { children: React.Rea
         <div className="dash-header-inner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
             <Link href={DASHBOARD_ROUTES[role] || '/'} className="logo">
-              <img src="/internfirst-logo.png" alt="InternFirst" />
+              <BrandLogo />
             </Link>
             <span className="portal-label">{ROLE_LABELS[role] || 'Dashboard'}</span>
           </div>

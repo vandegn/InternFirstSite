@@ -12,6 +12,7 @@ import {
   type PipelineStage,
 } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
+import CandidateApplicationModal from '@/components/CandidateApplicationModal';
 
 type Application = {
   id: string;
@@ -169,11 +170,14 @@ function PipelineAllInner() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {applications.map((app, idx) => {
-            const isExpanded = expandedId === app.id;
             return (
               <div
                 key={app.id}
-                onClick={() => setExpandedId(isExpanded ? null : app.id)}
+                onClick={() => setExpandedId(app.id)}
+                role="button"
+                tabIndex={0}
+                aria-haspopup="dialog"
+                onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setExpandedId(app.id); } }}
                 style={{
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
@@ -229,56 +233,17 @@ function PipelineAllInner() {
                   </select>
                 </div>
 
-                {isExpanded && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
-                      <span style={{ color: 'var(--text-light)' }}>Email: </span>
-                      {app.student.profile.email}
-                    </div>
-                    {app.student.graduation_year && (
-                      <div style={{ fontSize: '0.85rem', marginBottom: 4 }}>
-                        <span style={{ color: 'var(--text-light)' }}>Class of </span>
-                        {app.student.graduation_year}
-                      </div>
-                    )}
-                    {app.student.bio && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.5 }}>
-                        {app.student.bio}
-                      </p>
-                    )}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      {app.resume && (
-                        <a
-                          href={`/api/files/resume/${app.resume.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: '0.8rem', padding: '5px 12px', borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--primary)', color: 'var(--primary)',
-                            textDecoration: 'none',
-                          }}
-                        >
-                          View resume
-                        </a>
-                      )}
-                      <Link
-                        href={`/dashboard/employer/inbox?to=${app.student.user_id}&name=${encodeURIComponent(app.student.profile.full_name)}`}
-                        style={{
-                          fontSize: '0.8rem', padding: '5px 12px', borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border)', color: 'var(--text)',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        Message
-                      </Link>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
       )}
+
+      {/* The expanded application, same modal as the board and lists. */}
+      <CandidateApplicationModal
+        applicationId={expandedId}
+        onClose={() => setExpandedId(null)}
+      />
 
       {pendingMove && (
         <div

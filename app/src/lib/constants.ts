@@ -262,14 +262,16 @@ export const MAX_LISTING_SKILLS = 10;
 // sync triggers all read (see supabase/migrations/2026-06-24-pipeline-stages.sql).
 //
 // This is the extension point: adding a row here adds a dropdown option, and
-// nothing else needs to change. `stageType` must stay one of the five values
+// nothing else needs to change. `stageType` must stay one of the six values
 // the pipeline_stages check constraint allows, so "Hired" buckets as 'offered'
-// — the last forward step of the flow — rather than inventing a sixth type.
+// — the last forward step of the flow — rather than inventing a seventh type.
+// 'screening' (20261009) is what makes a column a Screening category for the
+// interview scheduling flow; 'interviewing' makes it an Interview one.
 // "Applied" and "Offered" already exist as locked anchors on every board, so
 // presets matching a column that's already there are offered as disabled.
 export const PIPELINE_STAGE_PRESETS = [
   { label: 'Application Received', stageType: 'applied',      colorBg: 'var(--chip-indigo-bg)',   colorText: 'var(--chip-indigo-ink)' },
-  { label: 'Phone Screening',      stageType: 'reviewing',    colorBg: 'var(--chip-blue-bg)',     colorText: 'var(--chip-blue-ink)' },
+  { label: 'Phone Screening',      stageType: 'screening',    colorBg: 'var(--chip-blue-bg)',     colorText: 'var(--chip-blue-ink)' },
   { label: 'Interview 1',          stageType: 'interviewing', colorBg: 'var(--chip-violet-bg)',   colorText: 'var(--chip-violet-ink)' },
   { label: 'Interview 2',          stageType: 'interviewing', colorBg: 'var(--chip-violet-bg)',   colorText: 'var(--chip-violet-ink)' },
   { label: 'Final Interview',      stageType: 'interviewing', colorBg: 'var(--chip-orange-bg)',   colorText: 'var(--chip-orange-ink)' },

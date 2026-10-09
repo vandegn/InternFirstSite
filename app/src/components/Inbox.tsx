@@ -357,7 +357,8 @@ export default function Inbox({ backLink, backLabel }: { backLink: string; backL
                           fontSize: '0.9rem',
                           lineHeight: 1.5,
                         }}>
-                          <p style={{ margin: 0 }}>{msg.body}</p>
+                          {/* pre-wrap: confirmed-meeting details arrive as one line per field. */}
+                          <p style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{msg.body}</p>
                           <span style={{
                             fontSize: '0.65rem',
                             opacity: 0.7,

@@ -14,6 +14,7 @@ import {
 } from '@/lib/supabase';
 import VerificationBanner from '@/components/VerificationBanner';
 import Avatar from '@/components/Avatar';
+import CandidateApplicationModal from '@/components/CandidateApplicationModal';
 
 type ApplicationAnswer = {
   id: string;
@@ -247,7 +248,6 @@ export default function EmployerApplications() {
             const pillBg = app.stage?.color_bg ?? FALLBACK_PILL.bg;
             const pillColor = app.stage?.color_text ?? FALLBACK_PILL.color;
             const pillLabel = app.stage?.label ?? app.status ?? FALLBACK_PILL.label;
-            const listingStages = stagesByListing[app.listing.id] ?? [];
             return (
               <div
                 key={app.id}
@@ -261,7 +261,15 @@ export default function EmployerApplications() {
               >
                 {/* Main row */}
                 <div
-                  onClick={() => setExpandedId(isExpanded ? null : app.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-haspopup="dialog"
+                  aria-label={`Open ${app.student.profile.full_name}'s application`}
+                  onClick={() => setExpandedId(app.id)}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(app.id); }
+                  }}
                   style={{
                     padding: '16px 20px',
                     display: 'flex',
@@ -335,126 +343,14 @@ export default function EmployerApplications() {
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', flexShrink: 0 }}>{timeAgo(app.applied_at)}</span>
                   <svg
-                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }}
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isExpanded ? 'var(--primary)' : 'var(--text-light)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ flexShrink: 0 }}
+                    aria-hidden="true"
                   >
-                    <polyline points="6 9 12 15 18 9"/>
+                    <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>
                   </svg>
                 </div>
 
-                {/* Expanded details */}
-                {isExpanded && (
-                  <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '16px 0' }}>
-                      <div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Email</span>
-                        <p style={{ fontSize: '0.9rem', margin: '4px 0 0' }}>{app.student.profile.email}</p>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Major</span>
-                        <p style={{ fontSize: '0.9rem', margin: '4px 0 0' }}>{app.student.major || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Graduation Year</span>
-                        <p style={{ fontSize: '0.9rem', margin: '4px 0 0' }}>{app.student.graduation_year || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Applied</span>
-                        <p style={{ fontSize: '0.9rem', margin: '4px 0 0' }}>{new Date(app.applied_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    {app.student.bio && (
-                      <div style={{ marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Bio</span>
-                        <p style={{ fontSize: '0.9rem', margin: '4px 0 0', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{app.student.bio}</p>
-                      </div>
-                    )}
-                    {app.resume && (
-                      <div style={{ marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Resume</span>
-                        <div style={{ marginTop: '4px' }}>
-                          <a
-                            href={`/api/files/resume/${app.resume.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '6px',
-                              padding: '6px 14px', borderRadius: 'var(--radius-sm, 8px)',
-                              border: '1px solid var(--primary)', color: 'var(--primary)',
-                              fontSize: '0.85rem', fontWeight: 500, textDecoration: 'none',
-                              transition: 'all 0.15s',
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            {app.resume.name}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                    {app.answers.length > 0 && (
-                      <div style={{ marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Screening Answers</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                          {app.answers.map((answer) => (
-                            <div key={answer.id}>
-                              <p style={{ fontSize: '0.82rem', fontWeight: 500, margin: 0 }}>
-                                {answer.question?.prompt ?? 'Question removed'}
-                              </p>
-                              {answer.storage_path ? (
-                                <a
-                                  href={`/api/files/application-answer/${answer.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ fontSize: '0.85rem', color: 'var(--primary)' }}
-                                >
-                                  {answer.answer_text || 'View file'}
-                                </a>
-                              ) : (
-                                <p style={{ fontSize: '0.88rem', margin: '2px 0 0', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                                  {answer.answer_options.length > 0
-                                    ? answer.answer_options.join(', ')
-                                    : answer.answer_text || '—'}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Move to:</span>
-                      <select aria-label="Pipeline stage"
-                        value={app.stage_id ?? ''}
-                        onChange={(e) => handleStageChange(app.id, e.target.value)}
-                        disabled={updating === app.id || listingStages.length === 0}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border)',
-                          fontSize: '0.85rem',
-                          background: 'var(--bg)',
-                          cursor: updating === app.id ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {listingStages.map(s => (
-                          // Offered columns are not reachable from here.
-                          // Extending an offer notifies the candidate and can
-                          // carry an offer letter, so it runs through the
-                          // pipeline board's two-step confirmation or not at all.
-                          <option
-                            key={s.id}
-                            value={s.id}
-                            disabled={s.stage_type === 'offered' && s.id !== app.stage_id}
-                          >
-                            {s.label}
-                            {s.stage_type === 'offered' && s.id !== app.stage_id ? ' — send from Pipeline' : ''}
-                          </option>
-                        ))}
-                      </select>
-                      {updating === app.id && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Saving...</span>}
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -462,6 +358,41 @@ export default function EmployerApplications() {
       )}
       </>
       )}
+
+      {/* The expanded application: a large modal over the list, so closing it
+          leaves the employer exactly where they were. */}
+      <CandidateApplicationModal
+        applicationId={expandedId}
+        onClose={() => setExpandedId(null)}
+        extraActions={(review) => {
+          const app = applications.find(a => a.id === review.id);
+          if (!app) return null;
+          const listingStages = stagesByListing[app.listing.id] ?? [];
+          return (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-light)', marginRight: 'auto' }}>
+              Move to
+              <select
+                value={app.stage_id ?? ''}
+                onChange={(e) => handleStageChange(app.id, e.target.value)}
+                disabled={updating === app.id || listingStages.length === 0}
+                style={{ fontSize: '0.8rem', padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+              >
+                {listingStages.map(s => (
+                  // Offered columns are not reachable from here. Extending an
+                  // offer notifies the candidate and can carry an offer letter,
+                  // so it runs through the pipeline board's two-step
+                  // confirmation or not at all.
+                  <option key={s.id} value={s.id} disabled={s.stage_type === 'offered' && s.id !== app.stage_id}>
+                    {s.label}
+                    {s.stage_type === 'offered' && s.id !== app.stage_id ? ' — send from Pipeline' : ''}
+                  </option>
+                ))}
+              </select>
+              {updating === app.id && <span>Saving…</span>}
+            </label>
+          );
+        }}
+      />
     </div>
   );
 }

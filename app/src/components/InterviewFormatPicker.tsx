@@ -15,7 +15,7 @@ type Props = {
   disabled?: boolean;
 };
 
-// Shared by ScheduleInterviewModal and SelectInterviewTimeModal: how the
+// Used by ConfirmMeetingModal (the confirm step of scheduling): how the
 // interview happens, plus the link field when the employer brings their own.
 export default function InterviewFormatPicker({
   format,

@@ -78,7 +78,7 @@ export function interviewFormatColumns(
   return format === 'internfirst' ? {} : { format, meeting_url: meetingUrl };
 }
 
-function safeTimeZone(tz: unknown): string {
+export function safeTimeZone(tz: unknown): string {
   if (typeof tz !== 'string' || !tz) return 'UTC';
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: tz });
@@ -99,6 +99,55 @@ export function formatInterviewDateTime(iso: string, timeZone?: string): { date:
     hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: tz,
   });
   return { date, time };
+}
+
+/**
+ * The final details a confirmed screening/interview posts into the shared
+ * chat thread — every format, so both parties have the meeting type, date,
+ * time, zone, duration and where it happens in their messages. Written in the
+ * employer's zone, with the student's own time added when theirs differs.
+ */
+export function buildConfirmedMeetingMessage(opts: {
+  meetingType: 'screening' | 'interview';
+  format: InterviewFormat;
+  companyName: string;
+  listingTitle: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  meetingUrl?: string | null;
+  /** The employer's zone. */
+  timeZone?: string;
+  /** The student's zone, when known. */
+  studentTimeZone?: string | null;
+  notes?: string | null;
+  rescheduled?: boolean;
+}): string {
+  const typeLabel = opts.meetingType === 'screening' ? 'Screening' : 'Interview';
+  const { date, time } = formatInterviewDateTime(opts.scheduledAt, opts.timeZone);
+  const employerTz = safeTimeZone(opts.timeZone);
+  const studentTz = opts.studentTimeZone ? safeTimeZone(opts.studentTimeZone) : null;
+  const studentTime = studentTz && studentTz !== employerTz
+    ? formatInterviewDateTime(opts.scheduledAt, studentTz)
+    : null;
+  const notes = opts.notes?.trim();
+
+  const where =
+    opts.format === 'external_link' ? `Link: ${opts.meetingUrl ?? ''}`
+    : opts.format === 'phone' ? `Location: Phone call — ${opts.companyName} will call you. Please reply here with the best phone number to reach you.`
+    : 'Location: InternFirst video room — join from Upcoming Interviews when it opens (10 minutes before the start).';
+
+  return [
+    `${opts.rescheduled ? 'Updated: ' : ''}${typeLabel} confirmed — ${opts.listingTitle} at ${opts.companyName}`,
+    '',
+    `Type: ${typeLabel}${opts.format === 'phone' ? ' (phone)' : ''}`,
+    `Date: ${date}`,
+    `Time: ${time}${studentTime ? ` (${studentTime.time} your time${studentTime.date !== date ? `, ${studentTime.date}` : ''})` : ''}`,
+    `Duration: ${opts.durationMinutes} min`,
+    where,
+    ...(notes ? ['', `Notes: ${notes}`] : []),
+    '',
+    'This meeting is confirmed and shows on your Upcoming Interviews page.',
+  ].join('\n');
 }
 
 /**

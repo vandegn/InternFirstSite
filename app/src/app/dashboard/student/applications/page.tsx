@@ -11,7 +11,7 @@ import {
   type StudentOffer,
 } from '@/lib/supabase';
 
-type StageType = 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+type StageType = 'applied' | 'reviewing' | 'screening' | 'interviewing' | 'offered' | 'rejected';
 
 type Application = {
   id: string;
@@ -46,6 +46,7 @@ type Application = {
 const STAGE_TYPE_FALLBACK: Record<StageType, { bg: string; color: string; label: string }> = {
   applied:      { bg: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)', label: 'Application Submitted' },
   reviewing:    { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)', label: 'Under Review' },
+  screening:    { bg: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)', label: 'Screening' },
   interviewing: { bg: 'var(--chip-violet-bg)', color: 'var(--chip-violet-ink)', label: 'Interview Requested' },
   offered:      { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)', label: 'Offer Extended' },
   rejected:     { bg: 'var(--danger-bg)', color: 'var(--danger-accent)', label: 'Rejected/Closed' },
@@ -55,6 +56,7 @@ const FILTER_OPTIONS: { value: '' | StageType; label: string }[] = [
   { value: '',             label: 'All Statuses' },
   { value: 'applied',      label: 'Application Submitted' },
   { value: 'reviewing',    label: 'Under Review' },
+  { value: 'screening',    label: 'Screening' },
   { value: 'interviewing', label: 'Interview Requested' },
   { value: 'offered',      label: 'Offer Extended' },
   { value: 'rejected',     label: 'Rejected/Closed' },

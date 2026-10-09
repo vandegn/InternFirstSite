@@ -57,7 +57,7 @@ type StudentApplication = {
     label: string;
     color_bg: string;
     color_text: string;
-    stage_type: 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+    stage_type: 'applied' | 'reviewing' | 'screening' | 'interviewing' | 'offered' | 'rejected';
   } | null;
   applied_at: string;
   updated_at: string;
@@ -119,6 +119,7 @@ const FALLBACK_INDEX: Record<string, number> = {
   under_review: 1,
   reviewing: 1,
   reviewed: 1,
+  screening: 1,
   interviewing: 2,
   interview_scheduled: 2,
   offered: 3,

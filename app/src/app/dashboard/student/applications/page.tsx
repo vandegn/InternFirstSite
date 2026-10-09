@@ -171,7 +171,8 @@ export default function MyApplications() {
   );
   const tabTotal = counts[tab];
   const archiveReady = archiveLoadState === 'ready';
-  const ready = !loading && (archiveLoadState === 'ready' || archiveLoadState === 'error');
+  const ready = !loading
+    && (studentId === null || archiveLoadState === 'ready' || archiveLoadState === 'error');
 
   // ?offer= deep link: once everything has loaded, open whichever tab that
   // offer's application is in (it may be archived or rejected), so the

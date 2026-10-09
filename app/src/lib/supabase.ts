@@ -5,6 +5,7 @@ import { computeMatchScore, type MatchStudentInput } from '@/lib/matching';
 import { MAX_STUDENT_SKILLS, surveyIndustriesToListingIndustries, type CompType, type QuestionType } from '@/lib/constants';
 import { isFreeEmailProvider } from '@/lib/domain-signals';
 import type { InterviewFormat } from '@/lib/interview-format';
+import { archiveErrorMessage } from '@/lib/listing-archive';
 import {
   localToday,
   type AvailabilityRequest,
@@ -1249,15 +1250,21 @@ export async function deleteApplication(applicationId: string) {
   }
 }
 
+// The student's *current* application to a listing. A posting that was
+// archived and then unarchived detaches its old applications (detached_at), and
+// once it is reopened the student may apply again — so there can be one
+// detached row plus one live row, and only the live one counts here. `*` rather
+// than naming detached_at keeps this working on a database the
+// 20261009_listing_archive_end_hiring migration hasn't reached yet.
 export async function getApplicationStatus(studentId: string, listingId: string) {
   const { data, error } = await supabase
     .from('applications')
-    .select('status')
+    .select('*')
     .eq('student_id', studentId)
-    .eq('listing_id', listingId)
-    .single();
+    .eq('listing_id', listingId);
   if (error || !data) return null;
-  return data.status as string;
+  const live = data.find((row) => row.detached_at == null);
+  return live ? (live.status as string) : null;
 }
 
 // ---- Student Resumes ----
@@ -1461,13 +1468,17 @@ export async function restoreApplication(applicationId: string): Promise<void> {
 // Listing IDs this student has already applied to. Kept separate from
 // getStudentApplications so the browse page can render "Applied" on a card
 // without pulling every joined listing and employer row it doesn't show.
+// Detached applications (from a posting that was archived and then
+// unarchived) don't count: the student may apply to the reopened posting.
 export async function getAppliedListingIds(studentId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('applications')
-    .select('listing_id')
+    .select('*')
     .eq('student_id', studentId);
   if (error) return [];
-  return (data ?? []).map((r) => r.listing_id as string);
+  return (data ?? [])
+    .filter((r) => r.detached_at == null)
+    .map((r) => r.listing_id as string);
 }
 
 export async function getStudentStats(studentId: string) {
@@ -2057,6 +2068,51 @@ export async function updateListing(listingId: string, fields: {
     .single();
   if (error) throw error;
   return data;
+}
+
+// ---- Archive/End Hiring and Unarchive (Posted Jobs) ----
+// Each is one Postgres transaction (supabase/migrations/
+// 20261009_listing_archive_end_hiring.sql): it either fully happens or nothing
+// changes, so the caller only ever shows success after the RPC returns. The
+// rules are mirrored and tested in lib/listing-archive.ts.
+
+export type ArchiveListingResult = {
+  listing_id: string;
+  archived_at: string;
+  already_archived: boolean;
+  rejected: number;
+  kept_offered: number;
+  already_rejected: number;
+};
+
+// Closes + archives the posting and moves every applicant outside Offered to
+// Rejected. Restricted in the database to members whose role can manage
+// listings (master_admin, recruiting_lead).
+export async function archiveListingAndEndHiring(listingId: string): Promise<ArchiveListingResult> {
+  const { data, error } = await supabase.rpc('archive_listing_and_end_hiring', { p_listing_id: listingId });
+  if (error || !data) {
+    console.error('[archiveListingAndEndHiring] failed:', error?.message, error);
+    throw new Error(archiveErrorMessage(error, 'archive'));
+  }
+  return data as ArchiveListingResult;
+}
+
+export type UnarchiveListingResult = {
+  listing_id: string;
+  status: string;
+  already_unarchived: boolean;
+  detached: number;
+};
+
+// Returns the posting to Posted Jobs as closed and detaches every application
+// on it from the employer's view (the students keep theirs).
+export async function unarchiveListing(listingId: string): Promise<UnarchiveListingResult> {
+  const { data, error } = await supabase.rpc('unarchive_listing', { p_listing_id: listingId });
+  if (error || !data) {
+    console.error('[unarchiveListing] failed:', error?.message, error);
+    throw new Error(archiveErrorMessage(error, 'unarchive'));
+  }
+  return data as UnarchiveListingResult;
 }
 
 // Billing helpers (getEmployerBilling / getEmployerPayments / getListingUsage)

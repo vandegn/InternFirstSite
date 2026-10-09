@@ -1,7 +1,7 @@
 'use client';
 
 import { ListingCoreSectionsView } from '@/components/ListingCoreSections';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   supabase,
@@ -14,9 +14,24 @@ import {
   updateListing,
   updateApplicationStage,
   getListingStages,
+  archiveListingAndEndHiring,
+  unarchiveListing,
   type PipelineStage,
 } from '@/lib/supabase';
+import {
+  ARCHIVE_CONFIRM,
+  UNARCHIVE_CONFIRM,
+  POSTED_JOB_FILTERS,
+  describeArchiveResult,
+  describeUnarchiveResult,
+  filterPostedListings,
+  isArchivedListing,
+  postedJobStatus,
+  type PostedJobFilter,
+} from '@/lib/listing-archive';
+import { isEmployerRole, roleCan } from '@/lib/employer-team';
 import Avatar from '@/components/Avatar';
+import ConfirmActionModal from '@/components/ConfirmActionModal';
 import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
 import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
@@ -42,6 +57,9 @@ type ListingWithStats = {
   expires_at: string | null;
   applicant_count: number;
   view_count: number;
+  // Set while the posting is archived (hiring ended). Absent until the
+  // 20261009_listing_archive_end_hiring migration is applied.
+  archived_at?: string | null;
 };
 
 type Application = {
@@ -77,22 +95,12 @@ const LISTING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   expired: { bg: 'var(--chip-orange-bg)', color: 'var(--chip-orange-ink)' },
   draft: { bg: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)' },
   scheduled: { bg: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)' },
+  archived: { bg: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)' },
 };
 
-// Active listings past their application deadline are invisible to students
-// (getActiveListings filters them out) and get closed by the daily
-// close-expired-listings cron; surface them as "Expired" rather than "Active"
-// so employers aren't looking at a green badge on a dead listing.
-function displayStatus(listing: { status: string; application_deadline: string | null }): string {
-  if (
-    listing.status === 'active' &&
-    listing.application_deadline &&
-    new Date(listing.application_deadline).getTime() < Date.now()
-  ) {
-    return 'expired';
-  }
-  return listing.status;
-}
+// Archived postings read "Archived"; active listings past their deadline read
+// "Expired" (see postedJobStatus in lib/listing-archive.ts).
+const displayStatus = (listing: ListingWithStats) => postedJobStatus(listing);
 
 type Interview = {
   id: string;
@@ -144,7 +152,7 @@ export default function PostedJobsPage() {
   const [employerId, setEmployerId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState<PostedJobFilter>('');
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [updatingAppStatus, setUpdatingAppStatus] = useState<string | null>(null);
   const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null);
@@ -152,20 +160,22 @@ export default function PostedJobsPage() {
   // Pipeline stages for the currently-selected listing — drives the
   // per-applicant status dropdown.
   const [selectedListingStages, setSelectedListingStages] = useState<PipelineStage[]>([]);
+  // Archive/End Hiring and Unarchive: which confirmation is open, and the
+  // outcome line shown under the header afterwards.
+  const [confirmAction, setConfirmAction] = useState<'archive' | 'unarchive' | null>(null);
+  const [banner, setBanner] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  // The member's role bundle; archiving needs manage_listings (the database
+  // enforces the same rule).
+  const [memberRole, setMemberRole] = useState<string | null>(null);
+  const canManageListings = !!memberRole && isEmployerRole(memberRole) && roleCan(memberRole, 'manage_listings');
 
-  useEffect(() => {
-    async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const employer = await getEmployerByUserId(user.id);
-      if (!employer) return;
-      setEmployerId(employer.id);
-
+  // Listings, candidates and interviews, re-read after archive/unarchive so
+  // every count and status on screen comes from the database.
+  const loadRecords = useCallback(async (empId: string) => {
       const [listingsData, appsData, interviewsData] = await Promise.all([
-        getEmployerListingsWithStats(employer.id),
-        getEmployerApplications(employer.id),
-        getEmployerInterviews(employer.id),
+        getEmployerListingsWithStats(empId),
+        getEmployerApplications(empId),
+        getEmployerInterviews(empId),
       ]);
 
       const normalizedApps = appsData.map((app: any) => ({
@@ -182,11 +192,54 @@ export default function PostedJobsPage() {
       setListings(listingsData as ListingWithStats[]);
       setApplications(normalizedApps as Application[]);
       setInterviews(interviewsData as unknown as Interview[]);
-      if (listingsData.length > 0) setSelectedId(listingsData[0].id);
+      return listingsData as ListingWithStats[];
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const employer = await getEmployerByUserId(user.id);
+      if (!employer) return;
+      setEmployerId(employer.id);
+      setMemberRole(employer.member_role ?? null);
+
+      const listingsData = await loadRecords(employer.id);
+      // Archived postings sit under the Archived filter, so start on the
+      // first posting in the normal list.
+      const first = listingsData.find((l) => !isArchivedListing(l));
+      if (first) setSelectedId(first.id);
       setLoading(false);
     }
     fetchData();
-  }, []);
+  }, [loadRecords]);
+
+  async function handleArchiveConfirmed() {
+    const listing = listings.find(l => l.id === selectedId);
+    if (!listing || !employerId) return;
+    // Throws on failure; ConfirmActionModal shows the message and stays open.
+    const result = await archiveListingAndEndHiring(listing.id);
+    setConfirmAction(null);
+    // The posting now lives under Archived — follow it there so the employer
+    // sees where it went and the rejected statuses on its candidates.
+    setFilterStatus('archived');
+    setBanner({
+      tone: 'success',
+      message: `${describeArchiveResult(listing.title, result)} You can find it under Archived.`,
+    });
+    await loadRecords(employerId);
+  }
+
+  async function handleUnarchiveConfirmed() {
+    const listing = listings.find(l => l.id === selectedId);
+    if (!listing || !employerId) return;
+    await unarchiveListing(listing.id);
+    setConfirmAction(null);
+    setFilterStatus('');
+    setBanner({ tone: 'success', message: describeUnarchiveResult(listing.title) });
+    await loadRecords(employerId);
+  }
 
   // Whenever the selected listing changes, load its pipeline stages so
   // the per-applicant dropdown shows that listing's actual columns.
@@ -256,12 +309,14 @@ export default function PostedJobsPage() {
     }
   }
 
-  const filteredListings = filterStatus
-    ? listings.filter(l => displayStatus(l) === filterStatus)
-    : listings;
+  // Archived postings are out of the normal list — only "Archived" shows them.
+  const filteredListings = filterPostedListings(listings, filterStatus);
 
   const selectedListing = listings.find(l => l.id === selectedId);
   const selectedApps = applications.filter(a => a.listing.id === selectedId);
+  // Hiring has ended: candidates stay visible but can't be moved or scheduled
+  // (the database refuses stage moves on an archived posting too).
+  const selectedArchived = !!selectedListing && isArchivedListing(selectedListing);
 
   async function handleToggleStatus(listingId: string, currentStatus: string) {
     setUpdatingStatus(listingId);
@@ -366,10 +421,11 @@ export default function PostedJobsPage() {
               fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none',
             }}>+ New</Link>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {['', 'active', 'scheduled', 'draft', 'expired', 'paused', 'closed'].map(s => (
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {POSTED_JOB_FILTERS.map(s => (
               <button
                 key={s}
+                aria-pressed={filterStatus === s}
                 onClick={() => setFilterStatus(s)}
                 style={{
                   padding: '4px 12px', borderRadius: '16px', border: '1px solid var(--border)',
@@ -388,7 +444,12 @@ export default function PostedJobsPage() {
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {filteredListings.length === 0 ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <p>No listings found</p>
+              <p>{filterStatus === 'archived' ? 'No archived postings' : 'No listings found'}</p>
+              {filterStatus === 'archived' && (
+                <p style={{ fontSize: '0.8rem', marginTop: '6px' }}>
+                  Postings you archive with Archive/End Hiring appear here.
+                </p>
+              )}
             </div>
           ) : (
             filteredListings.map(listing => {
@@ -457,6 +518,15 @@ export default function PostedJobsPage() {
           </div>
         ) : (
           <div style={{ padding: '28px 32px' }}>
+            {banner && (
+              <div
+                className={`posted-jobs-banner ${banner.tone}`}
+                role={banner.tone === 'error' ? 'alert' : 'status'}
+              >
+                <span>{banner.message}</span>
+                <button type="button" aria-label="Dismiss message" onClick={() => setBanner(null)}>×</button>
+              </div>
+            )}
             {/* Listing header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
@@ -473,7 +543,23 @@ export default function PostedJobsPage() {
                   </p>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              {isArchivedListing(selectedListing) ? (
+                // Archived: hiring has ended; the only way back is Unarchive,
+                // which returns it as a closed posting with no candidates.
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn-modal-secondary"
+                    onClick={() => { setBanner(null); setConfirmAction('unarchive'); }}
+                    disabled={!canManageListings}
+                    title={canManageListings ? undefined : 'Only Master Admins and Recruiting Leads can unarchive postings'}
+                    style={{ fontSize: '0.8rem' }}
+                  >
+                    Unarchive
+                  </button>
+                </div>
+              ) : (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <Link href={`/dashboard/employer/listings/${selectedListing.id}/edit`} style={{
                   padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
                   fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none', color: 'var(--text)',
@@ -527,8 +613,33 @@ export default function PostedJobsPage() {
                     }}
                   >Reopen</button>
                 )}
+                {/* Ends hiring for good: confirmation first, then one
+                    transaction that archives the posting and rejects every
+                    applicant outside Offered. */}
+                <button
+                  type="button"
+                  className="btn-danger-strong"
+                  onClick={() => { setBanner(null); setConfirmAction('archive'); }}
+                  disabled={!canManageListings}
+                  title={canManageListings ? undefined : 'Only Master Admins and Recruiting Leads can archive postings'}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" />
+                  </svg>
+                  Archive/End Hiring
+                </button>
               </div>
+              )}
             </div>
+
+            {isArchivedListing(selectedListing) && selectedListing.archived_at && (
+              <div className="app-notice" style={{ marginTop: '-8px' }}>
+                <span>
+                  Archived {new Date(selectedListing.archived_at).toLocaleDateString()} — hiring has ended and this
+                  posting no longer accepts applications. Candidates below are read-only.
+                </span>
+              </div>
+            )}
 
             {/* Stats row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
@@ -657,10 +768,11 @@ export default function PostedJobsPage() {
                             <select aria-label="Pipeline stage"
                               value={app.stage_id ?? ''}
                               onChange={(e) => handleAppStageChange(app.id, e.target.value)}
-                              disabled={updatingAppStatus === app.id || selectedListingStages.length === 0}
+                              disabled={updatingAppStatus === app.id || selectedListingStages.length === 0 || selectedArchived}
                               style={{
                                 padding: '4px 8px', borderRadius: 'var(--radius-sm)',
                                 border: '1px solid var(--border)', fontSize: '0.78rem', background: 'var(--surface)',
+                                color: 'var(--text)',
                               }}
                             >
                               {selectedListingStages.map(s => (
@@ -679,12 +791,15 @@ export default function PostedJobsPage() {
                             </select>
                             <button
                               onClick={() => openScheduleModal(app)}
-                              title={interview ? 'Reschedule interview' : 'Schedule interview'}
+                              disabled={selectedArchived}
+                              title={selectedArchived ? 'Hiring has ended for this posting' : interview ? 'Reschedule interview' : 'Schedule interview'}
+                              aria-label={interview ? 'Reschedule interview' : 'Schedule interview'}
                               style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: 32, height: 32, borderRadius: 'var(--radius-sm)',
                                 border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--primary)',
-                                cursor: 'pointer',
+                                cursor: selectedArchived ? 'not-allowed' : 'pointer',
+                                opacity: selectedArchived ? 0.5 : 1,
                               }}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -775,6 +890,29 @@ export default function PostedJobsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmActionModal
+        open={confirmAction === 'archive'}
+        title={ARCHIVE_CONFIRM.title}
+        paragraphs={ARCHIVE_CONFIRM.paragraphs}
+        cancelLabel={ARCHIVE_CONFIRM.cancelLabel}
+        confirmLabel={ARCHIVE_CONFIRM.confirmLabel}
+        busyLabel={ARCHIVE_CONFIRM.busyLabel}
+        tone="danger"
+        onConfirm={handleArchiveConfirmed}
+        onCancel={() => setConfirmAction(null)}
+      />
+      <ConfirmActionModal
+        open={confirmAction === 'unarchive'}
+        title={UNARCHIVE_CONFIRM.title}
+        paragraphs={UNARCHIVE_CONFIRM.paragraphs}
+        cancelLabel={UNARCHIVE_CONFIRM.cancelLabel}
+        confirmLabel={UNARCHIVE_CONFIRM.confirmLabel}
+        busyLabel={UNARCHIVE_CONFIRM.busyLabel}
+        tone="primary"
+        onConfirm={handleUnarchiveConfirmed}
+        onCancel={() => setConfirmAction(null)}
+      />
 
       <ScheduleInterviewModal
         open={scheduleModalApp !== null}

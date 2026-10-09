@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isoToZonedInput,
+  zonedInputToIso,
   eventScopeFor,
   eventsFromFeed,
   inferCategory,
@@ -179,6 +181,15 @@ describe('feed URL safety', () => {
     for (const bad of ['http://localhost:3000/x.ics', 'http://127.0.0.1/x', 'http://10.0.0.5/x', 'http://192.168.1.1/x', 'http://172.20.0.1/x', 'http://169.254.169.254/latest', 'http://[::1]/x', 'ftp://a.edu/x', 'file:///etc/passwd', 'http://intranet/x', 'https://u:p@a.edu/x', 'not a url']) {
       expect(normalizeFeedUrl(bad).ok, bad).toBe(false);
     }
+  });
+});
+
+describe('admin form time conversion', () => {
+  it('round-trips datetime-local values through a chosen zone', () => {
+    expect(zonedInputToIso('2026-10-15T10:00', 'America/Chicago')).toBe('2026-10-15T15:00:00.000Z');
+    expect(zonedInputToIso('2026-10-15', 'America/Chicago')).toBe('2026-10-15T05:00:00.000Z');
+    expect(isoToZonedInput('2026-10-15T15:00:00.000Z', 'America/Chicago')).toBe('2026-10-15T10:00');
+    expect(zonedInputToIso('garbage', 'America/Chicago')).toBeNull();
   });
 });
 

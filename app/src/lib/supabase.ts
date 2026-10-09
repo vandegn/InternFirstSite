@@ -2545,7 +2545,8 @@ export type NotificationType =
   | 'application_status'
   | 'new_application'
   | 'interview'
-  | 'offer';
+  | 'offer'
+  | 'career_event';
 
 export type NotificationRow = {
   id: string;

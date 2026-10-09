@@ -415,7 +415,7 @@ export function normalizeIcalEvent(
     all_day: allDay,
     timezone: tz,
     location: isOnline && !location ? 'Online' : location,
-    virtual_url: safeHttpUrl(virtualCandidate),
+    virtual_url: safeHttpUrl(virtualCandidate ?? undefined),
     url,
     organizer: clip(ev.organizer, 200),
     category: inferCategory(searchable, source.default_category),
@@ -664,4 +664,42 @@ export function localDateKey(iso: string, timeZone?: string): string {
 /** HH:MM in the viewer's zone. */
 export function localTimeKey(iso: string, timeZone?: string): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+}
+
+// ----- Admin form helpers -----
+
+/** Full names, matching students.school_state / us-schools.json. */
+export const US_STATE_NAMES = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
+  'District of Columbia', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas',
+  'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi',
+  'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+  'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Puerto Rico',
+  'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia',
+  'Washington', 'West Virginia', 'Wisconsin', 'Wyoming',
+] as const;
+
+export const US_TIME_ZONES: { value: string; label: string }[] = [
+  { value: 'America/New_York', label: 'Eastern' },
+  { value: 'America/Chicago', label: 'Central' },
+  { value: 'America/Denver', label: 'Mountain' },
+  { value: 'America/Phoenix', label: 'Arizona' },
+  { value: 'America/Los_Angeles', label: 'Pacific' },
+  { value: 'America/Anchorage', label: 'Alaska' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii' },
+  { value: 'America/Puerto_Rico', label: 'Atlantic (Puerto Rico)' },
+];
+
+/** `<input type="datetime-local">` (YYYY-MM-DDTHH:mm) or date value, as wall time in `timeZone` → ISO UTC. */
+export function zonedInputToIso(value: string, timeZone: string): string | null {
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/);
+  if (!m) return null;
+  const d = zonedTimeToUtc(+m[1], +m[2], +m[3], m[4] ? +m[4] : 0, m[5] ? +m[5] : 0, 0, resolveTimeZone(timeZone, 'UTC'));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** ISO UTC → `datetime-local` value (YYYY-MM-DDTHH:mm) as seen in `timeZone`. */
+export function isoToZonedInput(iso: string, timeZone: string): string {
+  const tz = resolveTimeZone(timeZone, 'UTC');
+  return `${localDateKey(iso, tz)}T${localTimeKey(iso, tz)}`;
 }

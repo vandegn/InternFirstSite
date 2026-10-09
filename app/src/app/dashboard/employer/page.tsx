@@ -171,10 +171,10 @@ export default function EmployerDashboard() {
         <div className="dash-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 className="dash-section-title" style={{ margin: 0 }}>Upcoming Interviews</h3>
-            <Link href="/dashboard/employer/posted-jobs" style={{
+            <Link href="/dashboard/employer/interviews" style={{
               fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)', textDecoration: 'none',
             }}>
-              Manage &rarr;
+              View all &rarr;
             </Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -10,6 +10,7 @@ import {
   localToday,
   type AvailabilityRequest,
   type AvailabilitySlot,
+  type MeetingType,
 } from '@/lib/interview-availability';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -1057,7 +1058,7 @@ export type PipelineStage = {
   color_bg: string;
   color_text: string;
   position: number;
-  stage_type: 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+  stage_type: 'applied' | 'reviewing' | 'screening' | 'interviewing' | 'offered' | 'rejected';
   locked: boolean;
 };
 
@@ -1121,7 +1122,7 @@ export async function createStage(opts: {
     .limit(1);
   const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 1;
 
-  const { data, error } = await supabase
+  const insert = (stageType: PipelineStage['stage_type']) => supabase
     .from('pipeline_stages')
     .insert({
       listing_id: opts.listingId,
@@ -1129,11 +1130,20 @@ export async function createStage(opts: {
       color_bg: opts.colorBg ?? '#e0e7ff',
       color_text: opts.colorText ?? '#3730a3',
       position: nextPosition,
-      stage_type: opts.stageType ?? 'reviewing',
+      stage_type: stageType,
       locked: false,
     })
     .select('*')
     .single();
+
+  let { data, error } = await insert(opts.stageType ?? 'reviewing');
+  // 'screening' arrives with migrations/20261009_employer_proposed_interview_slots.sql.
+  // Before then the check constraint rejects it (23514); bucket the column as
+  // 'reviewing' like it always was — meetingTypeForStage still recognises a
+  // "...Screening" label as a Screening category.
+  if (error?.code === '23514' && opts.stageType === 'screening') {
+    ({ data, error } = await insert('reviewing'));
+  }
   if (error) throw error;
   return data as PipelineStage;
 }
@@ -2336,38 +2346,43 @@ export async function sendRescheduleRequestMessage(opts: {
   if (error) throw error;
 }
 
-// ---- Interview availability handshake ----
-// The employer asks for a window, the student marks the frames that work, the
-// employer picks one. Every write goes through /api/interviews/availability so
-// the state machine in lib/interview-availability.ts is enforced in one place;
-// the reads below are plain RLS-scoped selects.
+// ---- Interview scheduling handshake ----
+// The employer proposes exact slots, the student picks one (tentative), the
+// employer confirms it. Every write goes through /api/interviews/availability
+// so the state machine in lib/interview-availability.ts is enforced in one
+// place; the reads below are plain RLS-scoped selects.
 
-// Step 1 — employer requests times for a candidate.
+// Step 1 — employer proposes time slots to a candidate.
 export async function requestInterviewTimes(opts: {
   applicationId: string;
   windowStart: string;
   windowEnd: string;
   durationMinutes?: number;
+  slots: AvailabilitySlot[];
   note?: string;
 }) {
   const res = await fetch('/api/interviews/availability', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // The employer's local day — the server judges "not in the past" in the
-    // employer's zone, not the server's.
-    body: JSON.stringify({ ...opts, today: localToday() }),
+    // The employer's local day and zone — the server judges "not in the past"
+    // in the employer's zone, and writes messages in it.
+    body: JSON.stringify({
+      ...opts,
+      today: localToday(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? 'Failed to request interview times');
+    throw new Error(err.error ?? 'Failed to request a time');
   }
   return res.json() as Promise<AvailabilityRequest>;
 }
 
-// Step 2 — student submits the frames that work, or reports that none do.
-export async function submitStudentAvailability(
+// Step 2 — student picks one offered slot, or reports that none work.
+export async function selectInterviewSlot(
   requestId: string,
-  opts: { slots: AvailabilitySlot[]; note?: string; noneWork?: boolean },
+  opts: { slotId?: string; note?: string; noneWork?: boolean },
 ) {
   const res = await fetch(`/api/interviews/availability/${requestId}/respond`, {
     method: 'POST',
@@ -2379,21 +2394,20 @@ export async function submitStudentAvailability(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? 'Failed to submit your availability');
+    throw new Error(err.error ?? 'Failed to save your pick');
   }
   return res.json() as Promise<AvailabilityRequest>;
 }
 
-// Step 3 — employer locks in one of the offered times.
+// Step 3 — employer confirms the time the student selected.
 export async function confirmInterviewTime(
   requestId: string,
   opts: {
-    scheduledAt: string;
-    durationMinutes?: number;
     notes?: string;
     format?: InterviewFormat;
     meetingUrl?: string | null;
     timeZone?: string;
+    meetingType?: MeetingType;
   },
 ) {
   const res = await fetch(`/api/interviews/availability/${requestId}/confirm`, {
@@ -2403,7 +2417,7 @@ export async function confirmInterviewTime(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? 'Failed to schedule the interview');
+    throw new Error(err.error ?? 'Failed to confirm the meeting');
   }
   return res.json() as Promise<AvailabilityRequest & { interview_id: string }>;
 }
@@ -2432,6 +2446,128 @@ export async function getEmployerAvailabilityRequests(employerId: string) {
     .order('requested_at', { ascending: false });
   if (error) return [];
   return (data ?? []) as AvailabilityRequest[];
+}
+
+// Everything the expanded candidate modal shows about scheduling for one
+// application: the newest time request (with its slots) and the live interview.
+export async function getApplicationScheduling(applicationId: string) {
+  const [requestRes, interviewRes] = await Promise.all([
+    supabase
+      .from('interview_availability_requests')
+      .select('*, slots:interview_availability_slots(*)')
+      .eq('application_id', applicationId)
+      .order('requested_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('interview_schedules')
+      .select('*')
+      .eq('application_id', applicationId)
+      .in('status', ['pending', 'accepted', 'reschedule_requested'])
+      .order('scheduled_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  return {
+    request: (requestRes.data as AvailabilityRequest | null) ?? null,
+    interview: (interviewRes.data as Record<string, unknown> | null) ?? null,
+  };
+}
+
+// One application with everything an employer reviews in the expanded modal:
+// the application itself (answers, resume, stage, listing) plus the
+// candidate's profile, education, experience, skills and certifications.
+export async function getApplicationForReview(applicationId: string) {
+  const { data, error } = await supabase
+    .from('applications')
+    .select(`
+      id, status, stage_id, match_score, flagged_knockout, applied_at, updated_at,
+      resume:student_resumes(id, name),
+      answers:application_answers(
+        id, answer_text, answer_options, storage_path,
+        question:listing_questions(id, prompt, question_type, position)
+      ),
+      listing:internship_listings!inner(id, title, employer_id, industry, preferred_skills),
+      stage:pipeline_stages!applications_stage_id_fkey(id, label, color_bg, color_text, position, stage_type),
+      student:students!inner(id, user_id)
+    `)
+    .eq('id', applicationId)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const one = <T,>(v: unknown): T => (Array.isArray(v) ? v[0] : v) as T;
+  const row = data as Record<string, unknown>;
+  const student = one<{ id: string; user_id: string }>(row.student);
+  const profile = student ? await getStudentProfileForEmployer(student.id) : null;
+
+  return {
+    ...(row as { id: string; status: string; stage_id: string | null; match_score: number | null; flagged_knockout: boolean | null; applied_at: string; updated_at: string }),
+    resume: one<{ id: string; name: string } | null>(row.resume) ?? null,
+    answers: ((row.answers ?? []) as Record<string, unknown>[])
+      .map(a => ({ ...a, question: one(a.question) ?? null }))
+      .sort((x, y) =>
+        ((x.question as { position?: number } | null)?.position ?? 0)
+        - ((y.question as { position?: number } | null)?.position ?? 0)) as Array<{
+          id: string;
+          answer_text: string | null;
+          answer_options: string[] | null;
+          storage_path: string | null;
+          question: { id: string; prompt: string; question_type: string; position: number } | null;
+        }>,
+    listing: one<{ id: string; title: string; employer_id: string; industry: string | null; preferred_skills: string[] | null }>(row.listing),
+    stage: one<PipelineStage | null>(row.stage) ?? null,
+    student: student ? { id: student.id, user_id: student.user_id } : null,
+    profile,
+  };
+}
+
+export type ApplicationForReview = NonNullable<Awaited<ReturnType<typeof getApplicationForReview>>>;
+
+// Confirmed screenings and interviews still to come, soonest first.
+//
+// Employer side: the meetings this teammate owns (organizer_user_id). On a
+// database without migrations/20261009_employer_proposed_interview_slots.sql
+// that column doesn't exist, so fall back to every meeting the company has.
+export async function getEmployerUpcomingInterviews(employerId: string, userId: string) {
+  const select = `
+    *,
+    listing:internship_listings(id, title),
+    student:students(id, user_id, profile:profiles!students_user_id_fkey(full_name, avatar_url))
+  `;
+  // Still upcoming = hasn't ended. The longest meeting is 60 minutes, so
+  // anything that started within the last hour may still be running.
+  const since = new Date(Date.now() - 60 * 60_000).toISOString();
+  const base = () => supabase
+    .from('interview_schedules')
+    .select(select)
+    .eq('employer_id', employerId)
+    .eq('status', 'accepted')
+    .gte('scheduled_at', since)
+    .order('scheduled_at', { ascending: true });
+
+  const mine = await base().eq('organizer_user_id', userId);
+  const rows = mine.error ? (await base()).data : mine.data;
+  return ((rows ?? []) as Record<string, unknown>[])
+    .filter(r => Date.parse(r.scheduled_at as string) + (r.duration_minutes as number) * 60_000 > Date.now());
+}
+
+// Student side: every confirmed meeting still to come.
+export async function getStudentUpcomingInterviews(studentId: string) {
+  const since = new Date(Date.now() - 60 * 60_000).toISOString();
+  const { data, error } = await supabase
+    .from('interview_schedules')
+    .select(`
+      *,
+      listing:internship_listings(id, title),
+      employer:employers(id, company_name, logo_url, user_id)
+    `)
+    .eq('student_id', studentId)
+    .eq('status', 'accepted')
+    .gte('scheduled_at', since)
+    .order('scheduled_at', { ascending: true });
+  if (error) return [];
+  return ((data ?? []) as Record<string, unknown>[])
+    .filter(r => Date.parse(r.scheduled_at as string) + (r.duration_minutes as number) * 60_000 > Date.now());
 }
 
 // ---- Offers ----

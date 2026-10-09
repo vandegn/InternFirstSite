@@ -8,6 +8,7 @@ import {
 } from '@/lib/email-templates';
 import { validateInterviewFormat, interviewFormatColumns } from '@/lib/interview-format';
 import { sendInterviewFormatMessage } from '@/lib/interview-format-message';
+import { resolveRescheduleTarget, isUniqueViolation, LIVE_INTERVIEW_STATUSES } from '@/lib/interview-reschedule';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,14 +39,46 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: existing } = await supabase
     .from('interview_schedules')
-    .select('id, employer:employers!inner(user_id)')
+    .select('id, application_id, status, employer_id, employer:employers!inner(user_id)')
     .eq('id', id)
-    .single<{ id: string; employer: { user_id: string } | { user_id: string }[] }>();
+    .single<{
+      id: string;
+      application_id: string;
+      status: string;
+      employer_id: string;
+      employer: { user_id: string } | { user_id: string }[];
+    }>();
 
+  // The account owner, or any active teammate of the company.
   const employerOwner = existing && (Array.isArray(existing.employer) ? existing.employer[0] : existing.employer);
-  if (!existing || employerOwner?.user_id !== user.id) {
+  let allowed = Boolean(existing && employerOwner?.user_id === user.id);
+  if (existing && !allowed) {
+    const { data: member } = await supabase
+      .from('employer_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('employer_id', existing.employer_id)
+      .eq('status', 'active')
+      .maybeSingle();
+    allowed = Boolean(member);
+  }
+  if (!existing || !allowed) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
+
+  // Root cause of the duplicate-key failures: the row the client sent could be
+  // a stale, closed one (declined / cancelled / completed) while the
+  // application already had a different live interview — and forcing that row
+  // back to 'pending' gave the application two live rows, which the unique
+  // index interview_schedules_one_active_per_application rejects. Move the
+  // application's live interview instead (a single, atomic UPDATE).
+  const { data: liveRows } = await supabase
+    .from('interview_schedules')
+    .select('id')
+    .eq('application_id', existing.application_id)
+    .in('status', LIVE_INTERVIEW_STATUSES)
+    .limit(1);
+  const targetId = resolveRescheduleTarget(existing, liveRows?.[0] ?? null);
 
   const { data: updated, error } = await supabase
     .from('interview_schedules')
@@ -55,11 +88,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       employer_notes: notes ?? null,
       ...(formatCheck?.ok ? interviewFormatColumns(formatCheck.format, formatCheck.meetingUrl) : {}),
       status: 'pending',
+      cancelled_by: null,
+      cancelled_at: null,
     })
-    .eq('id', id)
+    .eq('id', targetId)
     .select()
     .single();
 
+  if (isUniqueViolation(error)) {
+    return NextResponse.json(
+      { error: 'This candidate already has another active interview. Refresh the page and reschedule that one.' },
+      { status: 409 },
+    );
+  }
   if (error || !updated) {
     return NextResponse.json({ error: error?.message ?? 'Failed to update' }, { status: 500 });
   }
@@ -70,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await supabase
       .from('interview_schedules')
       .update({ format: 'internfirst', meeting_url: null })
-      .eq('id', id)
+      .eq('id', targetId)
       .neq('format', 'internfirst');
   } else if (formatCheck?.ok) {
     await sendInterviewFormatMessage(supabase, {

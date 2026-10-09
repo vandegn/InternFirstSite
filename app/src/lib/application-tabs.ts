@@ -12,7 +12,7 @@
 // hiring status, and restoring it drops it back into Open or Rejected by
 // whatever its status is *now* (an employer may have moved it meanwhile).
 
-export type StageType = 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+export type StageType = 'applied' | 'reviewing' | 'screening' | 'interviewing' | 'offered' | 'rejected';
 
 export type ApplicationTab = 'open' | 'rejected' | 'archive';
 
@@ -31,6 +31,7 @@ export const OPEN_STATUS_FILTER_OPTIONS: { value: OpenStatusFilter; label: strin
   { value: '', label: 'All statuses' },
   { value: 'applied', label: 'Application Submitted' },
   { value: 'reviewing', label: 'Under Review' },
+  { value: 'screening', label: 'Screening' },
   { value: 'interviewing', label: 'Interview Requested' },
   { value: 'offered', label: 'Offer Extended' },
 ];
@@ -54,6 +55,8 @@ const LEGACY_STATUS_TYPES: Record<string, StageType> = {
   reviewed: 'reviewing',
   reviewing: 'reviewing',
   under_review: 'reviewing',
+  screening: 'screening',
+  phone_screening: 'screening',
   interviewing: 'interviewing',
   interview_scheduled: 'interviewing',
   interview_requested: 'interviewing',

@@ -681,6 +681,13 @@ create table interview_schedules (
   format text not null default 'internfirst'
     check (format in ('internfirst', 'external_link', 'phone')),
   meeting_url text,
+  -- Screening or Interview, from the candidate's pipeline category when it was
+  -- confirmed (migrations/20261009_employer_proposed_interview_slots.sql).
+  meeting_type text not null default 'interview'
+    check (meeting_type in ('screening', 'interview')),
+  -- The teammate who owns the meeting; drives the employer's Upcoming
+  -- Interviews page.
+  organizer_user_id uuid references profiles(user_id) on delete set null,
   cancelled_by text check (cancelled_by in ('employer', 'student')),
   cancelled_at timestamptz,
   created_at timestamptz not null default now(),
@@ -697,6 +704,7 @@ create unique index interview_schedules_one_active_per_application
 create index idx_interview_schedules_employer on interview_schedules (employer_id, scheduled_at);
 create index idx_interview_schedules_student on interview_schedules (student_id, scheduled_at);
 create index idx_interview_schedules_status on interview_schedules (status);
+create index idx_interview_schedules_organizer on interview_schedules (organizer_user_id, scheduled_at);
 
 create trigger set_interview_schedules_updated_at
   before update on interview_schedules
@@ -1315,6 +1323,78 @@ create index idx_offers_employer on offers(employer_id, status);
 create unique index idx_offers_one_live
   on offers(application_id)
   where status in ('extended', 'accepted');
+
+-- ============================================
+-- 26. INTERVIEW SCHEDULING HANDSHAKE
+-- ============================================
+-- End state of migrations/20260802_interview_availability.sql +
+-- 20261009_employer_proposed_interview_slots.sql (see those files for RLS).
+--
+--   1. The employer proposes exact meeting-length slots in a date window
+--      ('awaiting_student')
+--   2. The student selects one — tentative ('awaiting_employer')
+--   3. The employer confirms it, writing or moving the interview_schedules
+--      row ('scheduled')
+--   Off-ramps: 'no_availability' (none of the slots work), 'cancelled'
+--   (employer withdrew to re-request).
+--
+-- Scheduling is offered only for candidates whose pipeline column has
+-- stage_type 'screening' or 'interviewing' (pipeline_stages.stage_type allows
+-- 'applied', 'reviewing', 'screening', 'interviewing', 'offered', 'rejected';
+-- see migrations/2026-06-24-pipeline-stages.sql and 20261009).
+
+create table interview_availability_requests (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid references applications(id) on delete cascade not null,
+  employer_id uuid references employers(id) on delete cascade not null,
+  student_id uuid references students(id) on delete cascade not null,
+  listing_id uuid references internship_listings(id) on delete cascade not null,
+  window_start date not null,
+  window_end date not null,
+  status text not null default 'requested' check (status in
+    ('requested', 'awaiting_student', 'awaiting_employer', 'scheduled', 'no_availability', 'cancelled')),
+  duration_minutes int not null default 30 check (duration_minutes > 0),
+  meeting_type text not null default 'interview' check (meeting_type in ('screening', 'interview')),
+  employer_note text,
+  student_note text,
+  employer_timezone text,
+  student_timezone text,
+  requested_by uuid references profiles(user_id) on delete set null,
+  -- The slot the student picked; not an FK (a second requests<->slots FK makes
+  -- PostgREST embeds ambiguous). Validated by the API.
+  selected_slot_id uuid,
+  selected_at timestamptz,
+  message_id uuid references messages(id) on delete set null,
+  interview_id uuid references interview_schedules(id) on delete set null,
+  requested_at timestamptz not null default now(),
+  responded_at timestamptz,
+  scheduled_at_confirmed timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint interview_availability_window_ordered check (window_end >= window_start),
+  constraint interview_availability_selection_state
+    check (selected_slot_id is null or status in ('awaiting_employer', 'scheduled', 'cancelled'))
+);
+
+create unique index interview_availability_one_live_per_application
+  on interview_availability_requests (application_id)
+  where status in ('requested', 'awaiting_student', 'awaiting_employer');
+
+-- One row per meeting-length slot the employer offered.
+create table interview_availability_slots (
+  id uuid primary key default gen_random_uuid(),
+  request_id uuid references interview_availability_requests(id) on delete cascade not null,
+  slot_date date not null,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  constraint interview_availability_slot_ordered check (ends_at > starts_at)
+);
+
+create index idx_availability_slots_request on interview_availability_slots (request_id, starts_at);
+
+alter table messages add column availability_request_id uuid
+  references interview_availability_requests(id) on delete cascade;
 
 
 -- Product analytics (keep synchronized with migrations/20260916_product_analytics.sql)

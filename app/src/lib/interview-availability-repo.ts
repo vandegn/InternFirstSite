@@ -7,12 +7,33 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AvailabilityRepo, RequestContext } from './interview-availability-service';
 import type { AvailabilityRequest, AvailabilitySlot } from './interview-availability';
-import { LIVE_AVAILABILITY_STATUSES } from './interview-availability';
-import { interviewFormatColumns } from './interview-format';
+import { LIVE_AVAILABILITY_STATUSES, LIVE_INTERVIEW_STATUSES } from './interview-availability';
 
 // PostgREST hands embedded rows back as an object or a one-element array
 // depending on the relationship it infers — same helper the pipeline uses.
 const one = <T,>(v: unknown): T => (Array.isArray(v) ? v[0] : v) as T;
+
+export const SCHEDULING_MIGRATION_HINT =
+  'Interview scheduling needs the 20261009_employer_proposed_interview_slots migration applied to the database.';
+
+type PgError = { code?: string; message?: string } | null;
+
+/** A column or policy the 20261009 migration adds is missing. */
+function isMissingMigration(error: PgError): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST204' // column not in PostgREST's schema cache
+    || error.code === '42703'      // undefined column
+    || error.code === '42501'      // RLS: no employer insert policy on slots yet
+    || /row-level security|column .* does not exist|schema cache/i.test(error.message ?? '');
+}
+
+function fail(error: PgError, fallback: string): never {
+  if (isMissingMigration(error)) throw new Error(SCHEDULING_MIGRATION_HINT);
+  if (error?.code === '23505') {
+    throw new Error('This candidate already has an active interview. Refresh and try again.');
+  }
+  throw new Error(error?.message ?? fallback);
+}
 
 export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRepo {
   return {
@@ -49,19 +70,26 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
         .from('applications')
         // `*` rather than naming detached_at, so this still works before the
         // 20261009_listing_archive_end_hiring migration is applied.
-        .select('*, listing:internship_listings(employer_id)')
+        .select(`
+          *,
+          listing:internship_listings(employer_id),
+          stage:pipeline_stages!applications_stage_id_fkey(stage_type, label)
+        `)
         .eq('id', applicationId)
         .maybeSingle();
       if (!data) return null;
+      const row = data as Record<string, unknown>;
       // This repo runs as the service role, so RLS doesn't hide applications
       // detached from an unarchived posting — refuse them here instead.
-      if ((data as Record<string, unknown>).detached_at != null) return null;
-      const listing = one<{ employer_id: string } | null>((data as Record<string, unknown>).listing);
+      if (row.detached_at != null) return null;
+      const listing = one<{ employer_id: string } | null>(row.listing);
+      const stage = one<{ stage_type: string | null; label: string | null } | null>(row.stage);
       return {
         id: data.id,
         listing_id: data.listing_id,
         student_id: data.student_id,
         employer_id: listing?.employer_id ?? '',
+        stage: stage ?? null,
       };
     },
 
@@ -90,7 +118,7 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
         .insert(row)
         .select()
         .single();
-      if (error || !data) throw new Error(error?.message ?? 'Failed to create the interview request');
+      if (error || !data) fail(error, 'Failed to create the time request');
       return data as AvailabilityRequest;
     },
 
@@ -101,7 +129,7 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
         .eq('id', requestId)
         .select()
         .single();
-      if (error || !data) throw new Error(error?.message ?? 'Failed to update the interview request');
+      if (error || !data) fail(error, 'Failed to update the time request');
       return data as AvailabilityRequest;
     },
 
@@ -114,17 +142,8 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
       return (data ?? []) as AvailabilitySlot[];
     },
 
-    async replaceSlots(requestId, slots) {
-      // Resubmitting is a wholesale replace — the student's latest answer is
-      // the only one that means anything.
-      const { error: deleteError } = await supabase
-        .from('interview_availability_slots')
-        .delete()
-        .eq('request_id', requestId);
-      if (deleteError) throw new Error(deleteError.message);
-
+    async insertSlots(requestId, slots) {
       if (slots.length === 0) return [];
-
       const { data, error } = await supabase
         .from('interview_availability_slots')
         .insert(slots.map(s => ({
@@ -134,8 +153,13 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
           ends_at: s.ends_at,
         })))
         .select();
-      if (error) throw new Error(error.message);
-      return (data ?? []) as AvailabilitySlot[];
+      if (error) {
+        // Don't leave a request with nothing to pick from behind.
+        await supabase.from('interview_availability_requests').update({ status: 'cancelled' }).eq('id', requestId);
+        fail(error, 'Failed to save the time slots');
+      }
+      return ((data ?? []) as AvailabilitySlot[])
+        .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
     },
 
     async insertMessage(row) {
@@ -144,7 +168,7 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
         .insert(row)
         .select('id')
         .single();
-      if (error || !data) throw new Error(error?.message ?? 'Failed to send the message');
+      if (error || !data) fail(error, 'Failed to send the message');
       return { id: data.id };
     },
 
@@ -155,13 +179,38 @@ export function createAvailabilityRepo(supabase: SupabaseClient): AvailabilityRe
       if (error) console.error('[availability notification]', error.message);
     },
 
-    async createInterview({ format, meeting_url, ...row }) {
+    async getLiveInterviewForApplication(applicationId) {
+      const { data } = await supabase
+        .from('interview_schedules')
+        .select('id')
+        .eq('application_id', applicationId)
+        .in('status', LIVE_INTERVIEW_STATUSES)
+        .order('scheduled_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data ? { id: data.id } : null;
+    },
+
+    async createInterview(row) {
       const { data, error } = await supabase
         .from('interview_schedules')
-        .insert({ ...row, ...interviewFormatColumns(format, meeting_url), status: 'pending' })
+        .insert(row)
         .select('id')
         .single();
-      if (error || !data) throw new Error(error?.message ?? 'Failed to schedule the interview');
+      if (error || !data) fail(error, 'Failed to schedule the meeting');
+      return { id: data.id };
+    },
+
+    async updateInterview(interviewId, patch) {
+      // One UPDATE statement, so the reschedule is atomic: the row moves to the
+      // new time in place and never coexists with a second live row.
+      const { data, error } = await supabase
+        .from('interview_schedules')
+        .update({ ...patch, cancelled_by: null, cancelled_at: null })
+        .eq('id', interviewId)
+        .select('id')
+        .single();
+      if (error || !data) fail(error, 'Failed to reschedule the meeting');
       return { id: data.id };
     },
 

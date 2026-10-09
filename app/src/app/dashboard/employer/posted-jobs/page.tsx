@@ -9,8 +9,6 @@ import {
   getEmployerListingsWithStats,
   getEmployerApplications,
   getEmployerInterviews,
-  createInterview,
-  rescheduleInterview,
   updateListing,
   updateApplicationStage,
   getListingStages,
@@ -32,9 +30,8 @@ import {
 import { isEmployerRole, roleCan } from '@/lib/employer-team';
 import Avatar from '@/components/Avatar';
 import ConfirmActionModal from '@/components/ConfirmActionModal';
-import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
+import CandidateApplicationModal from '@/components/CandidateApplicationModal';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
-import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
 
 type ListingWithStats = {
   id: string;
@@ -155,8 +152,8 @@ export default function PostedJobsPage() {
   const [filterStatus, setFilterStatus] = useState<PostedJobFilter>('');
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [updatingAppStatus, setUpdatingAppStatus] = useState<string | null>(null);
-  const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null);
-  const [scheduleModalInterview, setScheduleModalInterview] = useState<Interview | null>(null);
+  // The candidate whose application is open in the large modal.
+  const [reviewAppId, setReviewAppId] = useState<string | null>(null);
   // Pipeline stages for the currently-selected listing — drives the
   // per-applicant status dropdown.
   const [selectedListingStages, setSelectedListingStages] = useState<PipelineStage[]>([]);
@@ -258,47 +255,12 @@ export default function PostedJobsPage() {
     );
   }
 
-  function openScheduleModal(app: Application) {
-    setScheduleModalInterview(activeInterviewForApp(app.id) ?? null);
-    setScheduleModalApp(app);
-  }
-
-  function closeScheduleModal() {
-    setScheduleModalApp(null);
-    setScheduleModalInterview(null);
-  }
-
-  async function handleScheduleSubmit(data: ScheduleInterviewFormData) {
-    if (!scheduleModalApp || !employerId) return;
-    if (scheduleModalInterview) {
-      const updated = await rescheduleInterview(scheduleModalInterview.id, {
-        scheduledAt: data.scheduledAt,
-        durationMinutes: data.durationMinutes,
-        notes: data.notes,
-        format: data.format,
-        meetingUrl: data.meetingUrl,
-        timeZone: data.timeZone,
-      });
-      setInterviews(prev => prev.map(i => i.id === updated.id ? (updated as unknown as Interview) : i));
-    } else {
-      const created = await createInterview({
-        applicationId: scheduleModalApp.id,
-        employerId,
-        studentId: scheduleModalApp.student.id,
-        listingId: scheduleModalApp.listing.id,
-        scheduledAt: data.scheduledAt,
-        durationMinutes: data.durationMinutes,
-        notes: data.notes,
-        format: data.format,
-        meetingUrl: data.meetingUrl,
-        timeZone: data.timeZone,
-      });
-      setInterviews(prev => [...prev, created as unknown as Interview]);
-      setApplications(prev => prev.map(a =>
-        a.id === scheduleModalApp.id ? { ...a, status: 'interviewing' } : a,
-      ));
-    }
-    closeScheduleModal();
+  // Scheduling (Request Time -> candidate picks -> Confirm) lives in the
+  // candidate modal; re-read interviews when it changes something.
+  async function refreshInterviews() {
+    if (!employerId) return;
+    const interviewsData = await getEmployerInterviews(employerId);
+    setInterviews(interviewsData as unknown as Interview[]);
   }
 
   async function handleCancelInterview(interviewId: string) {
@@ -789,11 +751,13 @@ export default function PostedJobsPage() {
                                 </option>
                               ))}
                             </select>
+                            {/* The full application, with scheduling (shown
+                                only for Screening / Interview candidates). */}
                             <button
-                              onClick={() => openScheduleModal(app)}
-                              disabled={selectedArchived}
-                              title={selectedArchived ? 'Hiring has ended for this posting' : interview ? 'Reschedule interview' : 'Schedule interview'}
-                              aria-label={interview ? 'Reschedule interview' : 'Schedule interview'}
+                              onClick={() => setReviewAppId(app.id)}
+                              title="View application"
+                              aria-label={`View ${app.student.profile.full_name}'s application`}
+                              aria-haspopup="dialog"
                               style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: 32, height: 32, borderRadius: 'var(--radius-sm)',
@@ -802,9 +766,8 @@ export default function PostedJobsPage() {
                                 opacity: selectedArchived ? 0.5 : 1,
                               }}
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>
                               </svg>
                             </button>
                             <Link
@@ -859,14 +822,14 @@ export default function PostedJobsPage() {
                                 </Link>
                               )}
                               <button
-                                onClick={() => openScheduleModal(app)}
+                                onClick={() => setReviewAppId(app.id)}
                                 style={{
                                   fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 6,
                                   border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
                                   cursor: 'pointer',
                                 }}
                               >
-                                Reschedule
+                                Details
                               </button>
                               <button
                                 onClick={() => handleCancelInterview(interview.id)}
@@ -914,20 +877,10 @@ export default function PostedJobsPage() {
         onCancel={() => setConfirmAction(null)}
       />
 
-      <ScheduleInterviewModal
-        open={scheduleModalApp !== null}
-        onClose={closeScheduleModal}
-        onSubmit={handleScheduleSubmit}
-        candidateName={scheduleModalApp?.student.profile.full_name}
-        listingTitle={scheduleModalApp?.listing.title}
-        mode={scheduleModalInterview ? 'reschedule' : 'create'}
-        initialData={scheduleModalInterview ? {
-          scheduledAt: scheduleModalInterview.scheduled_at,
-          durationMinutes: scheduleModalInterview.duration_minutes,
-          notes: scheduleModalInterview.employer_notes || '',
-          format: scheduleModalInterview.format ?? 'internfirst',
-          meetingUrl: scheduleModalInterview.meeting_url ?? null,
-        } : null}
+      <CandidateApplicationModal
+        applicationId={reviewAppId}
+        onClose={() => setReviewAppId(null)}
+        onChanged={refreshInterviews}
       />
     </div>
   );

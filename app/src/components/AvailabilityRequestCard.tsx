@@ -3,21 +3,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   getAvailabilityRequest,
-  submitStudentAvailability,
+  selectInterviewSlot,
 } from '@/lib/supabase';
 import {
-  enumerateDays,
   groupSlotsByDay,
-  buildSlot,
-  formatDayLabel,
   formatWindowLabel,
   formatTime,
-  validateSlots,
-  TIME_PRESETS,
+  formatSlotRange,
+  formatMeetingWhen,
+  localTimeZone,
+  timeZoneAbbr,
+  selectedSlotOf,
+  isMeetingType,
+  MEETING_TYPE_LABELS,
   STUDENT_STATUS_LABELS,
+  EMPLOYER_STATUS_LABELS,
   STATUS_CHIP,
   type AvailabilityRequest,
-  type AvailabilitySlot,
   type AvailabilityStatus,
 } from '@/lib/interview-availability';
 
@@ -33,15 +35,16 @@ type Props = {
   onResponded?: (request: AvailabilityRequest) => void;
 };
 
-const cellKey = (day: string, presetKey: string) => `${day}|${presetKey}`;
-
-// Step 2 of the interview handshake, rendered inline in the inbox thread in
-// place of a plain message bubble. The student marks the frames that work
-// inside the employer's window and submits without leaving the conversation.
+// Step 2 of scheduling, rendered inline in the inbox thread in place of a
+// plain message bubble. The employer proposed exact slots; the student picks
+// one. The pick is tentative until the employer confirms it.
+//
+// The thread polls every few seconds; this card keeps its own state and is
+// keyed by message id, so a poll never resets a half-made selection.
 export default function AvailabilityRequestCard({ requestId, canRespond, onResponded }: Props) {
   const [request, setRequest] = useState<LoadedRequest | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<string>('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +61,7 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
   if (loading) {
     return (
       <div style={cardStyle}>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>Loading interview request…</p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>Loading scheduling request…</p>
       </div>
     );
   }
@@ -68,7 +71,7 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
     return (
       <div style={cardStyle}>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
-          This interview request is no longer available.
+          This scheduling request is no longer available.
         </p>
       </div>
     );
@@ -76,67 +79,41 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
 
   const status = request.status as AvailabilityStatus;
   const chip = STATUS_CHIP[status];
-  const days = enumerateDays(request.window_start, request.window_end);
   const companyName = request.employer?.company_name ?? 'The employer';
   const listingTitle = request.listing?.title ?? 'the role';
+  const meetingType = isMeetingType(request.meeting_type) ? request.meeting_type : 'interview';
+  const typeLabel = MEETING_TYPE_LABELS[meetingType];
   const isOpenForStudent = canRespond && status === 'awaiting_student';
+  const tz = localTimeZone();
+  const now = Date.now();
+  const slots = (request.slots ?? []).filter(s => !isOpenForStudent || Date.parse(s.starts_at) > now);
+  const byDay = groupSlotsByDay(slots, tz);
+  const selected = selectedSlotOf(request);
+  const zoneNote = slots[0] ? `${tz} (${timeZoneAbbr(slots[0].starts_at, tz)})` : tz;
 
-  function toggle(day: string, presetKey: string) {
+  async function handleSelect() {
+    if (!picked) return;
     setError('');
-    setSelected(prev => {
-      const next = new Set(prev);
-      const key = cellKey(day, presetKey);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  function buildSelectedSlots(): AvailabilitySlot[] {
-    const slots: AvailabilitySlot[] = [];
-    for (const key of selected) {
-      const [day, presetKey] = key.split('|');
-      const preset = TIME_PRESETS.find(p => p.key === presetKey);
-      if (!preset) continue;
-      slots.push(buildSlot(day, preset.startMinute, preset.endMinute));
-    }
-    return slots.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  }
-
-  async function handleSubmit() {
-    setError('');
-    const slots = buildSelectedSlots();
-    // Validate before the round trip so the student gets the message inline;
-    // the server re-checks the identical rule.
-    const check = validateSlots(slots, request!, request!.duration_minutes);
-    if (!check.ok) {
-      setError(check.error);
-      return;
-    }
     setSubmitting(true);
     try {
-      const updated = await submitStudentAvailability(requestId, { slots, note: note.trim() });
-      setRequest(prev => (prev ? { ...prev, ...updated, slots } : prev));
+      const updated = await selectInterviewSlot(requestId, { slotId: picked, note: note.trim() });
+      setRequest(prev => (prev ? { ...prev, ...updated } : prev));
       onResponded?.(updated);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not send your availability');
+      setError(e instanceof Error ? e.message : 'Could not save your pick');
     } finally {
       setSubmitting(false);
     }
   }
 
-  // The edge case the employer needs told explicitly: nothing in this window
-  // works. Recorded as a real outcome so the board can prompt a re-request.
+  // Nothing offered works. Recorded as a real outcome so the employer is told
+  // and can send different times.
   async function handleNoneWork() {
     setError('');
     setSubmitting(true);
     try {
-      const updated = await submitStudentAvailability(requestId, {
-        slots: [],
-        note: note.trim(),
-        noneWork: true,
-      });
-      setRequest(prev => (prev ? { ...prev, ...updated, slots: [] } : prev));
+      const updated = await selectInterviewSlot(requestId, { note: note.trim(), noneWork: true });
+      setRequest(prev => (prev ? { ...prev, ...updated } : prev));
       setConfirmNone(false);
       onResponded?.(updated);
     } catch (e) {
@@ -145,8 +122,6 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
       setSubmitting(false);
     }
   }
-
-  const submittedSlots = groupSlotsByDay(request.slots ?? []);
 
   return (
     <div style={cardStyle}>
@@ -158,12 +133,12 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
             background: 'var(--primary-light)', color: 'var(--primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
           </span>
           <div>
-            <p style={{ fontSize: '0.88rem', fontWeight: 700, margin: 0 }}>Interview availability</p>
+            <p style={{ fontSize: '0.88rem', fontWeight: 700, margin: 0 }}>{typeLabel} time</p>
             <p style={{ fontSize: '0.74rem', color: 'var(--text-light)', margin: 0 }}>
               {companyName} · {listingTitle}
             </p>
@@ -174,14 +149,16 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
           padding: '3px 8px', borderRadius: 10,
           background: chip.bg, color: chip.color,
         }}>
-          {STUDENT_STATUS_LABELS[status]}
+          {canRespond ? STUDENT_STATUS_LABELS[status] : EMPLOYER_STATUS_LABELS[status]}
         </span>
       </div>
 
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
-        {companyName} is interviewing between{' '}
-        <strong style={{ color: 'var(--text)' }}>{formatWindowLabel(request.window_start, request.window_end)}</strong>
-        {' '}· {request.duration_minutes} minute interview.
+      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 8px', lineHeight: 1.5 }}>
+        {request.duration_minutes}-minute {typeLabel.toLowerCase()} between{' '}
+        <strong style={{ color: 'var(--text)' }}>{formatWindowLabel(request.window_start, request.window_end)}</strong>.
+      </p>
+      <p style={{ fontSize: '0.72rem', color: 'var(--text-light)', margin: '0 0 12px' }}>
+        Times shown in your time zone: {zoneNote}
       </p>
 
       {request.employer_note && (
@@ -194,48 +171,46 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
         </p>
       )}
 
-      {/* ---- Interactive picker: the student's turn ---- */}
+      {/* ---- The student's turn: pick one slot ---- */}
       {isOpenForStudent && (
         <>
-          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>
-            Tap every time frame that works for you
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-            {days.map(day => (
-              <div key={day} style={{
-                border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px',
-              }}>
-                <p style={{ fontSize: '0.75rem', fontWeight: 700, margin: '0 0 6px' }}>
-                  {formatDayLabel(day)}
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {TIME_PRESETS.map(preset => {
-                    const active = selected.has(cellKey(day, preset.key));
-                    return (
-                      <button
-                        key={preset.key}
-                        type="button"
-                        aria-pressed={active}
-                        aria-label={`${formatDayLabel(day)} ${preset.label}`}
-                        onClick={() => toggle(day, preset.key)}
-                        style={{
-                          fontSize: '0.7rem', fontWeight: 600, padding: '5px 9px',
-                          borderRadius: 999, cursor: 'pointer',
-                          border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                          background: active ? 'var(--primary)' : 'var(--surface)',
-                          color: active ? 'var(--on-primary)' : 'var(--text-secondary)',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {preset.label}
-                      </button>
-                    );
-                  })}
+          {slots.length === 0 ? (
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 10px' }}>
+              All of the offered times have passed. Let {companyName} know none of them work.
+            </p>
+          ) : (
+            <div role="radiogroup" aria-label="Offered times" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+              {byDay.map(({ day, label, slots: daySlots }) => (
+                <div key={day} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px' }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 700, margin: '0 0 6px' }}>{label}</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {daySlots.map(slot => {
+                      const active = picked === slot.id;
+                      return (
+                        <button
+                          key={slot.id ?? slot.starts_at}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          aria-label={`${label} ${formatSlotRange(slot, tz)}`}
+                          onClick={() => { setPicked(slot.id ?? ''); setError(''); }}
+                          style={{
+                            fontSize: '0.72rem', fontWeight: 600, padding: '5px 10px',
+                            borderRadius: 999, cursor: 'pointer',
+                            border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                            background: active ? 'var(--primary)' : 'var(--surface)',
+                            color: active ? 'var(--on-primary)' : 'var(--text-secondary)',
+                          }}
+                        >
+                          {formatTime(slot.starts_at, tz)} – {formatTime(slot.ends_at, tz)}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <textarea aria-label="Note to the employer (optional)"
             value={note}
@@ -263,16 +238,16 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={handleSubmit}
-              disabled={submitting || selected.size === 0}
+              onClick={handleSelect}
+              disabled={submitting || !picked}
               style={{
                 padding: '8px 16px', borderRadius: 8, border: 'none',
-                background: submitting || selected.size === 0 ? 'var(--border)' : 'var(--primary)',
+                background: submitting || !picked ? 'var(--border)' : 'var(--primary)',
                 color: 'var(--on-primary)', fontSize: '0.8rem', fontWeight: 600,
-                cursor: submitting || selected.size === 0 ? 'not-allowed' : 'pointer',
+                cursor: submitting || !picked ? 'not-allowed' : 'pointer',
               }}
             >
-              {submitting ? 'Sending…' : `Send ${selected.size || ''} time${selected.size === 1 ? '' : 's'}`.trim()}
+              {submitting ? 'Sending…' : 'Select this time'}
             </button>
             <button
               type="button"
@@ -285,7 +260,7 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
                 cursor: submitting ? 'not-allowed' : 'pointer',
               }}
             >
-              None of these days work
+              None of these work
             </button>
           </div>
 
@@ -295,8 +270,8 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
               background: 'var(--danger-bg)', border: '1px solid var(--danger-border)',
             }}>
               <p style={{ fontSize: '0.78rem', color: 'var(--danger-fg)', margin: '0 0 8px', lineHeight: 1.5 }}>
-                We’ll tell {companyName} that nothing in this window works and ask
-                them to propose different dates. You can add a note above first.
+                We’ll tell {companyName} that none of these times work so they can
+                send different ones. You can add a note above first.
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
@@ -329,59 +304,53 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
         </>
       )}
 
-      {/* ---- Submitted: what the student offered ---- */}
-      {(status === 'awaiting_employer' || status === 'scheduled') && submittedSlots.length > 0 && (
-        <div>
-          {/* The status chip above already says whether this was sent or
-              booked, so this heading only names what the list is. */}
-          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
-            You offered
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {submittedSlots.map(({ day, slots }) => (
-              <div key={day} style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                <strong style={{ color: 'var(--text)' }}>{formatDayLabel(day)}</strong>
-                {' — '}
-                {slots.map(s => `${formatTime(s.starts_at)}–${formatTime(s.ends_at)}`).join(', ')}
-              </div>
-            ))}
-          </div>
-          {status === 'awaiting_employer' && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: '8px 0 0' }}>
-              Waiting on {companyName} to pick a final time.
-            </p>
-          )}
+      {/* ---- Read-only offer (the employer's view while waiting) ---- */}
+      {!isOpenForStudent && status === 'awaiting_student' && (
+        <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
+          {slots.length} time{slots.length === 1 ? '' : 's'} offered — awaiting the candidate’s selection.
+        </p>
+      )}
+
+      {/* ---- Picked, waiting on the employer ---- */}
+      {status === 'awaiting_employer' && selected && (
+        <div style={{
+          padding: '9px 12px', borderRadius: 8,
+          background: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)', fontSize: '0.8rem',
+        }}>
+          <strong>Selected {formatMeetingWhen(selected.starts_at, tz)}</strong>
+          <span style={{ display: 'block', fontSize: '0.74rem', marginTop: 2 }}>
+            {canRespond
+              ? `Tentative — ${companyName} still needs to confirm it. You’ll get the final details here.`
+              : 'Tentative until confirmed.'}
+          </span>
         </div>
       )}
 
       {status === 'scheduled' && request.scheduled_at_confirmed && (
         <div style={{
-          marginTop: 10, padding: '9px 12px', borderRadius: 8,
+          padding: '9px 12px', borderRadius: 8,
           background: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)',
           fontSize: '0.8rem', fontWeight: 600,
         }}>
-          Confirmed for {formatDayLabel(request.scheduled_at_confirmed.slice(0, 10))}
-          {', '}
-          {formatTime(request.scheduled_at_confirmed)}
+          {typeLabel} confirmed for {formatMeetingWhen(request.scheduled_at_confirmed, tz)} · {request.duration_minutes} min
         </div>
       )}
 
       {status === 'no_availability' && (
         <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-          You let {companyName} know that none of these dates worked. They’ve
-          been asked to propose a new window.
+          {canRespond ? `You let ${companyName} know` : 'The candidate said'} that none of these times work.
         </p>
       )}
 
       {status === 'cancelled' && (
         <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-          {companyName} withdrew this request.
+          {companyName} withdrew these times.
         </p>
       )}
 
       {request.student_note && status !== 'awaiting_student' && (
         <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: '8px 0 0', fontStyle: 'italic' }}>
-          Your note: {request.student_note}
+          {canRespond ? 'Your note' : 'Candidate’s note'}: {request.student_note}
         </p>
       )}
     </div>

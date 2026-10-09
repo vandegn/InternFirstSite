@@ -15,13 +15,8 @@ import {
   deleteStage,
   reorderStages,
   updateApplicationStage,
-  createInterview,
-  rescheduleInterview,
   deleteApplication,
-  requestInterviewTimes,
   getEmployerAvailabilityRequests,
-  confirmInterviewTime,
-  withdrawInterviewRequest,
   extendOffer,
   getEmployerOffers,
   isLiveOffer,
@@ -29,20 +24,17 @@ import {
   type Offer,
 } from '@/lib/supabase';
 import Avatar from '@/components/Avatar';
-import ScheduleInterviewModal from '@/components/ScheduleInterviewModal';
+import CandidateApplicationModal from '@/components/CandidateApplicationModal';
 import type { InterviewFormat } from '@/lib/interview-format';
-import type { ScheduleInterviewFormData } from '@/components/ScheduleInterviewModal';
-import RequestTimesModal from '@/components/RequestTimesModal';
-import type { RequestTimesFormData } from '@/components/RequestTimesModal';
-import SelectInterviewTimeModal from '@/components/SelectInterviewTimeModal';
 import ExtendOfferModal from '@/components/ExtendOfferModal';
 import type { ExtendOfferFormData } from '@/components/ExtendOfferModal';
 import {
-  isLiveAvailabilityStatus,
-  EMPLOYER_STATUS_LABELS,
-  STATUS_CHIP,
+  employerSchedulingView,
+  schedulingStatusLabel,
+  formatMeetingWhen,
+  LIVE_INTERVIEW_STATUSES,
   type AvailabilityRequest,
-  type AvailabilityStatus,
+  type SchedulingView,
 } from '@/lib/interview-availability';
 import { PIPELINE_STAGE_PRESETS, type PipelineStagePreset } from '@/lib/constants';
 
@@ -83,19 +75,18 @@ type Interview = {
   status: string;
   format?: InterviewFormat | null;
   meeting_url?: string | null;
+  meeting_type?: string | null;
 };
 
 const APPLIED_DISPLAY_LIMIT = 10;
 
-// An interview that still needs to happen — the card shows it and the
-// schedule action becomes "Reschedule" instead of opening a second invite.
-const LIVE_INTERVIEW_STATUSES = ['pending', 'accepted', 'reschedule_requested'];
-
-function formatInterviewWhen(iso: string) {
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-  });
-}
+// Card chip colors per scheduling state (see employerSchedulingView).
+const SCHEDULING_CHIP: Record<Exclude<SchedulingView['kind'], 'hidden'>, { bg: string; color: string }> = {
+  request:          { bg: 'var(--chip-neutral-bg, #f3f4f6)', color: 'var(--chip-neutral-ink)' },
+  awaiting_student: { bg: 'var(--chip-blue-bg)',  color: 'var(--chip-blue-ink)' },
+  selected:         { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' },
+  confirmed:        { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)' },
+};
 
 // Same thresholds as the applications list: >= 70 is the PPA-qualifying band.
 function matchPill(score: number) {
@@ -122,13 +113,6 @@ function normalizeApp(app: Record<string, unknown>): Application {
   } as unknown as Application;
 }
 
-function answerText(a: ApplicationAnswer): string {
-  if (a.answer_options?.length) return a.answer_options.join(', ');
-  if (a.answer_text) return a.answer_text;
-  if (a.storage_path) return 'File attached';
-  return '—';
-}
-
 const COLOR_PRESETS: { bg: string; text: string }[] = [
   { bg: 'var(--chip-indigo-bg)', text: 'var(--chip-indigo-ink)' },
   { bg: 'var(--chip-amber-bg)', text: 'var(--chip-amber-ink)' },
@@ -145,9 +129,10 @@ const COLOR_PRESETS: { bg: string; text: string }[] = [
 const STAGE_TYPE_ORDER: Record<PipelineStage['stage_type'], number> = {
   applied: 0,
   reviewing: 1,
-  interviewing: 2,
-  offered: 3,
-  rejected: 4,
+  screening: 2,
+  interviewing: 3,
+  offered: 4,
+  rejected: 5,
 };
 
 // Where a stage preset's suggested color sits in COLOR_PRESETS, so choosing a
@@ -173,6 +158,8 @@ function EmployerPipelineInner() {
   const [employerId, setEmployerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  // The candidate whose application is open in the large modal. The board
+  // stays mounted underneath, so closing it leaves the employer where they were.
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Every drop is staged here and only written once the employer confirms —
@@ -192,16 +179,9 @@ function EmployerPipelineInner() {
   const [deletingApp, setDeletingApp] = useState(false);
   const [removeError, setRemoveError] = useState('');
 
-  // Schedule / reschedule an interview straight from a card.
-  const [scheduleApp, setScheduleApp] = useState<Application | null>(null);
-  const [scheduleInterview, setScheduleInterview] = useState<Interview | null>(null);
-
-  // Interview availability handshake: ask for a window, then pick a final time
-  // out of what the candidate offered. See lib/interview-availability.ts.
+  // Scheduling state for the card chips. The actions themselves live in the
+  // candidate modal (see lib/interview-availability.ts employerSchedulingView).
   const [availabilityRequests, setAvailabilityRequests] = useState<AvailabilityRequest[]>([]);
-  const [requestTimesApp, setRequestTimesApp] = useState<Application | null>(null);
-  const [pickTimeApp, setPickTimeApp] = useState<Application | null>(null);
-  const [availabilityError, setAvailabilityError] = useState('');
 
   // Stage management modal — all edits stage into draftStages /
   // pendingDeletes and only persist on Save changes.
@@ -446,132 +426,33 @@ function EmployerPipelineInner() {
     );
   }
 
-  function openScheduleModal(app: Application) {
-    setScheduleInterview(activeInterviewForApp(app.id) ?? null);
-    setScheduleApp(app);
-  }
+  // ---- Scheduling state (chips only; actions live in the candidate modal) ----
 
-  function closeScheduleModal() {
-    setScheduleApp(null);
-    setScheduleInterview(null);
-  }
-
-  async function handleScheduleSubmit(data: ScheduleInterviewFormData) {
-    if (!scheduleApp || !employerId) return;
-    if (scheduleInterview) {
-      const updated = await rescheduleInterview(scheduleInterview.id, {
-        scheduledAt: data.scheduledAt,
-        durationMinutes: data.durationMinutes,
-        notes: data.notes,
-        format: data.format,
-        meetingUrl: data.meetingUrl,
-        timeZone: data.timeZone,
-      });
-      setInterviews(prev => prev.map(i => i.id === updated.id ? (updated as Interview) : i));
-    } else {
-      const created = await createInterview({
-        applicationId: scheduleApp.id,
-        employerId,
-        studentId: scheduleApp.student.id,
-        listingId: scheduleApp.listing.id,
-        scheduledAt: data.scheduledAt,
-        durationMinutes: data.durationMinutes,
-        notes: data.notes,
-        format: data.format,
-        meetingUrl: data.meetingUrl,
-        timeZone: data.timeZone,
-      });
-      setInterviews(prev => [...prev, created as Interview]);
-      // The card stays where the employer put it — scheduling no longer moves
-      // it (migrations/20260803_manual_pipeline_movement.sql), so there is
-      // nothing to re-read here.
-    }
-    closeScheduleModal();
-  }
-
-  // ---- Interview availability handshake ----
-
-  // The open negotiation on a card, if any. Terminal rows (scheduled,
-  // no_availability, cancelled) are still shown as a chip, so grab the newest
-  // row for the application and let the caller decide what it means.
+  // The newest time request for a card. Terminal rows (scheduled,
+  // no_availability, cancelled) still matter — employerSchedulingView decides
+  // what they mean.
   function latestRequestForApp(applicationId: string): AvailabilityRequest | undefined {
     return availabilityRequests.find(r => r.application_id === applicationId);
   }
 
-  function liveRequestForApp(applicationId: string): AvailabilityRequest | undefined {
-    const latest = latestRequestForApp(applicationId);
-    return latest && isLiveAvailabilityStatus(latest.status) ? latest : undefined;
-  }
-
-  function upsertRequest(request: AvailabilityRequest) {
-    setAvailabilityRequests(prev => {
-      const rest = prev.filter(r => r.id !== request.id);
-      // Newest first, matching getEmployerAvailabilityRequests' ordering, so
-      // latestRequestForApp keeps returning the right row.
-      return [request, ...rest];
+  function schedulingViewForApp(app: Application): SchedulingView {
+    return employerSchedulingView({
+      stage: stages.find(s => s.id === app.stage_id),
+      request: latestRequestForApp(app.id),
+      interview: activeInterviewForApp(app.id),
     });
   }
 
-  // Step 1 — send the window to the candidate.
-  async function handleRequestTimes(data: RequestTimesFormData) {
-    if (!requestTimesApp) return;
-    const created = await requestInterviewTimes({
-      applicationId: requestTimesApp.id,
-      windowStart: data.windowStart,
-      windowEnd: data.windowEnd,
-      durationMinutes: data.durationMinutes,
-      note: data.note,
-    });
-    upsertRequest(created);
-    setRequestTimesApp(null);
-    // Asking for times doesn't move the card either — the chip on it is the
-    // only thing that changes, and that comes from availabilityRequests.
-  }
-
-  // Step 3 — lock in one of the offered times.
-  async function handleConfirmTime(data: {
-    scheduledAt: string;
-    durationMinutes: number;
-    notes: string;
-    format: InterviewFormat;
-    meetingUrl: string | null;
-    timeZone: string;
-  }) {
-    const request = pickTimeApp ? latestRequestForApp(pickTimeApp.id) : null;
-    if (!request || !employerId) return;
-    const updated = await confirmInterviewTime(request.id, {
-      scheduledAt: data.scheduledAt,
-      durationMinutes: data.durationMinutes,
-        notes: data.notes,
-        format: data.format,
-        meetingUrl: data.meetingUrl,
-        timeZone: data.timeZone,
-    });
-    upsertRequest({ ...request, ...updated });
-    setPickTimeApp(null);
-    // A real interview row now exists, so re-read those. The board itself is
-    // untouched: confirming a time doesn't move the card.
-    const interviewsData = await getEmployerInterviews(employerId);
+  // After the modal changes scheduling, re-read what the chips are drawn from.
+  // The board itself is untouched: scheduling never moves a card.
+  async function refreshScheduling() {
+    if (!employerId) return;
+    const [interviewsData, availabilityData] = await Promise.all([
+      getEmployerInterviews(employerId),
+      getEmployerAvailabilityRequests(employerId),
+    ]);
     setInterviews(interviewsData as unknown as Interview[]);
-  }
-
-  // Off-ramp — none of the offered times work, or the candidate had none at
-  // all. Withdraw so a fresh window can be requested; the board immediately
-  // offers "Request Times" again.
-  async function handleRequestNewWindow() {
-    const app = pickTimeApp;
-    const request = app ? latestRequestForApp(app.id) : null;
-    if (!request || !app) return;
-    setAvailabilityError('');
-    try {
-      const updated = await withdrawInterviewRequest(request.id);
-      upsertRequest({ ...request, ...updated });
-      setPickTimeApp(null);
-      // Straight into the next ask — that's the whole point of withdrawing.
-      setRequestTimesApp(app);
-    } catch (e) {
-      setAvailabilityError(e instanceof Error ? e.message : 'Could not withdraw the request');
-    }
+    setAvailabilityRequests(availabilityData);
   }
 
   function openEditModal() {
@@ -955,16 +836,13 @@ function EmployerPipelineInner() {
                   )}
                   {colApps.map(app => {
                     const isExpanded = expandedId === app.id;
-                    const liveInterview = activeInterviewForApp(app.id);
-                    const availability = latestRequestForApp(app.id);
-                    const availabilityStatus = availability?.status as AvailabilityStatus | undefined;
-                    // Only one handshake can be open at a time, so the card's
-                    // primary action is unambiguous: ask, or pick.
-                    const awaitingPick = availabilityStatus === 'awaiting_employer';
-                    const handshakeOpen = Boolean(liveRequestForApp(app.id));
+                    // One scheduling state per card, the same one the modal
+                    // shows — the chip and the modal can't disagree.
+                    const scheduling = schedulingViewForApp(app);
+                    const schedulingLabel = schedulingStatusLabel(scheduling);
                     const offer = latestOfferForApp(app.id);
-                    // The card a notification pointed at: opened and outlined
-                    // until the employer collapses it.
+                    // The card a notification pointed at: outlined while its
+                    // application is open.
                     const isFocused = app.id === focusApplicationId && isExpanded;
                     return (
                       <div
@@ -973,7 +851,7 @@ function EmployerPipelineInner() {
                         draggable
                         onDragStart={(e) => handleDragStart(e, app.id)}
                         onDragEnd={() => { setDraggingId(null); setDragOverStageId(null); setTrashHover(false); }}
-                        onClick={() => setExpandedId(isExpanded ? null : app.id)}
+                        onClick={() => setExpandedId(app.id)}
                         style={{
                           background: 'var(--surface)',
                           borderRadius: 'var(--radius-sm)',
@@ -1053,20 +931,23 @@ function EmployerPipelineInner() {
                               Knockout
                             </span>
                           )}
-                          {liveInterview && (
+                          {/* Scheduling: "Awaiting Student Selection",
+                              "Selected Tue, Oct 14 at 2:00 PM EDT", or the
+                              confirmed meeting. Same source as the modal. */}
+                          {scheduling.kind !== 'hidden' && scheduling.kind !== 'request' && schedulingLabel && (
                             <span
-                              title={`Interview ${liveInterview.status === 'accepted' ? 'confirmed' : 'invite sent'} for ${formatInterviewWhen(liveInterview.scheduled_at)}`}
+                              data-testid="card-scheduling-chip"
                               style={{
-                                fontSize: '0.63rem', fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                                background: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)',
+                                fontSize: '0.63rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                                background: SCHEDULING_CHIP[scheduling.kind].bg,
+                                color: SCHEDULING_CHIP[scheduling.kind].color,
                               }}
                             >
-                              {formatInterviewWhen(liveInterview.scheduled_at)}
+                              {scheduling.kind === 'confirmed'
+                                ? `${schedulingLabel} · ${formatMeetingWhen(scheduling.interview.scheduled_at)}`
+                                : schedulingLabel}
                             </span>
                           )}
-                          {/* Where the availability handshake currently sits.
-                              Dropped once a real interview exists — the
-                              confirmed time above says it better. */}
                           {/* Where the offer stands. This is the card's most
                               consequential state, so it reads as words rather
                               than a color the employer has to decode. */}
@@ -1090,211 +971,22 @@ function EmployerPipelineInner() {
                                 : 'Offer sent — awaiting reply'}
                             </span>
                           )}
-                          {availabilityStatus && availabilityStatus !== 'scheduled' && availabilityStatus !== 'cancelled' && (
-                            <span
-                              title={`Interview times: ${EMPLOYER_STATUS_LABELS[availabilityStatus]}`}
-                              style={{
-                                fontSize: '0.63rem', fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                                background: STATUS_CHIP[availabilityStatus].bg,
-                                color: STATUS_CHIP[availabilityStatus].color,
-                              }}
-                            >
-                              {EMPLOYER_STATUS_LABELS[availabilityStatus]}
-                            </span>
-                          )}
                         </div>
 
                         <p style={{ fontSize: '0.68rem', color: 'var(--text-light)' }}>
                           Applied {timeAgo(app.applied_at)} ·{' '}
-                          {/* The whole card toggles on click; this is the
+                          {/* The whole card opens the application; this is the
                               keyboard/screen-reader route to the same thing. */}
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : app.id); }}
-                            aria-expanded={isExpanded}
-                            aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${app.student.profile.full_name}`}
+                            onClick={(e) => { e.stopPropagation(); setExpandedId(app.id); }}
+                            aria-haspopup="dialog"
+                            aria-label={`Open ${app.student.profile.full_name}'s application`}
                             style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}
                           >
-                            {isExpanded ? 'hide details' : 'show details'}
+                            view application
                           </button>
                         </p>
-
-                        {isExpanded && (
-                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-                            <div style={{ fontSize: '0.78rem', marginBottom: '6px', wordBreak: 'break-word' }}>
-                              <span style={{ color: 'var(--text-light)' }}>Email: </span>
-                              <span>{app.student.profile.email}</span>
-                            </div>
-                            {app.student.graduation_year && (
-                              <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-light)' }}>Class of </span>
-                                <span>{app.student.graduation_year}</span>
-                              </div>
-                            )}
-                            <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>
-                              <span style={{ color: 'var(--text-light)' }}>Applied to: </span>
-                              <span>{app.listing.title}</span>
-                            </div>
-                            {app.match_score != null && (
-                              <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>
-                                <span style={{ color: 'var(--text-light)' }}>Match score: </span>
-                                <span style={{ fontWeight: 600, color: matchPill(app.match_score).color }}>
-                                  {app.match_score}%
-                                </span>
-                                <span style={{ color: 'var(--text-light)' }}>
-                                  {' '}— skills, industry, experience, and preference fit
-                                </span>
-                              </div>
-                            )}
-                            {app.student.bio && (
-                              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0', lineHeight: 1.4 }}>
-                                {app.student.bio}
-                              </p>
-                            )}
-                            {app.answers?.length > 0 && (
-                              <div style={{ margin: '8px 0' }}>
-                                {[...app.answers]
-                                  .sort((x, y) => (x.question?.position ?? 0) - (y.question?.position ?? 0))
-                                  .map(ans => (
-                                    <div key={ans.id} style={{ marginBottom: 6 }}>
-                                      <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-light)' }}>
-                                        {ans.question?.prompt ?? 'Question'}
-                                      </p>
-                                      <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
-                                        {answerText(ans)}
-                                      </p>
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
-                            {/* Keyboard alternative to dragging the card. It
-                                proposes the same move a drop does, so the
-                                confirm dialog and the Offered gate still apply. */}
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--text-light)', margin: '8px 0' }}>
-                              Move to
-                              <select
-                                value={app.stage_id ?? ''}
-                                onChange={(e) => {
-                                  const toStage = stages.find(st => st.id === e.target.value);
-                                  if (toStage && toStage.id !== app.stage_id) setPendingMove({ app, toStage });
-                                }}
-                                style={{ flex: 1, fontSize: '0.72rem', padding: '3px 6px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
-                              >
-                                {stages.map(st => <option key={st.id} value={st.id}>{st.label}</option>)}
-                              </select>
-                            </label>
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                              {/* Step 1 / step 3 of the availability handshake.
-                                  While we're waiting on the candidate the
-                                  button stays visible but inert, so the card
-                                  explains itself instead of going blank. */}
-                              {awaitingPick ? (
-                                <button
-                                  onClick={() => { setAvailabilityError(''); setPickTimeApp(app); }}
-                                  style={{
-                                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--chip-amber-ink)', background: 'var(--chip-amber-bg)',
-                                    color: 'var(--chip-amber-ink)', fontWeight: 700, cursor: 'pointer',
-                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                  }}
-                                >
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                  Pick interview time
-                                </button>
-                              ) : !handshakeOpen && (
-                                <button
-                                  onClick={() => { setAvailabilityError(''); setRequestTimesApp(app); }}
-                                  style={{
-                                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--primary)', background: 'var(--surface)',
-                                    color: 'var(--primary)', fontWeight: 600, cursor: 'pointer',
-                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                  }}
-                                >
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                  Request Times
-                                </button>
-                              )}
-                              {handshakeOpen && !awaitingPick && (
-                                <span style={{
-                                  fontSize: '0.7rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                  border: '1px dashed var(--border)', color: 'var(--text-light)',
-                                  display: 'inline-flex', alignItems: 'center',
-                                }}>
-                                  Waiting on candidate’s availability
-                                </span>
-                              )}
-                              <button
-                                onClick={() => openScheduleModal(app)}
-                                style={{
-                                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                  border: '1px solid var(--primary)', background: 'var(--primary)',
-                                  color: 'var(--on-primary)', fontWeight: 600, cursor: 'pointer',
-                                  display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                }}
-                              >
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                {liveInterview ? 'Reschedule interview' : 'Schedule interview'}
-                              </button>
-                              {offer?.storage_path && (
-                                <a
-                                  href={`/api/files/offer/${offer.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--chip-green-ink)', color: 'var(--chip-green-ink)',
-                                    textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                  }}
-                                >
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                  Offer letter
-                                </a>
-                              )}
-                              {app.resume && (
-                                <a
-                                  href={`/api/files/resume/${app.resume.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--primary)', color: 'var(--primary)',
-                                    textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                  }}
-                                >
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                  Resume
-                                </a>
-                              )}
-                              {/* Deep-link straight into the thread with this
-                                  student: Inbox reads ?to= to pre-select the
-                                  conversation (creating a draft row if they've
-                                  never been messaged) and focuses the composer. */}
-                              <Link
-                                href={`/dashboard/employer/inbox?to=${app.student.user_id}&name=${encodeURIComponent(app.student.profile.full_name)}`}
-                                style={{
-                                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                  border: '1px solid var(--border)', color: 'var(--text)',
-                                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                }}
-                              >
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                Message
-                              </Link>
-                              <Link
-                                href={`/dashboard/employer/applications?listing=${app.listing.id}`}
-                                style={{
-                                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                  border: '1px solid var(--border)', color: 'var(--text)',
-                                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                }}
-                              >
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                Full application
-                              </Link>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -1845,40 +1537,50 @@ function EmployerPipelineInner() {
         </div>
       )}
 
-      <ScheduleInterviewModal
-        open={scheduleApp !== null}
-        onClose={closeScheduleModal}
-        onSubmit={handleScheduleSubmit}
-        candidateName={scheduleApp?.student.profile.full_name}
-        listingTitle={scheduleApp?.listing.title}
-        mode={scheduleInterview ? 'reschedule' : 'create'}
-        initialData={scheduleInterview ? {
-          scheduledAt: scheduleInterview.scheduled_at,
-          durationMinutes: scheduleInterview.duration_minutes,
-          notes: scheduleInterview.employer_notes || '',
-          format: scheduleInterview.format ?? 'internfirst',
-          meetingUrl: scheduleInterview.meeting_url ?? null,
-        } : null}
-      />
-
-      {/* Step 1 — ask the candidate for times. */}
-      <RequestTimesModal
-        open={requestTimesApp !== null}
-        onClose={() => setRequestTimesApp(null)}
-        onSubmit={handleRequestTimes}
-        candidateName={requestTimesApp?.student.profile.full_name}
-        listingTitle={requestTimesApp?.listing.title}
-      />
-
-      {/* Step 3 — pick a final time from what they offered. */}
-      <SelectInterviewTimeModal
-        open={pickTimeApp !== null}
-        onClose={() => setPickTimeApp(null)}
-        request={pickTimeApp ? latestRequestForApp(pickTimeApp.id) ?? null : null}
-        candidateName={pickTimeApp?.student.profile.full_name}
-        listingTitle={pickTimeApp?.listing.title}
-        onConfirm={handleConfirmTime}
-        onRequestNewWindow={handleRequestNewWindow}
+      {/* The expanded application. Scheduling (Request Time -> student picks ->
+          Confirm Screening/Interview) happens inside it. */}
+      <CandidateApplicationModal
+        applicationId={expandedId}
+        onClose={() => setExpandedId(null)}
+        onChanged={refreshScheduling}
+        extraActions={(review) => {
+          const app = applications.find(a => a.id === review.id);
+          if (!app) return null;
+          const offer = latestOfferForApp(app.id);
+          return (
+            <>
+              {/* Keyboard alternative to dragging the card. It proposes the
+                  same move a drop does, so the confirm dialog and the Offered
+                  gate still apply — the modal steps aside for that dialog. */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-light)', marginRight: 'auto' }}>
+                Move to
+                <select
+                  value={app.stage_id ?? ''}
+                  onChange={(e) => {
+                    const toStage = stages.find(st => st.id === e.target.value);
+                    if (toStage && toStage.id !== app.stage_id) {
+                      setExpandedId(null);
+                      setPendingMove({ app, toStage });
+                    }
+                  }}
+                  style={{ fontSize: '0.8rem', padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+                >
+                  {stages.map(st => <option key={st.id} value={st.id}>{st.label}</option>)}
+                </select>
+              </label>
+              {offer?.storage_path && (
+                <a
+                  href={`/api/files/offer/${offer.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid var(--chip-green-ink)', color: 'var(--chip-green-ink)', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+                >
+                  Offer letter
+                </a>
+              )}
+            </>
+          );
+        }}
       />
 
       {/* The second confirmation on the Offered column — this is what sends it. */}
@@ -1890,20 +1592,6 @@ function EmployerPipelineInner() {
         onCancel={() => setOfferTarget(null)}
         onConfirm={handleExtendOffer}
       />
-
-      {availabilityError && (
-        <div
-          role="alert"
-          style={{
-            position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 10000, padding: '10px 16px', borderRadius: 8,
-            background: 'var(--danger-bg)', color: 'var(--danger-fg)',
-            border: '1px solid var(--danger-border)', fontSize: '0.82rem', fontWeight: 600,
-          }}
-        >
-          {availabilityError}
-        </div>
-      )}
     </div>
   );
 }

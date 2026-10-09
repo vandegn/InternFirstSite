@@ -1,21 +1,35 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import ModalPortal from '@/components/ModalPortal';
+import { useState, useEffect, useMemo } from 'react';
+import DialogShell, { primaryButton, secondaryButton } from '@/components/DialogShell';
 import {
   validateWindow,
+  validateProposedSlots,
   localToday,
+  localTimeZone,
+  timeZoneAbbr,
+  enumerateDays,
   countDays,
+  formatDayLabel,
   formatWindowLabel,
+  formatTime,
+  formatMinuteOfDay,
+  rangeTimeOptions,
+  slotsForRange,
   MAX_WINDOW_DAYS,
   DURATION_OPTIONS,
   DEFAULT_DURATION_MINUTES,
+  MEETING_TYPE_LABELS,
+  type AvailabilityRange,
+  type AvailabilitySlot,
+  type MeetingType,
 } from '@/lib/interview-availability';
 
 export type RequestTimesFormData = {
   windowStart: string;
   windowEnd: string;
   durationMinutes: number;
+  slots: AvailabilitySlot[];
   note: string;
 };
 
@@ -25,6 +39,7 @@ type Props = {
   onSubmit: (data: RequestTimesFormData) => Promise<void> | void;
   candidateName?: string;
   listingTitle?: string;
+  meetingType?: MeetingType;
 };
 
 function addDays(dateStr: string, days: number): string {
@@ -34,27 +49,42 @@ function addDays(dateStr: string, days: number): string {
   return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
 }
 
-// Step 1 of the interview handshake: the employer bounds the window, the
-// candidate fills in the detail. Deliberately dates-only — picking exact times
-// here is what the old Schedule Interview flow does, and it's the thing this
-// flow exists to replace.
+type RangeRow = AvailabilityRange & { key: number };
+
+const TIME_OPTIONS = rangeTimeOptions();
+
+const fieldStyle: React.CSSProperties = {
+  padding: '7px 9px', borderRadius: 8, border: '1px solid var(--border)',
+  fontSize: '0.82rem', fontFamily: 'inherit', color: 'var(--text)', background: 'var(--surface)',
+};
+
+const labelText: React.CSSProperties = { fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' };
+
+// Step 1 of scheduling: the employer picks a meeting length, a date window,
+// and when they're available on dates inside it. Each availability range is
+// cut into back-to-back slots of exactly the meeting length (1:00–3:00 PM at
+// 30 minutes -> 1:00, 1:30, 2:00, 2:30); the employer can untick any slot, and
+// the candidate picks one of what's left.
 export default function RequestTimesModal({
   open,
   onClose,
   onSubmit,
   candidateName,
   listingTitle,
+  meetingType = 'interview',
 }: Props) {
-  const [visible, setVisible] = useState(false);
-  const [animating, setAnimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const backdropRef = useRef<HTMLDivElement>(null);
-
   const [windowStart, setWindowStart] = useState('');
   const [windowEnd, setWindowEnd] = useState('');
   const [duration, setDuration] = useState(DEFAULT_DURATION_MINUTES);
+  const [ranges, setRanges] = useState<RangeRow[]>([]);
+  // Slots the employer unticked, by start instant.
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
+  const [nextKey, setNextKey] = useState(1);
+
+  const tz = localTimeZone();
 
   useEffect(() => {
     if (!open) return;
@@ -64,52 +94,71 @@ export default function RequestTimesModal({
     setWindowStart(start);
     setWindowEnd(addDays(start, 6));
     setDuration(DEFAULT_DURATION_MINUTES);
+    setRanges([{ key: 0, date: start, startMinute: 13 * 60, endMinute: 15 * 60 }]);
+    setExcluded(new Set());
     setNote('');
+    setNextKey(1);
   }, [open]);
 
-  useEffect(() => {
-    if (open) {
-      setVisible(true);
-      requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
-    } else {
-      setAnimating(false);
-      const t = setTimeout(() => setVisible(false), 240);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape' && !submitting) onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose, submitting]);
-
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = ''; };
-    }
-  }, [open]);
-
-  if (!visible) return null;
-
-  const check = windowStart && windowEnd
-    ? validateWindow(windowStart, windowEnd, localToday())
-    : null;
+  const windowCheck = windowStart && windowEnd ? validateWindow(windowStart, windowEnd, localToday()) : null;
+  const days = windowCheck?.ok ? enumerateDays(windowStart, windowEnd) : [];
   const dayCount = windowStart && windowEnd ? countDays(windowStart, windowEnd) : 0;
-  const canSubmit = Boolean(check?.ok) && !submitting;
+
+  // Every slot the ranges produce, de-duplicated (two ranges may cover the
+  // same time) and in order.
+  const generated = useMemo(() => {
+    const byStart = new Map<string, AvailabilitySlot>();
+    for (const r of ranges) {
+      for (const s of slotsForRange(r, duration)) {
+        if (!byStart.has(s.starts_at)) byStart.set(s.starts_at, s);
+      }
+    }
+    return Array.from(byStart.values()).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  }, [ranges, duration]);
+
+  const offered = generated.filter(s => !excluded.has(s.starts_at));
+  const slotCheck = windowCheck?.ok
+    ? validateProposedSlots(offered, { window_start: windowStart, window_end: windowEnd }, duration)
+    : null;
+  const canSubmit = Boolean(windowCheck?.ok && slotCheck?.ok) && !submitting;
+  const visibleError = error
+    || (windowCheck && !windowCheck.ok ? windowCheck.error : '')
+    || (ranges.length > 0 && slotCheck && !slotCheck.ok ? slotCheck.error : '');
+
+  function updateRange(key: number, patch: Partial<AvailabilityRange>) {
+    setError('');
+    setRanges(prev => prev.map(r => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function addRange() {
+    setError('');
+    const last = ranges[ranges.length - 1];
+    const date = last && days.includes(last.date)
+      ? (days[days.indexOf(last.date) + 1] ?? last.date)
+      : days[0] ?? windowStart;
+    setRanges(prev => [...prev, { key: nextKey, date, startMinute: last?.startMinute ?? 13 * 60, endMinute: last?.endMinute ?? 15 * 60 }]);
+    setNextKey(k => k + 1);
+  }
+
+  function toggleSlot(startsAt: string) {
+    setError('');
+    setExcluded(prev => {
+      const next = new Set(prev);
+      if (next.has(startsAt)) next.delete(startsAt);
+      else next.add(startsAt);
+      return next;
+    });
+  }
 
   async function handleSubmit() {
     setError('');
-    const result = validateWindow(windowStart, windowEnd, localToday());
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
+    const w = validateWindow(windowStart, windowEnd, localToday());
+    if (!w.ok) return setError(w.error);
+    const s = validateProposedSlots(offered, { window_start: windowStart, window_end: windowEnd }, duration);
+    if (!s.ok) return setError(s.error);
     setSubmitting(true);
     try {
-      await onSubmit({ windowStart, windowEnd, durationMinutes: duration, note: note.trim() });
+      await onSubmit({ windowStart, windowEnd, durationMinutes: duration, slots: offered, note: note.trim() });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -117,212 +166,217 @@ export default function RequestTimesModal({
     }
   }
 
-  // Keep the end date from being draggable behind the start date in the picker
-  // itself, so the inline error is a backstop rather than the primary guard.
   const minEnd = windowStart || localToday();
   const maxEnd = windowStart ? addDays(windowStart, MAX_WINDOW_DAYS - 1) : undefined;
+  const typeLabel = MEETING_TYPE_LABELS[meetingType];
+  const zoneLabel = `${tz} (${timeZoneAbbr(new Date().toISOString(), tz)})`;
+
+  // Generated slots grouped by the employer's calendar day for the preview.
+  const byDay = new Map<string, AvailabilitySlot[]>();
+  for (const s of generated) byDay.set(s.slot_date, [...(byDay.get(s.slot_date) ?? []), s]);
 
   return (
-    <ModalPortal>
-    <div
-      ref={backdropRef}
-      onClick={e => { if (e.target === backdropRef.current && !submitting) onClose(); }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: animating ? 'rgba(15, 23, 42, 0.45)' : 'rgba(15, 23, 42, 0)',
-        backdropFilter: animating ? 'blur(4px)' : 'blur(0px)',
-        WebkitBackdropFilter: animating ? 'blur(4px)' : 'blur(0px)',
-        transition: 'background 0.24s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
-        padding: '24px',
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Request interview times"
-        style={{
-          width: '100%', maxWidth: 480, background: 'var(--surface)', borderRadius: 16,
-          boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.15)',
-          border: '1px solid var(--border, #e5e7eb)',
-          transform: animating ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.97)',
-          opacity: animating ? 1 : 0,
-          transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-          overflow: 'hidden',
-          // Cap the height so a short window can't push the actions below the
-          // fold, where `overflow: hidden` would clip them unreachable. Header
-          // and footer stay put; the form between them scrolls.
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {/* Header */}
-        <div style={{ padding: '24px 28px 16px', borderBottom: '1px solid var(--border, #f3f4f6)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, marginBottom: 2 }}>
-                Request Interview Times
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-                {candidateName && listingTitle
-                  ? `${candidateName} · ${listingTitle}`
-                  : candidateName || listingTitle || 'Ask the candidate when they’re free'}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              disabled={submitting}
-              aria-label="Close"
-              style={{
-                background: 'none', border: 'none', padding: 4, cursor: 'pointer',
-                color: 'var(--text-secondary)', borderRadius: 6,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Form */}
-        <div style={{ padding: '20px 28px 8px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-            Pick the window you’re interviewing in. We’ll message the candidate
-            so they can mark the days and times that work for them, then you
-            choose the final slot.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' }}>Start date</span>
-              <input
-                type="date"
-                aria-label="Start date"
-                value={windowStart}
-                min={localToday()}
-                onChange={e => {
-                  const next = e.target.value;
-                  setWindowStart(next);
-                  // Dragging the start past the end should carry the end along
-                  // rather than leaving an invalid range on screen.
-                  if (next && windowEnd && windowEnd < next) setWindowEnd(next);
-                }}
-                style={{
-                  padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)',
-                  fontSize: '0.85rem', fontFamily: 'inherit', color: 'var(--text)',
-                }}
-              />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' }}>End date</span>
-              <input
-                type="date"
-                aria-label="End date"
-                value={windowEnd}
-                min={minEnd}
-                max={maxEnd}
-                onChange={e => setWindowEnd(e.target.value)}
-                style={{
-                  padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)',
-                  fontSize: '0.85rem', fontFamily: 'inherit', color: 'var(--text)',
-                }}
-              />
-            </label>
-          </div>
-
-          {check?.ok && (
-            <div style={{
-              padding: '8px 12px', borderRadius: 8,
-              background: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)',
-              fontSize: '0.75rem', fontWeight: 600,
-            }}>
-              {formatWindowLabel(windowStart, windowEnd)} · {dayCount} day{dayCount === 1 ? '' : 's'}
-            </div>
-          )}
-
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' }}>Interview length</span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {DURATION_OPTIONS.map(d => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDuration(d)}
-                  aria-pressed={duration === d}
-                  style={{
-                    flex: 1, padding: '8px 0', borderRadius: 8,
-                    border: `1px solid ${duration === d ? 'var(--primary)' : 'var(--border)'}`,
-                    background: duration === d ? 'var(--primary)' : 'var(--surface)',
-                    color: duration === d ? 'var(--on-primary)' : 'var(--text)',
-                    fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {d} min
-                </button>
-              ))}
-            </div>
-          </label>
-
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' }}>Note for the candidate (optional)</span>
-            <textarea
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="Who they’ll meet with, what to prepare, etc."
-              rows={3}
-              style={{
-                padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)',
-                fontSize: '0.85rem', fontFamily: 'inherit', color: 'var(--text)', resize: 'vertical',
-              }}
-            />
-          </label>
-
-          {(error || (check && !check.ok)) && (
-            <div role="alert" style={{
-              padding: '8px 12px', borderRadius: 8,
-              background: 'var(--danger-bg)', color: 'var(--danger-fg)',
-              fontSize: '0.78rem', border: '1px solid var(--danger-border)',
-            }}>
-              {error || (check && !check.ok ? check.error : '')}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: '16px 28px 20px', display: 'flex', justifyContent: 'flex-end', gap: 8,
-          borderTop: '1px solid var(--border, #f3f4f6)', marginTop: 8, flexShrink: 0,
-        }}>
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            style={{
-              padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)',
-              background: 'var(--surface)', color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-            }}
-          >
+    <DialogShell
+      open={open}
+      onClose={onClose}
+      busy={submitting}
+      width={600}
+      zIndex={10000}
+      title={`Request Time — ${typeLabel}`}
+      subtitle={candidateName && listingTitle ? `${candidateName} · ${listingTitle}` : candidateName || listingTitle}
+      footer={
+        <>
+          <button type="button" onClick={onClose} disabled={submitting} style={secondaryButton(!submitting)}>
             Cancel
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            style={{
-              padding: '8px 18px', borderRadius: 8, border: 'none',
-              background: canSubmit ? 'var(--primary)' : 'var(--border)',
-              color: 'var(--on-primary)', fontSize: '0.82rem', fontWeight: 600,
-              cursor: canSubmit ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {submitting ? 'Sending…' : 'Send Request'}
+          <button type="button" onClick={handleSubmit} disabled={!canSubmit} style={primaryButton(canSubmit)}>
+            {submitting ? 'Sending…' : `Send ${offered.length} time${offered.length === 1 ? '' : 's'}`}
+          </button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+          Choose a meeting length and the times you’re free. The candidate picks
+          one of these slots, then you confirm it.
+        </p>
+
+        <p data-testid="request-timezone" style={{
+          margin: 0, padding: '7px 10px', borderRadius: 8, fontSize: '0.76rem', fontWeight: 600,
+          background: 'var(--chip-blue-bg)', color: 'var(--chip-blue-ink)',
+        }}>
+          All times are in your time zone: {zoneLabel}
+        </p>
+
+        <div role="group" aria-label="Meeting length" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={labelText}>Meeting length</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {DURATION_OPTIONS.map(d => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => { setDuration(d); setExcluded(new Set()); setError(''); }}
+                aria-pressed={duration === d}
+                style={{
+                  flex: 1, padding: '8px 0', borderRadius: 8,
+                  border: `1px solid ${duration === d ? 'var(--primary)' : 'var(--border)'}`,
+                  background: duration === d ? 'var(--primary)' : 'var(--surface)',
+                  color: duration === d ? 'var(--on-primary)' : 'var(--text)',
+                  fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                {d} min
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={labelText}>Start date</span>
+            <input
+              type="date"
+              aria-label="Start date"
+              value={windowStart}
+              min={localToday()}
+              onChange={e => {
+                const next = e.target.value;
+                setWindowStart(next);
+                setError('');
+                if (next && windowEnd && windowEnd < next) setWindowEnd(next);
+              }}
+              style={fieldStyle}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={labelText}>End date</span>
+            <input
+              type="date"
+              aria-label="End date"
+              value={windowEnd}
+              min={minEnd}
+              max={maxEnd}
+              onChange={e => { setWindowEnd(e.target.value); setError(''); }}
+              style={fieldStyle}
+            />
+          </label>
+        </div>
+        {windowCheck?.ok && (
+          <p style={{ margin: '-8px 0 0', fontSize: '0.74rem', color: 'var(--text-light)' }}>
+            {formatWindowLabel(windowStart, windowEnd)} · {dayCount} day{dayCount === 1 ? '' : 's'}
+          </p>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={labelText}>When you’re available</span>
+          {ranges.map((r, i) => (
+            <div key={r.key} role="group" aria-label={`Availability ${i + 1}`} style={{
+              display: 'grid', gridTemplateColumns: 'minmax(120px, 1.3fr) 1fr 1fr auto', gap: 6, alignItems: 'center',
+            }}>
+              <select
+                aria-label={`Availability ${i + 1} date`}
+                value={r.date}
+                onChange={e => updateRange(r.key, { date: e.target.value })}
+                style={fieldStyle}
+              >
+                {!days.includes(r.date) && <option value={r.date}>{r.date ? formatDayLabel(r.date) : 'Pick a date'}</option>}
+                {days.map(d => <option key={d} value={d}>{formatDayLabel(d)}</option>)}
+              </select>
+              <select
+                aria-label={`Availability ${i + 1} from`}
+                value={r.startMinute}
+                onChange={e => {
+                  const start = Number(e.target.value);
+                  updateRange(r.key, { startMinute: start, endMinute: Math.max(r.endMinute, start + duration) });
+                }}
+                style={fieldStyle}
+              >
+                {TIME_OPTIONS.filter(m => m < 24 * 60).map(m => <option key={m} value={m}>{formatMinuteOfDay(m)}</option>)}
+              </select>
+              <select
+                aria-label={`Availability ${i + 1} to`}
+                value={r.endMinute}
+                onChange={e => updateRange(r.key, { endMinute: Number(e.target.value) })}
+                style={fieldStyle}
+              >
+                {TIME_OPTIONS.filter(m => m > r.startMinute).map(m => <option key={m} value={m}>{formatMinuteOfDay(m)}</option>)}
+              </select>
+              <button
+                type="button"
+                aria-label={`Remove availability ${i + 1}`}
+                onClick={() => setRanges(prev => prev.filter(x => x.key !== r.key))}
+                style={{ ...secondaryButton(), padding: '6px 9px' }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={addRange} disabled={!windowCheck?.ok} style={{ ...secondaryButton(Boolean(windowCheck?.ok)), alignSelf: 'flex-start' }}>
+            + Add availability
           </button>
         </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={labelText}>
+            Time slots to offer ({offered.length} of {generated.length}) — {duration} min each
+          </span>
+          {generated.length === 0 ? (
+            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-light)' }}>
+              Add availability that’s at least {duration} minutes long to create slots.
+            </p>
+          ) : (
+            Array.from(byDay.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([day, daySlots]) => (
+              <div key={day} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px' }}>
+                <p style={{ fontSize: '0.76rem', fontWeight: 700, margin: '0 0 6px' }}>{formatDayLabel(day)}</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {daySlots.map(s => {
+                    const on = !excluded.has(s.starts_at);
+                    return (
+                      <button
+                        key={s.starts_at}
+                        type="button"
+                        aria-pressed={on}
+                        aria-label={`${formatDayLabel(day)} ${formatTime(s.starts_at)} to ${formatTime(s.ends_at)}`}
+                        onClick={() => toggleSlot(s.starts_at)}
+                        style={{
+                          fontSize: '0.72rem', fontWeight: 600, padding: '5px 9px', borderRadius: 999, cursor: 'pointer',
+                          border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
+                          background: on ? 'var(--primary)' : 'var(--surface)',
+                          color: on ? 'var(--on-primary)' : 'var(--text-light)',
+                          textDecoration: on ? 'none' : 'line-through',
+                        }}
+                      >
+                        {formatTime(s.starts_at)} – {formatTime(s.ends_at)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={labelText}>Note for the candidate (optional)</span>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Who they’ll meet with, what to prepare, etc."
+            rows={2}
+            style={{ ...fieldStyle, padding: '9px 11px', resize: 'vertical' }}
+          />
+        </label>
+
+        {visibleError && (
+          <div role="alert" style={{
+            padding: '8px 12px', borderRadius: 8,
+            background: 'var(--danger-bg)', color: 'var(--danger-fg)',
+            fontSize: '0.78rem', border: '1px solid var(--danger-border)',
+          }}>
+            {visibleError}
+          </div>
+        )}
       </div>
-    </div>
-    </ModalPortal>
+    </DialogShell>
   );
 }

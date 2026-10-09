@@ -69,9 +69,25 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
 
+  if (error?.code === '23505') {
+    // interview_schedules_one_active_per_application: there's already a live
+    // interview for this candidate — that one should be rescheduled instead.
+    return NextResponse.json(
+      { error: 'This candidate already has an active interview. Reschedule it instead of creating another.' },
+      { status: 409 },
+    );
+  }
   if (error || !interview) {
     return NextResponse.json({ error: error?.message ?? 'Failed to create' }, { status: 500 });
   }
+
+  // Who owns this meeting on the employer's Upcoming Interviews page. Written
+  // separately and best-effort so a database without
+  // migrations/20261009_employer_proposed_interview_slots.sql still schedules.
+  await supabase
+    .from('interview_schedules')
+    .update({ organizer_user_id: user.id })
+    .eq('id', interview.id);
 
   // Scheduling deliberately does NOT touch the candidate's pipeline stage —
   // the employer moves the card themselves (see

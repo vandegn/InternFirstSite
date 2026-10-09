@@ -1418,3 +1418,43 @@ begin
 end $$;
 revoke all on function public.admin_product_analytics(timestamptz,timestamptz,text) from public, anon;
 grant execute on function public.admin_product_analytics(timestamptz,timestamptz,text) to authenticated;
+
+-- ============================================
+-- 26. STUDENT APPLICATION ARCHIVE
+-- ============================================
+-- The student's private filing for My Applications (Open / Rejected / Archive
+-- tabs). Archive = insert, restore = delete. Kept off the applications row so
+-- students never get UPDATE on applications: archiving can't touch hiring
+-- status, employers keep updating archived applications, and employers can't
+-- see the archive. See migrations/20261009_student_application_archive.sql.
+create table student_application_archives (
+  application_id uuid primary key references applications(id) on delete cascade,
+  student_id uuid not null references students(id) on delete cascade,
+  archived_at timestamptz not null default now()
+);
+
+create index idx_student_application_archives_student
+  on student_application_archives(student_id);
+
+alter table student_application_archives enable row level security;
+
+create policy "Students view own application archives"
+  on student_application_archives for select to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));
+
+create policy "Students archive own applications"
+  on student_application_archives for insert to authenticated
+  with check (
+    exists (
+      select 1
+      from applications a
+      join students s on s.id = a.student_id
+      where a.id = student_application_archives.application_id
+        and a.student_id = student_application_archives.student_id
+        and s.user_id = auth.uid()
+    )
+  );
+
+create policy "Students restore own applications"
+  on student_application_archives for delete to authenticated
+  using (student_id in (select id from students where user_id = auth.uid()));

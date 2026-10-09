@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import {
   supabase,
@@ -10,8 +10,23 @@ import {
   respondToOffer,
   type StudentOffer,
 } from '@/lib/supabase';
-
-type StageType = 'applied' | 'reviewing' | 'interviewing' | 'offered' | 'rejected';
+import {
+  APPLICATION_TABS,
+  OPEN_STATUS_FILTER_OPTIONS,
+  applicationStageType,
+  applicationsForTab,
+  countApplicationsByTab,
+  emptyStateFor,
+  initialViewFromParams,
+  isOpenStatusFilter,
+  tabForApplication,
+  type ApplicationTab,
+  type OpenStatusFilter,
+  type StageType,
+} from '@/lib/application-tabs';
+import { useApplicationArchive } from '@/lib/use-application-archive';
+import ApplicationRowAction from '@/components/ApplicationRowAction';
+import ArchiveToast from '@/components/ArchiveToast';
 
 type Application = {
   id: string;
@@ -51,15 +66,6 @@ const STAGE_TYPE_FALLBACK: Record<StageType, { bg: string; color: string; label:
   rejected:     { bg: 'var(--danger-bg)', color: 'var(--danger-accent)', label: 'Rejected/Closed' },
 };
 
-const FILTER_OPTIONS: { value: '' | StageType; label: string }[] = [
-  { value: '',             label: 'All Statuses' },
-  { value: 'applied',      label: 'Application Submitted' },
-  { value: 'reviewing',    label: 'Under Review' },
-  { value: 'interviewing', label: 'Interview Requested' },
-  { value: 'offered',      label: 'Offer Extended' },
-  { value: 'rejected',     label: 'Rejected/Closed' },
-];
-
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', {
@@ -81,39 +87,46 @@ export default function MyApplications() {
   const [focusOfferId, setFocusOfferId] = useState<string | null>(null);
   const focusScrolled = useRef(false);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [statusOpen, setStatusOpen] = useState(false);
-  const statusRef = useRef<HTMLDivElement>(null);
+  const [studentId, setStudentId] = useState<string | null>(null);
+  // Open / Rejected / Archive. The status filter only exists in Open.
+  const [tab, setTab] = useState<ApplicationTab>('open');
+  const [statusFilter, setStatusFilter] = useState<OpenStatusFilter>('');
+  const tabRefs = useRef<Record<ApplicationTab, HTMLButtonElement | null>>({
+    open: null,
+    rejected: null,
+    archive: null,
+  });
+  // Set once the ?offer= deep link has picked the tab its application sits in.
+  const offerTabResolved = useRef(false);
+
+  // The student's archive filing, persisted in student_application_archives
+  // and shared with the dashboard home list.
+  const archiveState = useApplicationArchive(studentId);
+  const { archivedAt, loadState: archiveLoadState } = archiveState;
 
   // Deep links, read from window rather than useSearchParams so this client
   // page doesn't need a Suspense boundary: ?status=offered from the dashboard
-  // stat cards, and ?offer=<id> from the tracker row, the offer notification
-  // and the inbox card — all three of which mean "show me that offer".
+  // stat cards (mapped onto a tab + filter), ?tab=, and ?offer=<id> from the
+  // tracker row, the offer notification and the inbox card — all three of
+  // which mean "show me that offer".
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const status = params.get('status');
-    if (status && FILTER_OPTIONS.some((o) => o.value === status)) setStatusFilter(status);
+    const view = initialViewFromParams(params);
+    setTab(view.tab);
+    setStatusFilter(view.statusFilter);
     const offer = params.get('offer');
     if (offer) setFocusOfferId(offer);
-  }, []);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   useEffect(() => {
     async function fetchApplications() {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setLoading(false); return; }
 
       const student = await getStudentByUserId(user.id);
-      if (!student) return;
+      if (!student) { setLoading(false); return; }
+      setStudentId(student.id);
 
       const [raw, offerRows] = await Promise.all([
         getStudentApplications(student.id),
@@ -145,9 +158,63 @@ export default function MyApplications() {
     fetchApplications();
   }, []);
 
-  const filtered = statusFilter
-    ? applications.filter((a) => a.stage?.stage_type === statusFilter)
-    : applications;
+  // Hiring status comes from the application; the archive flag from the
+  // student's own filing. The two never write to each other.
+  const withArchive = useMemo(
+    () => applications.map((a) => ({ ...a, archived_at: archivedAt[a.id] ?? null })),
+    [applications, archivedAt],
+  );
+  const counts = useMemo(() => countApplicationsByTab(withArchive), [withArchive]);
+  const visible = useMemo(
+    () => applicationsForTab(withArchive, tab, statusFilter),
+    [withArchive, tab, statusFilter],
+  );
+  const tabTotal = counts[tab];
+  const archiveReady = archiveLoadState === 'ready';
+  const ready = !loading && (archiveLoadState === 'ready' || archiveLoadState === 'error');
+
+  // ?offer= deep link: once everything has loaded, open whichever tab that
+  // offer's application is in (it may be archived or rejected), so the
+  // focused offer panel is actually on screen.
+  useEffect(() => {
+    if (!focusOfferId || !ready || offerTabResolved.current) return;
+    offerTabResolved.current = true;
+    const offer = offers.find((o) => o.id === focusOfferId);
+    const app = offer && withArchive.find((a) => a.id === offer.application_id);
+    if (!app) return;
+    setTab(tabForApplication(app));
+    setStatusFilter('');
+  }, [focusOfferId, ready, offers, withArchive]);
+
+  function selectTab(next: ApplicationTab, focus = false) {
+    setTab(next);
+    if (focus) tabRefs.current[next]?.focus();
+  }
+
+  // ARIA tabs keyboard model: arrows move between tabs (automatic
+  // activation), Home/End jump to the ends.
+  function handleTabKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+    const ids = APPLICATION_TABS.map((t) => t.id);
+    const i = ids.indexOf(tab);
+    let next: ApplicationTab | null = null;
+    if (e.key === 'ArrowRight') next = ids[(i + 1) % ids.length];
+    else if (e.key === 'ArrowLeft') next = ids[(i - 1 + ids.length) % ids.length];
+    else if (e.key === 'Home') next = ids[0];
+    else if (e.key === 'End') next = ids[ids.length - 1];
+    if (next) {
+      e.preventDefault();
+      selectTab(next, true);
+    }
+  }
+
+  function rowLabel(app: Application) {
+    return `${app.listing.title} at ${app.listing.employers?.company_name ?? 'this company'}`;
+  }
+
+  // Where a restored application lands, by its current hiring status.
+  function restoreDestination(app: Application) {
+    return applicationStageType(app) === 'rejected' ? 'Rejected' : 'Open';
+  }
 
   // The employer's offer on an application, if there is one. Withdrawn rows
   // are history — nothing is shown for them.
@@ -194,135 +261,148 @@ export default function MyApplications() {
         </Link>
       </div>
 
-      {/* Filter bar */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        marginBottom: '24px',
-        flexWrap: 'wrap',
-      }}>
-        <div ref={statusRef} style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            onClick={() => setStatusOpen(!statusOpen)}
-            style={{
-              padding: '8px 32px 8px 12px',
-              borderRadius: '8px',
-              border: `1.5px solid ${statusOpen ? 'var(--primary)' : 'var(--border)'}`,
-              fontSize: '0.82rem',
-              fontWeight: statusFilter ? 600 : 500,
-              background: 'var(--bg)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              cursor: 'pointer',
-              appearance: 'none' as const,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 10px center',
-              transition: 'border-color 0.15s ease',
-              whiteSpace: 'nowrap' as const,
-            }}
-          >
-            {FILTER_OPTIONS.find(o => o.value === statusFilter)?.label || 'All Statuses'}
-          </button>
-          {statusOpen && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              left: 0,
-              minWidth: '160px',
-              background: 'var(--surface)',
-              border: '1.5px solid var(--border)',
-              borderRadius: '10px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-              zIndex: 100,
-              overflow: 'hidden',
-              padding: '4px 0',
-            }}>
-              {FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => { setStatusFilter(opt.value); setStatusOpen(false); }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '7px 12px',
-                    border: 'none',
-                    background: statusFilter === opt.value ? 'var(--primary-light)' : 'transparent',
-                    color: statusFilter === opt.value ? 'var(--primary)' : 'var(--text-primary)',
-                    fontWeight: statusFilter === opt.value ? 600 : 400,
-                    fontSize: '0.82rem',
-                    textAlign: 'left' as const,
-                    cursor: 'pointer',
-                    transition: 'background 0.1s ease',
-                  }}
-                  onMouseEnter={(e) => { if (statusFilter !== opt.value) e.currentTarget.style.background = 'var(--bg)'; }}
-                  onMouseLeave={(e) => { if (statusFilter !== opt.value) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          {filtered.length} application{filtered.length !== 1 ? 's' : ''}
-        </span>
+      {/* Tabs: Open / Rejected / Archive (ARIA tabs pattern). Counts are each
+          tab's total, independent of the Open status filter. */}
+      <div role="tablist" aria-label="Application groups" className="app-tabs">
+        {APPLICATION_TABS.map((t) => {
+          const selected = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              ref={(node) => { tabRefs.current[t.id] = node; }}
+              type="button"
+              role="tab"
+              id={`applications-tab-${t.id}`}
+              aria-selected={selected}
+              aria-controls={`applications-panel-${t.id}`}
+              tabIndex={selected ? 0 : -1}
+              className="app-tab"
+              onClick={() => selectTab(t.id)}
+              onKeyDown={handleTabKeyDown}
+            >
+              {t.label}
+              <span className="app-tab-count" aria-label={`${ready ? counts[t.id] : 'loading'} applications`}>
+                {ready ? counts[t.id] : '–'}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Content */}
-      {loading ? (
-        <p style={{ color: 'var(--text-secondary)' }}>Loading applications...</p>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ marginBottom: '16px', opacity: 0.5 }}
+      <div
+        role="tabpanel"
+        id={`applications-panel-${tab}`}
+        aria-labelledby={`applications-tab-${tab}`}
+        tabIndex={0}
+        style={{ outlineOffset: 4 }}
+      >
+      {archiveLoadState === 'error' && (
+        <div className="app-notice" role="alert">
+          <span>{archiveState.loadError} Archived applications may be listed under Open or Rejected until it loads.</span>
+          <button type="button" onClick={() => void archiveState.reload()}>Try again</button>
+        </div>
+      )}
+
+      {/* Status filter — Open tab only. Stays visible when it matches nothing. */}
+      {tab === 'open' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+        }}>
+          <select
+            className="app-status-select"
+            aria-label="Filter open applications by status"
+            value={statusFilter}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (isOpenStatusFilter(value)) setStatusFilter(value);
+            }}
+            style={{ fontWeight: statusFilter ? 600 : 500 }}
           >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10 9 9 9 8 9" />
-          </svg>
-          <p style={{ fontSize: '1.1rem', fontWeight: 500 }}>
-            {statusFilter ? 'No applications match this filter' : 'You haven\'t applied to any internships yet'}
-          </p>
-          <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>
-            {statusFilter
-              ? 'Try selecting a different status filter.'
-              : 'Browse internships and start applying!'}
-          </p>
-          {!statusFilter && (
-            <Link
-              href="/dashboard/student/internships"
-              className="btn-secondary"
-              style={{ display: 'inline-block', marginTop: '20px', textDecoration: 'none', fontSize: '0.9rem', padding: '10px 20px' }}
-            >
-              Browse Internships
-            </Link>
+            {OPEN_STATUS_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {ready && (
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }} aria-live="polite">
+              {statusFilter
+                ? `${visible.length} of ${tabTotal} open application${tabTotal !== 1 ? 's' : ''}`
+                : `${visible.length} application${visible.length !== 1 ? 's' : ''}`}
+            </span>
           )}
         </div>
+      )}
+
+      {/* Content */}
+      {!ready ? (
+        <p style={{ color: 'var(--text-secondary)' }} role="status">Loading applications...</p>
+      ) : visible.length === 0 ? (
+        (() => {
+          const empty = emptyStateFor(tab, {
+            filtered: tab === 'open' && !!statusFilter && tabTotal > 0,
+            hasAnyApplications: applications.length > 0,
+          });
+          return (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginBottom: '16px', opacity: 0.5 }}
+                aria-hidden="true"
+              >
+                {tab === 'archive' ? (
+                  <>
+                    <polyline points="21 8 21 21 3 21 3 8" />
+                    <rect x="1" y="3" width="22" height="5" />
+                    <line x1="10" y1="12" x2="14" y2="12" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </>
+                )}
+              </svg>
+              <p style={{ fontSize: '1.1rem', fontWeight: 500 }}>{empty.title}</p>
+              <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>{empty.body}</p>
+              {empty.browse && (
+                <Link
+                  href="/dashboard/student/internships"
+                  className="btn-secondary"
+                  style={{ display: 'inline-block', marginTop: '20px', textDecoration: 'none', fontSize: '0.9rem', padding: '10px 20px' }}
+                >
+                  Browse Internships
+                </Link>
+              )}
+            </div>
+          );
+        })()
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {filtered.map((app) => {
+          {visible.map((app) => {
             const employer = app.listing.employers;
-            const fallback = STAGE_TYPE_FALLBACK[app.stage?.stage_type ?? 'applied'];
+            const fallback = STAGE_TYPE_FALLBACK[applicationStageType(app)];
             const statusBg = app.stage?.color_bg ?? fallback.bg;
             const statusColor = app.stage?.color_text ?? fallback.color;
             const statusLabel = app.stage?.label ?? app.status ?? fallback.label;
+            const archived = !!app.archived_at;
 
             return (
               <div
                 key={app.id}
-                className="listing-card"
+                className="listing-card app-row"
                 style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '20px' }}
               >
                 {/* Logo */}
@@ -372,21 +452,40 @@ export default function MyApplications() {
                         {employer?.company_name}
                       </p>
                     </div>
-                    <span
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        background: statusBg,
-                        color: statusColor,
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {statusLabel}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {/* Archive is the student's own filing, so the employer's
+                          status pill is shown unchanged in every tab. */}
+                      <span
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          background: statusBg,
+                          color: statusColor,
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {statusLabel}
+                      </span>
+                      <ApplicationRowAction
+                        mode={archived ? 'restore' : 'archive'}
+                        itemLabel={rowLabel(app)}
+                        pending={archiveState.isPending(app.id)}
+                        disabled={!archiveReady}
+                        onActivate={() => {
+                          if (archived) void archiveState.restore(app.id, app.listing.title, restoreDestination(app));
+                          else void archiveState.archive(app.id, app.listing.title);
+                        }}
+                      />
+                    </div>
                   </div>
+                  {archived && app.archived_at && (
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                      Archived {formatDate(app.archived_at)} · Restores to {restoreDestination(app)}
+                    </p>
+                  )}
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     {app.listing.location && (
@@ -554,6 +653,9 @@ export default function MyApplications() {
           })}
         </div>
       )}
+      </div>
+
+      <ArchiveToast toast={archiveState.toast} onDismiss={archiveState.dismissToast} />
 
       {/* Declining tells the employer the search is back on for this role, and
           there's no undo, so it asks once more. */}

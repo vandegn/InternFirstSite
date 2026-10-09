@@ -25,6 +25,9 @@ import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 import InterviewBanner from '@/components/InterviewBanner';
 import InterviewResponseModal from '@/components/InterviewResponseModal';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
+import { useApplicationArchive } from '@/lib/use-application-archive';
+import ApplicationRowAction from '@/components/ApplicationRowAction';
+import ArchiveToast from '@/components/ArchiveToast';
 
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
@@ -189,6 +192,16 @@ export default function StudentDashboard() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [surveyOpen, setSurveyOpen] = useState(false);
   const [interviewModalId, setInterviewModalId] = useState<string | null>(null);
+
+  // Archiving here is the same persisted filing as the Archive tab on
+  // /dashboard/student/applications — archived rows drop off this list.
+  const archiveState = useApplicationArchive(studentId);
+  const { archivedAt, loadState: archiveLoadState } = archiveState;
+  const archiveSettled = archiveLoadState === 'ready' || archiveLoadState === 'error';
+  const homeApplications = useMemo(
+    () => studentApplications.filter((app) => !archivedAt[app.id]),
+    [studentApplications, archivedAt],
+  );
 
   const pendingInterviews = useMemo(
     () => studentInterviews.filter(i => i.status === 'pending'),
@@ -621,7 +634,11 @@ export default function StudentDashboard() {
                 View All{studentApplications.length > 0 ? ` (${studentApplications.length})` : ''} &rarr;
               </Link>
             </div>
-            {studentApplications.length === 0 ? (
+            {studentApplications.length > 0 && !archiveSettled ? (
+              <p role="status" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, padding: '12px 8px' }}>
+                Loading applications…
+              </p>
+            ) : studentApplications.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>No applications yet. Start exploring internships!</p>
@@ -639,9 +656,30 @@ export default function StudentDashboard() {
                   Browse Internships
                 </Link>
               </div>
+            ) : homeApplications.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  All of your applications are archived.
+                </p>
+                <Link href="/dashboard/student/applications?tab=archive" style={{
+                  display: 'inline-block',
+                  marginTop: '12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: 'var(--primary)',
+                }}>
+                  View your archive
+                </Link>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {studentApplications.slice(0, 5).map((app) => {
+                {archiveLoadState === 'error' && (
+                  <div className="app-notice" role="alert">
+                    <span>{archiveState.loadError}</span>
+                    <button type="button" onClick={() => void archiveState.reload()}>Try again</button>
+                  </div>
+                )}
+                {homeApplications.slice(0, 5).map((app) => {
                   const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
                     applied: { label: 'Applied', color: 'var(--chip-blue-ink)', bg: 'var(--chip-blue-bg)' },
                     under_review: { label: 'Under Review', color: 'var(--chip-amber-ink)', bg: 'var(--warning-bg)' },
@@ -673,23 +711,34 @@ export default function StudentDashboard() {
                     (o) => o.application_id === app.id && o.status !== 'withdrawn',
                   );
 
+                  // The row is a link with the Archive action beside it rather
+                  // than inside it (a button can't live in an <a>). Hover sits
+                  // on the whole row so moving onto Archive keeps it lit.
                   return (
+                    <div
+                      key={app.id}
+                      className="app-row"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        borderBottom: '1px solid var(--border, #f3f4f6)',
+                        transition: 'background 0.15s',
+                        borderRadius: '6px',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg, var(--chip-neutral-bg))'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
                     <Link
                       href={offer
                         ? `/dashboard/student/applications?offer=${offer.id}`
                         : `/dashboard/student/internships/${listing?.id}`}
-                      key={app.id}
-                      style={{ textDecoration: 'none', color: 'inherit' }}
+                      style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0, display: 'block' }}
                     >
                       <div style={{
                         padding: '12px 8px',
-                        borderBottom: '1px solid var(--border, #f3f4f6)',
                         cursor: 'pointer',
-                        transition: 'background 0.15s',
-                        borderRadius: '6px',
                       }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg, var(--chip-neutral-bg))'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           {employer?.logo_url ? (
@@ -788,11 +837,22 @@ export default function StudentDashboard() {
                         </div>
                       </div>
                     </Link>
+                    <div style={{ paddingRight: '8px', flexShrink: 0 }}>
+                      <ApplicationRowAction
+                        mode="archive"
+                        itemLabel={`${listing?.title || 'Untitled Position'} at ${employer?.company_name || 'Unknown Company'}`}
+                        pending={archiveState.isPending(app.id)}
+                        disabled={archiveLoadState !== 'ready'}
+                        onActivate={() => { void archiveState.archive(app.id, listing?.title || 'Untitled Position'); }}
+                      />
+                    </div>
+                    </div>
                   );
                 })}
               </div>
             )}
           </div>
+          <ArchiveToast toast={archiveState.toast} onDismiss={archiveState.dismissToast} />
 
           {/* Calendar */}
           <Calendar events={calendarEvents} />

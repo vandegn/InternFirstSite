@@ -1400,6 +1400,64 @@ export async function getStudentApplications(studentId: string) {
   return data ?? [];
 }
 
+// ---- Student application archive ----
+// The student's private filing for My Applications. Lives in
+// student_application_archives, never on the application row, so archiving
+// can't change hiring status and employers never see it. See
+// supabase/migrations/20261009_student_application_archive.sql and
+// lib/application-tabs.ts for how it maps onto the Open / Rejected / Archive tabs.
+
+// application_id -> archived_at for every application this student archived.
+// Throws on failure: the caller has to say "couldn't load your archive" rather
+// than quietly showing archived applications as open.
+export async function getArchivedApplications(studentId: string): Promise<Record<string, string>> {
+  const { data, error } = await supabase
+    .from('student_application_archives')
+    .select('application_id, archived_at')
+    .eq('student_id', studentId);
+  if (error) {
+    console.error('[getArchivedApplications] Error:', error.message, error);
+    throw new Error('We couldn’t load your archived applications.');
+  }
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) map[row.application_id as string] = row.archived_at as string;
+  return map;
+}
+
+// Idempotent: archiving something already archived resolves with the existing
+// timestamp instead of failing, so a retried request can't surface an error
+// for an action that actually succeeded.
+export async function archiveApplication(studentId: string, applicationId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('student_application_archives')
+    .insert({ student_id: studentId, application_id: applicationId })
+    .select('archived_at')
+    .single();
+  if (!error && data) return data.archived_at as string;
+  if (error?.code === '23505') {
+    const { data: existing } = await supabase
+      .from('student_application_archives')
+      .select('archived_at')
+      .eq('application_id', applicationId)
+      .maybeSingle();
+    if (existing) return existing.archived_at as string;
+  }
+  console.error('[archiveApplication] Error:', error?.message, error);
+  throw new Error('We couldn’t archive this application. Please try again.');
+}
+
+// Also idempotent — restoring something that isn't archived is a no-op.
+export async function restoreApplication(applicationId: string): Promise<void> {
+  const { error } = await supabase
+    .from('student_application_archives')
+    .delete()
+    .eq('application_id', applicationId);
+  if (error) {
+    console.error('[restoreApplication] Error:', error.message, error);
+    throw new Error('We couldn’t restore this application. Please try again.');
+  }
+}
+
 // Listing IDs this student has already applied to. Kept separate from
 // getStudentApplications so the browse page can render "Applied" on a card
 // without pulling every joined listing and employer row it doesn't show.

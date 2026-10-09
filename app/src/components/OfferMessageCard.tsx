@@ -111,7 +111,7 @@ export default function OfferMessageCard({ offerId, canRespond }: Props) {
               padding: '7px 14px', borderRadius: 8,
               background: answered ? 'var(--surface)' : 'var(--chip-green-ink)',
               border: answered ? '1px solid var(--border)' : 'none',
-              color: answered ? 'var(--text)' : '#fff',
+              color: answered ? 'var(--text)' : 'var(--on-fill)',
               fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none',
               display: 'inline-flex', alignItems: 'center',
             }}

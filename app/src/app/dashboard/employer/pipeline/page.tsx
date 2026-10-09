@@ -90,9 +90,9 @@ const SCHEDULING_CHIP: Record<Exclude<SchedulingView['kind'], 'hidden'>, { bg: s
 
 // Same thresholds as the applications list: >= 70 is the PPA-qualifying band.
 function matchPill(score: number) {
-  if (score >= 70) return { bg: '#dcfce7', color: 'var(--success-fg)' };
+  if (score >= 70) return { bg: 'var(--success-tint)', color: 'var(--success-fg)' };
   if (score >= 40) return { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' };
-  return { bg: '#f3f4f6', color: 'var(--chip-neutral-ink)' };
+  return { bg: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)' };
 }
 
 // PostgREST returns embedded rows as arrays or objects depending on the
@@ -1148,7 +1148,7 @@ function EmployerPipelineInner() {
                       {isNew && (
                         <span style={{
                           fontSize: '0.65rem', fontWeight: 600, padding: '2px 6px',
-                          borderRadius: 4, background: '#dcfce7', color: 'var(--success-fg)',
+                          borderRadius: 4, background: 'var(--success-tint)', color: 'var(--success-fg)',
                           flexShrink: 0,
                         }}>NEW</span>
                       )}

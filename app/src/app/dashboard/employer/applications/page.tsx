@@ -78,9 +78,9 @@ const FALLBACK_PILL = { bg: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-i
 
 // Match score badge colors: strong (>=70, the PPA-qualifying threshold), fair, weak.
 function matchPill(score: number) {
-  if (score >= 70) return { bg: '#dcfce7', color: 'var(--success-fg)' };
+  if (score >= 70) return { bg: 'var(--success-tint)', color: 'var(--success-fg)' };
   if (score >= 40) return { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' };
-  return { bg: '#f3f4f6', color: 'var(--chip-neutral-ink)' };
+  return { bg: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)' };
 }
 
 export default function EmployerApplications() {

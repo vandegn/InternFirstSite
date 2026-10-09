@@ -13,7 +13,7 @@ export default function CommunityBanner() {
         justifyContent: 'center',
         gap: '10px',
         padding: '9px 20px',
-        background: 'var(--primary, #1A2D49)',
+        background: 'var(--panel-dark)',
         color: '#fff',
         fontSize: '0.82rem',
         lineHeight: 1.45,

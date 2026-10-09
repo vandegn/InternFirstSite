@@ -280,7 +280,7 @@ export default function AvailabilityRequestCard({ requestId, canRespond, onRespo
                   disabled={submitting}
                   style={{
                     padding: '6px 12px', borderRadius: 8, border: 'none',
-                    background: 'var(--danger-fg)', color: '#fff',
+                    background: 'var(--danger-fg)', color: 'var(--on-fill)',
                     fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
                   }}
                 >

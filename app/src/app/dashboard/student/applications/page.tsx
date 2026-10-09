@@ -612,7 +612,7 @@ export default function MyApplications() {
                                 disabled={respondingTo === offer.id}
                                 style={{
                                   padding: '7px 16px', borderRadius: '8px', border: 'none',
-                                  background: 'var(--chip-green-ink)', color: '#fff',
+                                  background: 'var(--chip-green-ink)', color: 'var(--on-fill)',
                                   fontSize: '0.82rem', fontWeight: 700,
                                   cursor: respondingTo === offer.id ? 'not-allowed' : 'pointer',
                                   opacity: respondingTo === offer.id ? 0.6 : 1,

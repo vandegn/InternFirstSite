@@ -34,10 +34,10 @@ type RosterMember = {
 type Me = { memberId: string; role: EmployerRole };
 
 const STATUS_CHIP: Record<string, { label: string; bg: string; fg: string }> = {
-  active: { label: 'Active', bg: '#d1fae5', fg: '#065f46' },
-  invited: { label: 'Invited', bg: '#e0e7ff', fg: '#3730a3' },
-  expired: { label: 'Invite expired', bg: '#fef3c7', fg: '#92400e' },
-  deactivated: { label: 'Deactivated', bg: '#f3f4f6', fg: '#6b7280' },
+  active: { label: 'Active', bg: 'var(--chip-green-bg)', fg: 'var(--chip-green-ink)' },
+  invited: { label: 'Invited', bg: 'var(--chip-indigo-bg)', fg: 'var(--chip-indigo-ink)' },
+  expired: { label: 'Invite expired', bg: 'var(--chip-amber-bg)', fg: 'var(--chip-amber-ink)' },
+  deactivated: { label: 'Deactivated', bg: 'var(--chip-neutral-bg)', fg: 'var(--chip-muted-ink)' },
 };
 
 export default function EmployerTeamPage() {
@@ -180,12 +180,12 @@ export default function EmployerTeamPage() {
       </div>
 
       {error && (
-        <div style={{ background: '#fef2f2', color: '#991b1b', padding: '10px 14px', borderRadius: 10, margin: '12px 0', fontSize: '0.9rem' }}>
+        <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', padding: '10px 14px', borderRadius: 10, margin: '12px 0', fontSize: '0.9rem' }}>
           {error}
         </div>
       )}
       {notice && (
-        <div style={{ background: '#ecfdf5', color: '#065f46', padding: '10px 14px', borderRadius: 10, margin: '12px 0', fontSize: '0.9rem' }}>
+        <div style={{ background: 'var(--success-tint-soft)', color: 'var(--success-ink)', padding: '10px 14px', borderRadius: 10, margin: '12px 0', fontSize: '0.9rem' }}>
           {notice}
         </div>
       )}
@@ -222,7 +222,7 @@ export default function EmployerTeamPage() {
               {ROLE_DESCRIPTIONS[inviteRole]}
             </p>
           </div>
-          {inviteError && <div style={{ color: '#991b1b', fontSize: '0.88rem', marginTop: 8 }}>{inviteError}</div>}
+          {inviteError && <div style={{ color: 'var(--danger-fg)', fontSize: '0.88rem', marginTop: 8 }}>{inviteError}</div>}
           <button type="submit" className="btn-primary" disabled={inviteSending} style={{ marginTop: 12 }}>
             {inviteSending ? 'Sending…' : 'Send Invitation'}
           </button>
@@ -283,11 +283,11 @@ export default function EmployerTeamPage() {
                     <>
                       <button style={btnSmall} disabled={busy} onClick={() => handleResend(m)}>Resend</button>
                       <button style={btnSmall} disabled={busy} onClick={() => handleCopyLink(m)}>Copy link</button>
-                      <button style={{ ...btnSmall, color: '#991b1b' }} disabled={busy} onClick={() => handleRevoke(m)}>Revoke</button>
+                      <button style={{ ...btnSmall, color: 'var(--danger-fg)' }} disabled={busy} onClick={() => handleRevoke(m)}>Revoke</button>
                     </>
                   )}
                   {m.status === 'active' && !isSelf && (
-                    <button style={{ ...btnSmall, color: '#991b1b' }} disabled={busy} onClick={() => handleSetActive(m, false)}>Deactivate</button>
+                    <button style={{ ...btnSmall, color: 'var(--danger-fg)' }} disabled={busy} onClick={() => handleSetActive(m, false)}>Deactivate</button>
                   )}
                   {m.status === 'deactivated' && (
                     <button style={btnSmall} disabled={busy} onClick={() => handleSetActive(m, true)}>Reactivate</button>

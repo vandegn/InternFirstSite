@@ -175,7 +175,7 @@ export default function LocationPicker({ value, onChange, required, disabled }: 
           />
           {selected && (
             <svg
-              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success-text)" strokeWidth="2.5"
               strokeLinecap="round" strokeLinejoin="round"
               style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
             >

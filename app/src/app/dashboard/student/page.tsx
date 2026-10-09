@@ -689,7 +689,7 @@ export default function StudentDashboard() {
                     interview_scheduled: { label: 'Interview Scheduled', color: 'var(--chip-green-ink)', bg: 'var(--chip-green-bg)' },
                     offered: { label: 'Offer Extended', color: 'var(--chip-green-ink)', bg: 'var(--chip-green-bg)' },
                     rejected: { label: 'Not Selected', color: 'var(--danger-accent)', bg: 'var(--danger-bg)' },
-                    closed: { label: 'Closed', color: '#6b7280', bg: '#f3f4f6' },
+                    closed: { label: 'Closed', color: 'var(--chip-muted-ink)', bg: 'var(--chip-neutral-bg)' },
                     not_selected: { label: 'Not Selected', color: 'var(--danger-accent)', bg: 'var(--danger-bg)' },
                   };
                   // The employer's own column wins — label and colors come
@@ -697,7 +697,7 @@ export default function StudentDashboard() {
                   // only covers legacy rows with no stage joined.
                   const status = app.stage
                     ? { label: app.stage.label, color: app.stage.color_text, bg: app.stage.color_bg }
-                    : statusConfig[app.status] || { label: app.status, color: '#6b7280', bg: '#f3f4f6' };
+                    : statusConfig[app.status] || { label: app.status, color: 'var(--chip-muted-ink)', bg: 'var(--chip-neutral-bg)' };
                   const listing = app.listing;
                   const employer = listing?.employers;
                   const appliedDate = new Date(app.applied_at);
@@ -791,7 +791,7 @@ export default function StudentDashboard() {
                             const isCompleted = !isRejected && si <= stageIdx;
                             const isCurrent = !isRejected && si === stageIdx;
                             const filledColor = isRejected ? '#f87171' : 'var(--accent, #9FC63C)';
-                            const emptyColor = isRejected ? 'var(--danger-border)' : '#e5e7eb';
+                            const emptyColor = isRejected ? 'var(--danger-border)' : 'var(--border)';
                             return (
                               <div key={`${stage}-${si}`} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
@@ -808,7 +808,7 @@ export default function StudentDashboard() {
                                     title={stage}
                                     style={{
                                       fontSize: '0.6rem',
-                                      color: isCurrent ? (isRejected ? '#f87171' : 'var(--accent-dark, #8ab32e)') : isCompleted ? 'var(--text-secondary)' : '#c0c4cc',
+                                      color: isCurrent ? (isRejected ? '#f87171' : 'var(--accent-dark, #8ab32e)') : isCompleted ? 'var(--text-secondary)' : 'var(--step-future-ink)',
                                       fontWeight: isCurrent ? 600 : 400,
                                       marginTop: '3px',
                                       // Employer-authored labels can be long, and a

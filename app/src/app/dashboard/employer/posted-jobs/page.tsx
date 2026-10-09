@@ -133,7 +133,7 @@ const INTERVIEW_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   accepted: { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)' },
   declined: { bg: 'var(--danger-bg-strong)', color: 'var(--danger-fg)' },
   reschedule_requested: { bg: 'var(--chip-amber-bg)', color: 'var(--chip-amber-ink)' },
-  cancelled: { bg: '#f3f4f6', color: 'var(--chip-neutral-ink)' },
+  cancelled: { bg: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)' },
   completed: { bg: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-ink)' },
 };
 
@@ -571,7 +571,7 @@ export default function PostedJobsPage() {
                     disabled={updatingStatus === selectedListing.id}
                     style={{
                       padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--chip-green-bg)',
-                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)', color: '#16a34a',
+                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)', color: 'var(--success-text)',
                     }}
                   >Reopen</button>
                 )}

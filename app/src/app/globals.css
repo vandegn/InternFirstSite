@@ -127,6 +127,19 @@
     --info-bg-alt: #eef2ff;
     --info-fg: #0369a1;
     --info-border: #bae6fd;
+
+    /* Former one-off literals from components. Light values are exactly the
+       literals they replaced; the dark theme remaps them. */
+    --on-fill: #ffffff;          /* type on a solid status fill (e.g. a green-ink button) */
+    --success-text: #16a34a;
+    --success-text-deep: #15803d;
+    --success-tint: #dcfce7;
+    --success-tint-soft: #ecfdf5;
+    --error-text: #e53e3e;
+    --confirm-fill: #38a169;
+    --chip-muted-ink: #6b7280;
+    --step-future-ink: #c0c4cc;
+    --interview-accent: #6366f1;
 }
 
 html { scroll-behavior: smooth; }
@@ -4019,6 +4032,24 @@ img { max-width: 100%; height: auto; display: block; }
     --chip-blue-bg: rgba(110, 160, 230, 0.18);   --chip-blue-ink: #93BEF0;
     --chip-violet-bg: rgba(175, 145, 240, 0.20); --chip-violet-ink: #CDB8FA;
     --chip-neutral-bg: rgba(200, 185, 165, 0.14);--chip-neutral-ink: #CFC3B2;
+
+    --on-fill: #1A1410;
+    --success-text: #B7D867;
+    --success-text-deep: #B7D867;
+    --success-tint: rgba(159, 198, 60, 0.18);
+    --success-tint-soft: rgba(159, 198, 60, 0.12);
+    --error-text: #FF9A8F;
+    --confirm-fill: #9FC63C;
+    --chip-muted-ink: #B8AB9A;
+    --step-future-ink: var(--text-light);
+    --interview-accent: #9AA2F8;
+
+    /* Never defined in light mode, where their fallbacks / inheritance are the
+       intended look. On dark those fallbacks were a #f5f5f5 panel, navy text
+       and a dark red, so the dark theme gives them real values. */
+    --bg-secondary: var(--surface-muted);
+    --text-primary: var(--text);
+    --danger: var(--danger-fg);
 
     /* Shadows: deeper, slightly warm, so cards lift instead of glowing */
     --shadow: 0 1px 3px rgba(5, 3, 1, 0.5), 0 1px 2px rgba(5, 3, 1, 0.4);

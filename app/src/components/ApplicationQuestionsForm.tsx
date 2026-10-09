@@ -78,7 +78,7 @@ function AutoGrowTextarea({ label, rows, value, required, invalid, onChange }: {
         lineHeight: 1.5,
         overflowY: 'auto',
         padding: '8px 10px',
-        border: invalid ? '1.5px solid #e53e3e' : '1px solid var(--border)',
+        border: invalid ? '1.5px solid var(--error-text)' : '1px solid var(--border)',
         borderRadius: 8,
         background: 'transparent',
         color: 'inherit',
@@ -138,13 +138,13 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
               style={{
                 padding: '12px 14px',
                 borderRadius: 'var(--radius-sm, 8px)',
-                border: missing ? '1.5px solid #e53e3e' : '1px solid var(--border)',
+                border: missing ? '1.5px solid var(--error-text)' : '1px solid var(--border)',
                 background: 'var(--bg)',
               }}
             >
               <p style={{ fontSize: '0.88rem', fontWeight: 500, margin: '0 0 2px' }}>
                 {question.prompt}
-                {question.required && <span style={{ color: '#e53e3e', marginLeft: 4 }}>*</span>}
+                {question.required && <span style={{ color: 'var(--error-text)', marginLeft: 4 }}>*</span>}
               </p>
               {question.help_text && (
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-light)', margin: '0 0 8px' }}>{question.help_text}</p>
@@ -264,7 +264,7 @@ export default function ApplicationQuestionsForm({ questions, answers, onChange,
               )}
 
               {missing && (
-                <p style={{ color: '#e53e3e', fontSize: '0.78rem', margin: '8px 0 0' }}>This question is required.</p>
+                <p style={{ color: 'var(--error-text)', fontSize: '0.78rem', margin: '8px 0 0' }}>This question is required.</p>
               )}
             </div>
           );

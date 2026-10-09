@@ -22,7 +22,7 @@ export default function InterviewBanner({ count, companyName, scheduledAt, onRes
       background: 'var(--info-bg-alt)',
       border: '1px solid rgba(99, 102, 241, 0.25)',
       borderRadius: 10,
-      borderLeft: '4px solid #6366f1',
+      borderLeft: '4px solid var(--interview-accent)',
     }}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--chip-indigo-ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -41,7 +41,7 @@ export default function InterviewBanner({ count, companyName, scheduledAt, onRes
       <button
         onClick={onRespond}
         style={{
-          padding: '7px 16px', background: '#6366f1', color: '#fff',
+          padding: '7px 16px', background: 'var(--interview-accent)', color: 'var(--on-fill)',
           borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
           border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
         }}

@@ -449,7 +449,7 @@ export default function EditListingPage() {
                     disabled={togglingStatus}
                     style={{
                       flex: '1 1 160px', padding: '12px 24px', borderRadius: 8,
-                      border: '2px solid #e53e3e', background: 'transparent', color: '#e53e3e',
+                      border: '2px solid var(--error-text)', background: 'transparent', color: 'var(--error-text)',
                       fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
                       opacity: togglingStatus ? 0.6 : 1,
                     }}
@@ -465,7 +465,7 @@ export default function EditListingPage() {
                     disabled={togglingStatus}
                     style={{
                       flex: '1 1 160px', padding: '12px 24px', borderRadius: 8,
-                      border: 'none', background: '#38a169', color: '#fff',
+                      border: 'none', background: 'var(--confirm-fill)', color: 'var(--on-fill)',
                       fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
                       opacity: togglingStatus ? 0.6 : 1,
                     }}
@@ -477,7 +477,7 @@ export default function EditListingPage() {
                     disabled={togglingStatus}
                     style={{
                       flex: '1 1 160px', padding: '12px 24px', borderRadius: 8,
-                      border: '2px solid #e53e3e', background: 'transparent', color: '#e53e3e',
+                      border: '2px solid var(--error-text)', background: 'transparent', color: 'var(--error-text)',
                       fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
                       opacity: togglingStatus ? 0.6 : 1,
                     }}
@@ -501,7 +501,7 @@ export default function EditListingPage() {
                   disabled={togglingStatus}
                   style={{
                     width: '100%', padding: '12px 24px', borderRadius: 8,
-                    border: 'none', background: '#38a169', color: '#fff',
+                    border: 'none', background: 'var(--confirm-fill)', color: 'var(--on-fill)',
                     fontWeight: 600, fontSize: '1rem', cursor: togglingStatus ? 'not-allowed' : 'pointer',
                     opacity: togglingStatus ? 0.6 : 1,
                   }}

@@ -250,7 +250,7 @@ export default function ExtendOfferModal({
             style={{
               padding: '8px 18px', borderRadius: 8, border: 'none',
               background: submitting ? 'var(--border)' : 'var(--chip-green-ink)',
-              color: '#fff', fontSize: '0.82rem', fontWeight: 700,
+              color: 'var(--on-fill)', fontSize: '0.82rem', fontWeight: 700,
               cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >

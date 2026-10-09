@@ -71,7 +71,7 @@ export default function PolicyAgreementModal({
     >
       <div
         style={{
-          background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '720px',
+          background: 'var(--surface)', borderRadius: '16px', width: '100%', maxWidth: '720px',
           maxHeight: '88vh', display: 'flex', flexDirection: 'column',
           boxShadow: '0 24px 60px rgba(17, 12, 34, 0.35)', overflow: 'hidden',
         }}
@@ -110,7 +110,7 @@ export default function PolicyAgreementModal({
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
           }}
         >
-          <span style={{ fontSize: '0.76rem', color: reachedEnd ? '#16a34a' : 'var(--text-secondary)' }}>
+          <span style={{ fontSize: '0.76rem', color: reachedEnd ? 'var(--success-text)' : 'var(--text-secondary)' }}>
             {reachedEnd ? 'Thanks for reading — you can accept now.' : 'Scroll to the end to enable Accept.'}
           </span>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -119,7 +119,7 @@ export default function PolicyAgreementModal({
               onClick={onClose}
               style={{
                 fontSize: '0.84rem', fontWeight: 500, padding: '9px 16px', borderRadius: '9px',
-                border: '1px solid var(--border)', background: '#fff', color: 'var(--text-secondary)', cursor: 'pointer',
+                border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)', cursor: 'pointer',
               }}
             >
               Cancel

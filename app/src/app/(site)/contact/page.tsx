@@ -127,7 +127,7 @@ export default function ContactPage() {
                 <div
                   style={{
                     background: 'var(--success-bg)',
-                    color: '#15803d',
+                    color: 'var(--success-text-deep)',
                     fontSize: '13px',
                     padding: '10px 14px',
                     borderRadius: '10px',

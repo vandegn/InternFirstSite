@@ -366,7 +366,7 @@ export default function InternshipDetail() {
         ) : (
           <div>
             {error && (
-              <p style={{ color: '#e53e3e', fontSize: '0.9rem', marginBottom: '12px' }}>{error}</p>
+              <p style={{ color: 'var(--error-text)', fontSize: '0.9rem', marginBottom: '12px' }}>{error}</p>
             )}
             {!showApplyForm ? (
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

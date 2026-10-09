@@ -788,7 +788,7 @@ export default function StudentProfile() {
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>My Profile</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {saveMsg && (
-            <span style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500, animation: 'fadeIn 0.2s' }}>{saveMsg}</span>
+            <span style={{ fontSize: '0.82rem', color: 'var(--success-text)', fontWeight: 500, animation: 'fadeIn 0.2s' }}>{saveMsg}</span>
           )}
           <Link
             href="/dashboard/student"

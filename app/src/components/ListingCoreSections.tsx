@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import AutoResizeTextarea from '@/components/AutoResizeTextarea';
 import {
   CORE_SECTIONS,
+  normalizeListingMarkdown,
   normalizeSectionOrder,
   type CoreSectionKey,
 } from '@/lib/listing-sections';
@@ -136,7 +137,7 @@ export function ListingCoreSectionsView({
         return (
           <div key={key} style={{ marginBottom: '24px' }}>
             <h3 style={heading}>{label}</h3>
-            <div className="markdown-content"><ReactMarkdown>{body}</ReactMarkdown></div>
+            <div className="markdown-content"><ReactMarkdown>{normalizeListingMarkdown(body)}</ReactMarkdown></div>
           </div>
         );
       })}

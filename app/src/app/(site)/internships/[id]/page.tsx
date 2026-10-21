@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
-import { normalizeSectionOrder, CORE_SECTIONS } from '@/lib/listing-sections';
+import { normalizeSectionOrder, normalizeListingMarkdown, CORE_SECTIONS } from '@/lib/listing-sections';
 import { SITE_NAME } from '@/lib/site';
 import ApplyButton from './ApplyButton';
 import {
@@ -238,7 +238,7 @@ export default async function PublicListingDetailPage({ params }: PageProps) {
             return (
               <Section key={key} title={CORE_SECTIONS[key].label}>
                 <div className="markdown-content">
-                  <ReactMarkdown>{body}</ReactMarkdown>
+                  <ReactMarkdown>{normalizeListingMarkdown(body)}</ReactMarkdown>
                 </div>
               </Section>
             );
@@ -263,7 +263,7 @@ export default async function PublicListingDetailPage({ params }: PageProps) {
           {sections.map((section) => (
             <Section key={section.id} title={section.heading} accentColor={listing.accent_color}>
               <div className="markdown-content">
-                <ReactMarkdown>{section.body}</ReactMarkdown>
+                <ReactMarkdown>{normalizeListingMarkdown(section.body)}</ReactMarkdown>
               </div>
             </Section>
           ))}

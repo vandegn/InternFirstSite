@@ -1,6 +1,7 @@
 'use client';
 
 import ReactMarkdown from 'react-markdown';
+import { normalizeListingMarkdown } from '@/lib/listing-sections';
 
 export type RenderableSection = { heading: string; body: string };
 
@@ -100,7 +101,7 @@ export default function ListingCustomBlocks({ sections, accentColor }: {
               marginBottom: '12px',
             }}
           />
-          <div className="markdown-content"><ReactMarkdown>{section.body}</ReactMarkdown></div>
+          <div className="markdown-content"><ReactMarkdown>{normalizeListingMarkdown(section.body)}</ReactMarkdown></div>
         </div>
       ))}
     </>

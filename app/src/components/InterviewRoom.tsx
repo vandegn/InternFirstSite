@@ -164,12 +164,13 @@ export default function InterviewRoom({
     return profile?.full_name ?? 'Candidate';
   })();
 
-  function renderMessage(icon: string, heading: string, body: string) {
+  function renderMessage(icon: string, heading: string, body: string, extra?: React.ReactNode) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16, textAlign: 'center', padding: 32 }}>
         <div style={{ fontSize: '3rem' }}>{icon}</div>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{heading}</h2>
         <p style={{ color: 'var(--text-secondary)', maxWidth: 420 }}>{body}</p>
+        {extra}
         <Link href={leaveUrl} style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}>
           Back to dashboard
         </Link>
@@ -180,9 +181,27 @@ export default function InterviewRoom({
   if (status === 'loading') return renderMessage('⏳', 'Setting up the interview…', 'This will only take a moment.');
 
   if (status === 'too_early') {
-    const earliest = interview ? new Date(new Date(interview.scheduled_at).getTime() - 10 * 60 * 1000) : null;
-    const timeStr = earliest ? earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-    return renderMessage('🕐', 'Almost time!', `The meeting room opens 10 minutes before the interview${timeStr ? `, at ${timeStr}` : ''}. Keep this page open — it will let you in automatically.`);
+    const fmt = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+    const start = interview ? new Date(interview.scheduled_at) : null;
+    const earliest = start ? new Date(start.getTime() - 10 * 60 * 1000) : null;
+    return renderMessage(
+      '🕐',
+      'Almost time!',
+      `The meeting room opens 10 minutes before the interview${earliest ? `, at ${fmt(earliest)}` : ''}. Keep this page open — it will let you in automatically.`,
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        {/* The three times that decide the window, so a device whose clock or
+            zone disagrees with the schedule shows it here instead of looking
+            like a page that is stuck. */}
+        {start && (
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-light)' }}>
+            Scheduled for {start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {fmt(start)} · It is now {fmt(new Date())} on this device
+          </p>
+        )}
+        <button type="button" className="btn-secondary" onClick={() => setAttempt(a => a + 1)} style={{ fontSize: '0.85rem', padding: '7px 16px' }}>
+          Check again
+        </button>
+      </div>,
+    );
   }
 
   if (status === 'ended') return renderMessage('✅', 'Interview ended', 'The join window for this interview has closed.');

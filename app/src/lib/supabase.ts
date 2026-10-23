@@ -20,6 +20,41 @@ export const supabase = supabaseUrl && supabaseAnonKey
   ? createBrowserClient(supabaseUrl, supabaseAnonKey)
   : (null as unknown as SupabaseClient);
 
+// employers.icon_url arrives with migrations/20261023_company_icon.sql.
+// PostgREST rejects any select that names a column the database doesn't have
+// (42703), which would blank every job list on a database that hasn't been
+// migrated yet — so the column list is settled by one probe per client and the
+// icon is simply left out until the migration lands. Probed once, cached for
+// the life of the client.
+const employerIconProbes = new WeakMap<SupabaseClient, Promise<boolean>>();
+export function employerHasIconColumn(client: SupabaseClient = supabase): Promise<boolean> {
+  let probe = employerIconProbes.get(client);
+  if (!probe) {
+    probe = Promise.resolve()
+      .then(() => client.from('employers').select('icon_url').limit(0))
+      .then(({ error }) => !(error && error.code === '42703'))
+      .catch(() => true);
+    employerIconProbes.set(client, probe);
+  }
+  return probe;
+}
+
+// PostgREST's TypeScript query parser only understands literal select
+// strings; a computed one types as ParserError. The request is identical, so
+// a select built from employerCardColumns() is passed through this to type as
+// the plain wildcard — the untyped rows every caller already narrows itself.
+export function cardSelect(query: string): '*' {
+  return query as '*';
+}
+
+// The embedded `employers(...)` column list every job card reads: name, the
+// full logo, and the square icon once its column exists, plus whatever the
+// caller needs on top.
+export async function employerCardColumns(client: SupabaseClient = supabase, extra: string[] = []): Promise<string> {
+  const icon = await employerHasIconColumn(client);
+  return ['company_name', 'logo_url', ...(icon ? ['icon_url'] : []), ...extra].join(', ');
+}
+
 // Defined in lib/routes.ts so middleware.ts can read it without importing this
 // module (and its browser client). Re-exported here to keep call sites working.
 export { DASHBOARD_ROUTES } from '@/lib/routes';
@@ -450,7 +485,7 @@ export async function getActiveListings(
 
   let query = supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url, icon_url)', { count: 'exact' })
+    .select(cardSelect(`*, employers(${await employerCardColumns()})`), { count: 'exact' })
     .eq('status', 'active');
   query = excludeExpired(query);
 
@@ -545,7 +580,7 @@ export async function unsaveListing(studentId: string, listingId: string) {
 export async function getListingById(id: string) {
   const { data, error } = await supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url, icon_url, website)')
+    .select(cardSelect(`*, employers(${await employerCardColumns(supabase, ['website'])})`))
     .eq('id', id)
     .single();
   if (error || !data) return null;
@@ -562,7 +597,7 @@ export async function getRecommendedListings(industries: string[], limit = 3) {
   const { data, error } = await excludeExpired(
     supabase
       .from('internship_listings')
-      .select('*, employers(company_name, logo_url, icon_url)')
+      .select(cardSelect(`*, employers(${await employerCardColumns()})`))
       .eq('status', 'active')
       .in('industry', listingIndustries)
   )
@@ -1407,7 +1442,7 @@ export async function deleteCertification(certificationId: string) {
 export async function getStudentApplications(studentId: string) {
   const { data, error } = await supabase
     .from('applications')
-    .select(`
+    .select(cardSelect(`
       id,
       status,
       stage_id,
@@ -1417,9 +1452,9 @@ export async function getStudentApplications(studentId: string) {
       stage:pipeline_stages!applications_stage_id_fkey(label, color_bg, color_text, stage_type),
       listing:internship_listings!inner(
         id, title, location, is_remote, is_hybrid, compensation, industry, application_deadline,
-        employers:employers!inner(company_name, logo_url, icon_url)
+        employers:employers!inner(${await employerCardColumns()})
       )
-    `)
+    `))
     .eq('student_id', studentId)
     .order('applied_at', { ascending: false });
   // Logged, not silent: this returning [] on error is what made a hard schema
@@ -2037,7 +2072,7 @@ export async function getUniversityPartnerListings(
 
   let query = supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url, icon_url)', { count: 'exact' })
+    .select(cardSelect(`*, employers(${await employerCardColumns()})`), { count: 'exact' })
     .eq('status', 'active')
     .in('employer_id', employerIds);
 
@@ -2199,12 +2234,12 @@ export async function getEmployerInterviews(employerId: string) {
 export async function getStudentInterviews(studentId: string) {
   const { data, error } = await supabase
     .from('interview_schedules')
-    .select(`
+    .select(cardSelect(`
       *,
       application:applications(id, status),
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url, icon_url, user_id)
-    `)
+      employer:employers(${await employerCardColumns(supabase, ['id', 'user_id'])})
+    `))
     .eq('student_id', studentId)
     .order('scheduled_at', { ascending: true });
   if (error) return [];
@@ -2214,16 +2249,16 @@ export async function getStudentInterviews(studentId: string) {
 export async function getInterviewById(interviewId: string) {
   const { data, error } = await supabase
     .from('interview_schedules')
-    .select(`
+    .select(cardSelect(`
       *,
       application:applications(id, status),
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url, icon_url, user_id),
+      employer:employers(${await employerCardColumns(supabase, ['id', 'user_id'])}),
       student:students(
         id, major, graduation_year, user_id,
         profile:profiles!inner(full_name, email, avatar_url)
       )
-    `)
+    `))
     .eq('id', interviewId)
     .single();
   if (error) return null;
@@ -2570,11 +2605,11 @@ export async function getStudentUpcomingInterviews(studentId: string) {
   const since = new Date(Date.now() - 60 * 60_000).toISOString();
   const { data, error } = await supabase
     .from('interview_schedules')
-    .select(`
+    .select(cardSelect(`
       *,
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url, icon_url, user_id)
-    `)
+      employer:employers(${await employerCardColumns(supabase, ['id', 'user_id'])})
+    `))
     .eq('student_id', studentId)
     .eq('status', 'accepted')
     .gte('scheduled_at', since)
@@ -2700,7 +2735,7 @@ export async function extendOffer(opts: {
 export async function getOfferById(offerId: string) {
   const { data, error } = await supabase
     .from('offers')
-    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url, icon_url)')
+    .select(cardSelect(`*, listing:internship_listings(id, title), employer:employers(${await employerCardColumns(supabase, ['id'])})`))
     .eq('id', offerId)
     .maybeSingle();
   if (error || !data) return null;
@@ -2728,7 +2763,7 @@ export async function getEmployerOffers(employerId: string): Promise<Offer[]> {
 export async function getStudentOffers(studentId: string) {
   const { data, error } = await supabase
     .from('offers')
-    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url, icon_url)')
+    .select(cardSelect(`*, listing:internship_listings(id, title), employer:employers(${await employerCardColumns(supabase, ['id'])})`))
     .eq('student_id', studentId)
     .order('extended_at', { ascending: false });
   if (error) return [];
@@ -2787,12 +2822,12 @@ export async function respondToOffer(offerId: string, action: 'accept' | 'declin
 export async function getAvailabilityRequest(requestId: string) {
   const { data, error } = await supabase
     .from('interview_availability_requests')
-    .select(`
+    .select(cardSelect(`
       *,
       slots:interview_availability_slots(*),
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url, icon_url)
-    `)
+      employer:employers(${await employerCardColumns(supabase, ['id'])})
+    `))
     .eq('id', requestId)
     .maybeSingle();
   if (error || !data) return null;

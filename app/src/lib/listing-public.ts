@@ -1,4 +1,5 @@
 import { getAnonSupabase } from '@/lib/supabase-server';
+import { cardSelect, employerCardColumns } from '@/lib/supabase';
 import type { ListingSection } from '@/lib/supabase';
 
 // Server-side reads for the public listing page. The anon client means RLS
@@ -40,7 +41,7 @@ export async function getPublicListing(id: string): Promise<PublicListing | null
 
   const { data, error } = await supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url, icon_url, website)')
+    .select(cardSelect(`*, employers(${await employerCardColumns(supabase, ['website'])})`))
     .eq('id', id)
     .maybeSingle();
 

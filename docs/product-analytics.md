@@ -8,7 +8,7 @@ Implementation plan (completed in code):
 
 ## Enablement
 
-Apply `supabase/migrations/20260916_product_analytics.sql` to the target Supabase database **before deploying this application version**. The new listing form writes `analytics_flow_id`, so deploying the app first would break listing creation. The server needs `SUPABASE_SERVICE_ROLE_KEY` for event ingestion; never expose it to the browser. Existing HeyCatch signup events continue unchanged; the admin page uses Supabase, not HeyCatch.
+Apply `supabase/migrations/20260916_product_analytics.sql` to the target Supabase database **before deploying this application version**. The new listing form writes `analytics_flow_id`, so deploying the app first would break listing creation. The server needs `SUPABASE_SERVICE_ROLE_KEY` for event ingestion; never expose it to the browser.
 
 Open `/dashboard/admin/analytics` as an `intern_first_admin`. The page reports migration/database failures explicitly rather than showing misleading zeros. This change does not itself deploy the app or migrate a remote database.
 

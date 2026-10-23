@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import { getAnonSupabase } from '@/lib/supabase-server';
 import { pageMetadata } from '@/lib/site';
 import InternshipsBrowser, { type Listing } from './InternshipsBrowser';
+import { cardSelect, employerCardColumns } from '@/lib/supabase';
 
 // This page used to be a pure client component: the server sent
 // "Loading internships..." and every listing link only existed after the
@@ -36,7 +37,7 @@ async function fetchFirstPage(): Promise<{ listings: Listing[]; totalCount: numb
 
   const { data, error, count } = await supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url, icon_url)', { count: 'exact' })
+    .select(cardSelect(`*, employers(${await employerCardColumns(supabase)})`), { count: 'exact' })
     .eq('status', 'active')
     .or(`application_deadline.is.null,application_deadline.gte.${today}`)
     .order('created_at', { ascending: false })

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase, getProfile, ensureProfileFromMetadata, getStudentByUserId, getStudentEeo, DASHBOARD_ROUTES } from '@/lib/supabase';
 import DashboardShell from '@/components/DashboardShell';
-import { analytics } from '@heycatch/sdk';
 
 const STUDENT_WELCOME_PATH = '/dashboard/student/welcome';
 
@@ -28,12 +27,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Self-heal: the profile row is normally created by /auth/callback, but
       // accounts confirmed via a password-recovery link never hit that route.
       // Signup stashes everything needed in user_metadata, so rebuild from it.
-      let signupJustCompleted = false;
       if (!profile) {
         try {
           const profileState = await ensureProfileFromMetadata(supabase, user);
           if (profileState) {
-            signupJustCompleted = profileState === 'created';
             profile = await getProfile(user.id);
           }
         } catch (e) {
@@ -44,20 +41,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!profile) {
         router.replace('/register');
         return;
-      }
-
-      // Every signed-in session passes through here, whichever way the user got
-      // in (password, Google, invite link), so this is where analytics learns
-      // who they are. setIdentity is safe to repeat on each navigation.
-      analytics.setIdentity(
-        user.id,
-        { email: user.email, name: profile.full_name, role: profile.role },
-        { signup_date: user.created_at },
-      );
-      // Signup normally completes server-side in /auth/callback, which sends its
-      // own event. This covers the self-heal path, where it completes here.
-      if (signupJustCompleted) {
-        analytics.trackEvent('signup_completed', { role: profile.role });
       }
 
       const allowedPath = DASHBOARD_ROUTES[profile.role];

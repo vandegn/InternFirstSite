@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { analytics } from '@heycatch/sdk';
 
 type Props = {
   open: boolean;
@@ -54,7 +53,6 @@ export default function DeleteAccountDialog({ open, onClose, role }: Props) {
         throw new Error(body.error ?? 'Could not delete your account.');
       }
       await supabase.auth.signOut();
-      analytics.resetIdentity();
       router.replace('/?deleted=1');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not delete your account.');

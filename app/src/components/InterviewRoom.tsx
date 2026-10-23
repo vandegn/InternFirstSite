@@ -58,19 +58,33 @@ export default function InterviewRoom({
 }) {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const initStarted = useRef(false);
   const [status, setStatus] = useState<WindowStatus>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [interview, setInterview] = useState<InterviewRow | null>(null);
   const [creds, setCreds] = useState<TokenResponse | null>(null);
   const [choices, setChoices] = useState<LocalUserChoices | null>(null);
+  // Bumped to re-run the window check. Someone who opens this page early sits
+  // on "Almost time" — the page re-checks on its own and joins when the window
+  // opens, instead of waiting for a reload.
+  const [attempt, setAttempt] = useState(0);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (initStarted.current) return;
-    initStarted.current = true;
+    let cancelled = false;
+    // Only one join attempt at a time; the room's own state is kept.
+    if (creds) return;
+
+    function retryAt(when: number) {
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      // Never sooner than a second, never later than a minute — if clocks
+      // disagree a little, polling once a minute still gets in.
+      const delay = Math.min(60_000, Math.max(1_000, when - Date.now() + 500));
+      retryTimer.current = setTimeout(() => { if (!cancelled) setAttempt(a => a + 1); }, delay);
+    }
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
       if (!user) { router.push('/login'); return; }
 
       // Foreign keys are named explicitly: students -> profiles is the only
@@ -91,6 +105,7 @@ export default function InterviewRoom({
         .eq('id', id)
         .maybeSingle();
 
+      if (cancelled) return;
       if (rowError) { setStatus('error'); setErrorMsg(rowError.message); return; }
       if (!row) { setStatus('error'); setErrorMsg('Interview not found.'); return; }
       const typed = row as unknown as InterviewRow;
@@ -101,14 +116,20 @@ export default function InterviewRoom({
       // Own-link and phone interviews don't use the InternFirst room.
       if (interviewFormatOf(typed) !== 'internfirst') { setStatus('off_platform'); return; }
 
+      const opensAt = new Date(typed.scheduled_at).getTime() - 10 * 60 * 1000;
       const ws = getWindowStatus(typed.scheduled_at, typed.duration_minutes);
-      if (ws !== 'open') { setStatus(ws); return; }
+      if (ws === 'too_early') { setStatus('too_early'); retryAt(opensAt); return; }
+      if (ws === 'ended') { setStatus('ended'); return; }
 
       const res = await fetch(`/api/livekit/token?interviewId=${id}`);
+      if (cancelled) return;
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         if (err.error === 'outside_window') {
-          setStatus(getWindowStatus(typed.scheduled_at, typed.duration_minutes) === 'ended' ? 'ended' : 'too_early');
+          if (getWindowStatus(typed.scheduled_at, typed.duration_minutes) === 'ended') { setStatus('ended'); return; }
+          // The server's clock says not yet; ask again shortly.
+          setStatus('too_early');
+          retryAt(Date.now() + 15_000);
           return;
         }
         setStatus('error');
@@ -117,12 +138,19 @@ export default function InterviewRoom({
       }
 
       const data: TokenResponse = await res.json();
+      if (cancelled) return;
       setCreds(data);
       setStatus('open');
     }
 
     init();
-  }, [id, role, router]);
+    return () => {
+      cancelled = true;
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+    };
+    // creds is read only to skip re-running once the room is live.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, role, router, attempt]);
 
   const listing = pick(interview?.listing);
   const listingTitle = listing?.title;
@@ -154,7 +182,7 @@ export default function InterviewRoom({
   if (status === 'too_early') {
     const earliest = interview ? new Date(new Date(interview.scheduled_at).getTime() - 10 * 60 * 1000) : null;
     const timeStr = earliest ? earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-    return renderMessage('🕐', 'Almost time!', `The meeting room opens 10 minutes before the interview. Come back${timeStr ? ` at ${timeStr}` : ' soon'}.`);
+    return renderMessage('🕐', 'Almost time!', `The meeting room opens 10 minutes before the interview${timeStr ? `, at ${timeStr}` : ''}. Keep this page open — it will let you in automatically.`);
   }
 
   if (status === 'ended') return renderMessage('✅', 'Interview ended', 'The join window for this interview has closed.');

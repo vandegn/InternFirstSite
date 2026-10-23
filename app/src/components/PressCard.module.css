@@ -1,0 +1,44 @@
+/* A raised slab: a solid navy edge underneath gives it thickness, and hovering
+   presses it down onto that edge. Lifted from the homepage's Students /
+   Employers cards so other pages can use the same card. The face follows the
+   theme (white in light, dark surface in dark); the edge is always navy. */
+.wrap { perspective: 1100px; }
+
+.side {
+  --rx: 0deg; --ry: 0deg; --lift: 12px;
+  height: 100%;
+  padding: 44px 48px 48px;
+  background: var(--surface, #fff);
+  border: 2px solid #1A2D49;
+  border-top-width: 8px;
+  border-radius: 20px;
+  transform: translateY(0) rotateX(var(--rx)) rotateY(var(--ry));
+  box-shadow:
+    0 var(--lift) 0 0 #13223A,
+    0 calc(var(--lift) + 24px) 40px -16px rgba(26,45,73,.45);
+  transition: transform .18s ease-out, box-shadow .18s ease-out;
+  will-change: transform;
+}
+
+.pressable:hover {
+  transform: translateY(8px) rotateX(var(--rx)) rotateY(var(--ry));
+  box-shadow:
+    0 4px 0 0 #13223A,
+    0 8px 16px -10px rgba(26,45,73,.5);
+}
+
+:global([data-theme="dark"]) .side {
+  border-color: var(--border);
+  box-shadow:
+    0 var(--lift) 0 0 #0B1526,
+    0 calc(var(--lift) + 24px) 40px -16px rgba(0,0,0,.6);
+}
+:global([data-theme="dark"]) .pressable:hover {
+  box-shadow:
+    0 4px 0 0 #0B1526,
+    0 8px 16px -10px rgba(0,0,0,.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side { transition: none; }
+}

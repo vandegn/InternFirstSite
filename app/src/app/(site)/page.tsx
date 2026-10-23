@@ -7,7 +7,7 @@ import { pageMetadata } from '@/lib/site';
 import { organizationJsonLd, serializeJsonLd } from '@/lib/structured-data';
 import schools from '@/data/us-schools.json';
 import CampusMap from './_home/CampusMap';
-import PressCard from './_home/PressCard';
+import PressCard from '@/components/PressCard';
 import { buildDots } from './_home/map-data';
 import s from './_home/home.module.css';
 

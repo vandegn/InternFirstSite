@@ -86,31 +86,7 @@
   max-width: 1280px; margin: 0 auto; padding: 96px 24px;
   display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
 }
-/* The cards are slabs: a solid navy edge underneath gives them thickness,
-   and hovering presses them down onto it. */
-.pressWrap { perspective: 1100px; }
-.side {
-  --rx: 0deg; --ry: 0deg; --lift: 12px;
-  height: 100%;
-  padding: 44px 48px 48px;
-  background: #fff;
-  border: 2px solid var(--navy);
-  border-top-width: 8px;
-  border-radius: 20px;
-  transform: translateY(0) rotateX(var(--rx)) rotateY(var(--ry));
-  box-shadow:
-    0 var(--lift) 0 0 var(--navy-deep),
-    0 calc(var(--lift) + 24px) 40px -16px rgba(26,45,73,.45);
-  transition: transform .18s ease-out, box-shadow .18s ease-out;
-  will-change: transform;
-}
-.side:hover {
-  transform: translateY(8px) rotateX(var(--rx)) rotateY(var(--ry));
-  box-shadow:
-    0 4px 0 0 var(--navy-deep),
-    0 8px 16px -10px rgba(26,45,73,.5);
-}
-.side:hover .h2 { color: var(--navy-deep); }
+.h2 { color: var(--navy-deep); }
 .h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 900; letter-spacing: -0.03em; margin: 0 0 28px; }
 .ticks { list-style: none; padding: 0; margin: 0 0 32px; display: grid; gap: 16px; }
 .ticks li { position: relative; padding-left: 34px; font-size: 1.1rem; line-height: 1.5; color: #33445C; }
@@ -126,9 +102,7 @@
   .hero { grid-template-columns: 1fr; }
   .lookup { margin-left: 0; }
   .split { grid-template-columns: 1fr; gap: 24px; }
-  .side { padding: 32px 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dot, .dotLit, .dotOn { animation: none; }
-  .side { transition: none; }
 }

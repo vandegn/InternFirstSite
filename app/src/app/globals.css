@@ -1806,32 +1806,45 @@ img { max-width: 100%; height: auto; display: block; }
     background: var(--bg-section);
 }
 
-.about-content-centered {
-    max-width: 720px;
-    margin: 0 auto;
-    text-align: center;
+/* Mission + vision on the left, the founding story on the right. Left-aligned
+   running text in two columns so the whole story fits in roughly one screen
+   instead of three centred blocks stacked down the page. */
+.about-story {
+    padding: 24px 0 64px;
 }
 
-.about-content-centered h2 {
-    font-size: 32px;
+.about-story-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 48px 64px;
+    align-items: start;
+}
+
+.about-story-col h2 {
+    font-size: 26px;
     font-weight: 700;
     color: var(--dark);
-    margin-bottom: 16px;
+    letter-spacing: -0.3px;
+    margin-bottom: 12px;
 }
 
-.about-content-centered p {
-    font-size: 16px;
+.about-story-col p {
+    font-size: 15.5px;
     color: var(--text-secondary);
-    line-height: 1.8;
+    line-height: 1.7;
 }
 
-/* The global reset zeroes margins, so multi-paragraph blocks need their own gap. */
-.about-content-centered p + p {
-    margin-top: 20px;
+/* The global reset zeroes margins, so stacked paragraphs and headings need their own gaps. */
+.about-story-col p + p {
+    margin-top: 14px;
+}
+
+.about-story-col p + h2 {
+    margin-top: 36px;
 }
 
 .who-we-serve {
-    padding: 80px 0;
+    padding: 56px 0 72px;
 }
 
 .serve-grid {
@@ -1841,11 +1854,8 @@ img { max-width: 100%; height: auto; display: block; }
     margin-top: 40px;
 }
 
+/* The box itself (face, navy edge, hover press) is components/PressCard. */
 .serve-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 32px;
     text-align: center;
 }
 
@@ -1951,11 +1961,10 @@ img { max-width: 100%; height: auto; display: block; }
     gap: 20px;
 }
 
-.contact-card {
-    background: var(--bg-light);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
+/* The boxes themselves (face, navy edge, hover press) are components/PressCard. */
+.contact-card,
+.contact-form-wrap {
+    min-width: 0;
 }
 
 .contact-icon {
@@ -1981,12 +1990,6 @@ img { max-width: 100%; height: auto; display: block; }
     color: var(--text-secondary);
 }
 
-.contact-form-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 36px;
-}
 
 .contact-form-wrap h2 {
     font-size: 24px;
@@ -2243,6 +2246,11 @@ img { max-width: 100%; height: auto; display: block; }
 
     .about-split {
         grid-template-columns: 1fr;
+    }
+
+    .about-story-grid {
+        grid-template-columns: 1fr;
+        gap: 36px;
     }
 
     .contact-grid {

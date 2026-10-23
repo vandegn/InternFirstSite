@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
 import BrandLogo from '@/components/BrandLogo';
+import PressCard from '@/components/PressCard';
 
 // `absoluteTitle` rather than `title`, because the brand belongs inside this
 // one — "About | InternFirst" reads like a section header, "About InternFirst"
@@ -32,50 +33,39 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Our Mission */}
-      <section className="about-block">
+      {/* Mission, story and vision — side by side so the page reads in one
+          screen instead of three centred columns stacked down the page. */}
+      <section className="about-story">
         <div className="container">
-          <div className="about-content-centered">
-            <h2>Our Mission</h2>
-            <p>
-              InternFirst exists to simplify and modernize the internship ecosystem. We connect verified students, forward-thinking employers, and data-driven universities through one centralized platform designed specifically for early talent. Our goal is simple: make internships easier to find, easier to manage, and easier to measure.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Why We Built InternFirst */}
-      <section className="about-block alt-bg">
-        <div className="container">
-          <div className="about-content-centered">
-            <h2>Why We Built InternFirst</h2>
-            <p>
-              InternFirst began with a common frustration among our peers: finding an internship shouldn’t feel like a full-time job.
-            </p>
-            <p>
-              After experiencing the internship search firsthand, we saw how often students were left navigating outdated listings, unclear expectations, unanswered applications, and platforms that treated them like another résumé in a database. At the same time, employers struggled to reach qualified, genuinely interested students without sorting through piles of low-signal applications.
-            </p>
-            <p>
-              We knew there had to be a better way.
-            </p>
-            <p>
-              That’s why we built InternFirst, a platform designed to make internship recruiting simpler, more transparent, and more human. Students can discover meaningful opportunities that fit their goals, while employers can connect with verified candidates who are looking for meaningful experiences to kick off their professional careers.
-            </p>
-            <p>
-              InternFirst isn’t just another job board. It’s the platform we wished existed when we began our own careers: one built around opportunity, real connections, and helping the next generation take its first step forward.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Our Vision */}
-      <section className="about-block">
-        <div className="container">
-          <div className="about-content-centered">
-            <h2>Our Vision</h2>
-            <p>
-              We believe internships are the gateway to long-term career success. InternFirst is building the infrastructure for the next generation of interns, creating transparency and opportunity for all stakeholders in the early talent pipeline.
-            </p>
+          <div className="about-story-grid">
+            <div className="about-story-col">
+              <h2>Our Mission</h2>
+              <p>
+                InternFirst exists to simplify and modernize the internship ecosystem. We connect verified students, forward-thinking employers, and data-driven universities through one centralized platform designed specifically for early talent. Our goal is simple: make internships easier to find, easier to manage, and easier to measure.
+              </p>
+              <h2>Our Vision</h2>
+              <p>
+                We believe internships are the gateway to long-term career success. InternFirst is building the infrastructure for the next generation of interns, creating transparency and opportunity for all stakeholders in the early talent pipeline.
+              </p>
+            </div>
+            <div className="about-story-col">
+              <h2>Why We Built InternFirst</h2>
+              <p>
+                InternFirst began with a common frustration among our peers: finding an internship shouldn’t feel like a full-time job.
+              </p>
+              <p>
+                After experiencing the internship search firsthand, we saw how often students were left navigating outdated listings, unclear expectations, unanswered applications, and platforms that treated them like another résumé in a database. At the same time, employers struggled to reach qualified, genuinely interested students without sorting through piles of low-signal applications.
+              </p>
+              <p>
+                We knew there had to be a better way.
+              </p>
+              <p>
+                That’s when we started building InternFirst out of our garage. Creating a platform designed to make internship recruiting simpler, more transparent, and more human. Students can discover meaningful opportunities that fit their goals, while employers can connect with verified candidates who are looking for meaningful experiences to kick off their professional careers.
+              </p>
+              <p>
+                InternFirst isn’t just another job board. It’s the platform we wished existed when we began our own careers: one built around opportunity, real connections, and helping the next generation take its first step forward.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -87,7 +77,7 @@ export default function AboutPage() {
           <div className="serve-grid">
 
             {/* Students Card */}
-            <div className="serve-card">
+            <PressCard padding="32px 28px 36px" className="serve-card">
               <div className="serve-icon">
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M24 4L4 14L24 24L44 14L24 4Z" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -107,10 +97,10 @@ export default function AboutPage() {
                 <li>Career fair RSVPs</li>
                 <li>Recruiter connections</li>
               </ul>
-            </div>
+            </PressCard>
 
             {/* Employers Card */}
-            <div className="serve-card">
+            <PressCard padding="32px 28px 36px" className="serve-card">
               <div className="serve-icon">
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M40 16H8C5.79086 16 4 17.7909 4 20V40C4 42.2091 5.79086 44 8 44H40C42.2091 44 44 42.2091 44 40V20C44 17.7909 42.2091 16 40 16Z" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -127,10 +117,10 @@ export default function AboutPage() {
                 <li>Candidate ranking</li>
                 <li>Performance tracking</li>
               </ul>
-            </div>
+            </PressCard>
 
             {/* Universities Card */}
-            <div className="serve-card">
+            <PressCard padding="32px 28px 36px" className="serve-card">
               <div className="serve-icon">
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M8 44V18" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -151,7 +141,7 @@ export default function AboutPage() {
                 <li>Exportable reports</li>
                 <li>Dedicated partnership support</li>
               </ul>
-            </div>
+            </PressCard>
 
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PressCard from '@/components/PressCard';
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -55,7 +56,7 @@ export default function ContactPage() {
         <div className="container">
           <div className="contact-grid">
             <div className="contact-info">
-              <div className="contact-card">
+              <PressCard padding="24px" className="contact-card">
                 <div className="contact-card-icon">
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M4 8L14.764 15.882C15.178 16.1747 15.6724 16.3318 16.18 16.3318C16.6876 16.3318 17.182 16.1747 17.596 15.882L28 8" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -64,9 +65,9 @@ export default function ContactPage() {
                 </div>
                 <h2>Email</h2>
                 <p>jonahkeshguerian@intern-first.com</p>
-              </div>
+              </PressCard>
 
-              <div className="contact-card">
+              <PressCard padding="24px" className="contact-card">
                 <div className="contact-card-icon">
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M26 14C26 22 16 30 16 30C16 30 6 22 6 14C6 11.3478 7.05357 8.8043 8.92893 6.92893C10.8043 5.05357 13.3478 4 16 4C18.6522 4 21.1957 5.05357 23.0711 6.92893C24.9464 8.8043 26 11.3478 26 14Z" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -75,9 +76,9 @@ export default function ContactPage() {
                 </div>
                 <h2>Location</h2>
                 <p>United States</p>
-              </div>
+              </PressCard>
 
-              <div className="contact-card">
+              <PressCard padding="24px" className="contact-card">
                 <div className="contact-card-icon">
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M28 4L14 18" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -117,10 +118,10 @@ export default function ContactPage() {
                     </svg>
                   </a>
                 </div>
-              </div>
+              </PressCard>
             </div>
 
-            <div className="contact-form-wrap">
+            <PressCard pressable={false} padding="36px" className="contact-form-wrap">
               <h2>Send us a message</h2>
 
               {status === 'success' && (
@@ -203,7 +204,7 @@ export default function ContactPage() {
                   {loading ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
-            </div>
+            </PressCard>
           </div>
         </div>
       </section>

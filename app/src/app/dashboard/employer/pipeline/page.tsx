@@ -867,26 +867,39 @@ function EmployerPipelineInner() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          {/* Avatar and name open the candidate's profile. The
-                              card itself is draggable and toggles details, so
-                              stop propagation to keep both gestures usable. */}
+                          {/* Only the avatar and the name open the candidate's
+                              profile; everything else on the card opens the
+                              application. The links are sized to their content
+                              (no flex: 1) so the empty header space belongs to
+                              the card. The card is draggable and clickable, so
+                              the links stop propagation. */}
                           <Link
                             href={`/dashboard/employer/students/${app.student.id}`}
                             onClick={(e) => e.stopPropagation()}
                             draggable={false}
-                            style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+                            title={`${app.student.profile.full_name}'s profile`}
+                            style={{ display: 'flex', flexShrink: 0, borderRadius: '50%' }}
                           >
                             <Avatar src={app.student.profile.avatar_url} name={app.student.profile.full_name} size={32} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {app.student.profile.full_name}
-                              </p>
-                              <p style={{ fontSize: '0.7rem', color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {app.student.major || 'No major'}
-                                {app.student.graduation_year ? ` · '${String(app.student.graduation_year).slice(-2)}` : ''}
-                              </p>
-                            </div>
                           </Link>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <Link
+                                href={`/dashboard/employer/students/${app.student.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                draggable={false}
+                                className="candidate-name-link"
+                                title={`${app.student.profile.full_name}'s profile`}
+                                style={{ color: 'inherit', textDecoration: 'none' }}
+                              >
+                                {app.student.profile.full_name}
+                              </Link>
+                            </p>
+                            <p style={{ fontSize: '0.7rem', color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {app.student.major || 'No major'}
+                              {app.student.graduation_year ? ` · '${String(app.student.graduation_year).slice(-2)}` : ''}
+                            </p>
+                          </div>
                           {app.match_score != null && (
                             <span
                               title={`${app.match_score}% match to this listing`}

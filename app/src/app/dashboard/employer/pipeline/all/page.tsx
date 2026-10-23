@@ -194,21 +194,32 @@ function PipelineAllInner() {
                   }}>
                     #{idx + 1}
                   </span>
+                  {/* Only the avatar and the name open the profile; the rest of
+                      the row opens the application. */}
                   <Link
                     href={`/dashboard/employer/students/${app.student.id}`}
                     onClick={(e) => e.stopPropagation()}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+                    title={`${app.student.profile.full_name}'s profile`}
+                    style={{ display: 'flex', flexShrink: 0, borderRadius: '50%' }}
                   >
                     <Avatar src={app.student.profile.avatar_url} name={app.student.profile.full_name} size={40} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-                        {app.student.profile.full_name}
-                      </p>
-                      <p style={{ fontSize: '0.78rem', color: 'var(--text-light)' }}>
-                        {app.student.major || 'No major'} · Applied {timeAgo(app.applied_at)}
-                      </p>
-                    </div>
                   </Link>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 600, fontSize: '0.92rem' }}>
+                      <Link
+                        href={`/dashboard/employer/students/${app.student.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="candidate-name-link"
+                        title={`${app.student.profile.full_name}'s profile`}
+                        style={{ color: 'inherit', textDecoration: 'none' }}
+                      >
+                        {app.student.profile.full_name}
+                      </Link>
+                    </p>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-light)' }}>
+                      {app.student.major || 'No major'} · Applied {timeAgo(app.applied_at)}
+                    </p>
+                  </div>
                   <select aria-label="Pipeline stage"
                     value={app.stage_id ?? ''}
                     onClick={(e) => e.stopPropagation()}

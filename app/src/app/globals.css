@@ -4817,3 +4817,10 @@ img { max-width: 100%; height: auto; display: block; }
     font-weight: 700;
     cursor: pointer;
 }
+
+/* Candidate name on pipeline cards: a profile link sized to the text, so the
+   rest of the card can open the application. */
+.candidate-name-link:hover,
+.candidate-name-link:focus-visible {
+    text-decoration: underline;
+}

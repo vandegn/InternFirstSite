@@ -1,7 +1,7 @@
 {
  "student_terms": {
   "title": "Student Terms & Conditions",
-  "version": "1.3",
+  "version": "1.4",
   "effectiveDate": "August 3, 2026",
   "blocks": [
    {
@@ -18,7 +18,7 @@
    },
    {
     "type": "p",
-    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Registered Agent: United States Corporation Agents, Inc. Email: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
+    "text": "InternFirst Inc., a Delaware corporation foreign-qualified to do business in North Carolina Business and correspondence address: 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Registered Agent: United States Corporation Agents, Inc. at 131 Continental Drive, Suite 305, Newark, DE 19713, New Castle County Email: lukebaltzell@intern-first.com Telephone: InternFirst does not currently offer telephone support or a telephone privacy-request line. Requests may be submitted through the account controls described below or by email. Where applicable law requires another request method, InternFirst will provide it."
    },
    {
     "type": "h",
@@ -46,11 +46,7 @@
    },
    {
     "type": "li",
-    "text": "You must be located in the United States during the pilot unless InternFirst expressly approves"
-   },
-   {
-    "type": "p",
-    "text": "otherwise."
+    "text": "You must be located in the United States during the pilot unless InternFirst expressly approves otherwise."
    },
    {
     "type": "li",
@@ -74,7 +70,7 @@
    },
    {
     "type": "p",
-    "text": "InternFirst provides recruiting technology that helps students discover opportunities, submit applications, communicate with employers, schedule interviews, and manage recruiting activity. InternFirst is not the employer, does not supervise internships, does not control workplace conditions, and is not a party to an internship, employment, volunteer, contractor, or other working relationship merely because the parties met or communicated through the Platform. InternFirst’s Employer verification process may compare an Employer user’s work-email domain with the domain associated with the company website submitted during signup. Accounts with nonmatching or inconclusive domains are flagged for manual review and remain pending until that review is complete, and InternFirst may manually review any account. However, InternFirst does not guarantee that an Employer, representative, listing, event, communication, or opportunity is genuine, lawful, safe, current, or suitable. InternFirst does not guarantee that you will receive a response, interview, offer, internship, compensation, academic credit, sponsorship, or future employment."
+    "text": "InternFirst provides self-service recruiting technology that helps students discover opportunities, submit applications, communicate with employers, schedule interviews, and manage recruiting activity. InternFirst is not the employer, does not supervise internships, does not control workplace conditions, and is not a party to an internship, employment, volunteer, contractor, or other working relationship merely because the parties met or communicated through the Platform. InternFirst’s Employer verification process may compare an Employer user’s work-email domain with the domain associated with the company website submitted during signup. Accounts with nonmatching or inconclusive domains are flagged for manual review and remain pending until that review is complete, and InternFirst may manually review any account. However, InternFirst does not guarantee that an Employer, representative, listing, event, communication, or opportunity is genuine, lawful, safe, current, or suitable. InternFirst does not guarantee that you will receive a response, interview, offer, internship, compensation, academic credit, sponsorship, or future employment. Students must independently assess Employer credibility and the legitimacy, safety, and suitability of each opportunity before sharing information or accepting an offer; Platform verification does not replace that assessment."
    },
    {
     "type": "h",
@@ -98,11 +94,7 @@
    },
    {
     "type": "li",
-    "text": "Promptly report suspected unauthorized access or credential compromise to lukebaltzell@intern-"
-   },
-   {
-    "type": "p",
-    "text": "first.com."
+    "text": "Promptly report suspected unauthorized access or credential compromise to lukebaltzell@intern-first.com."
    },
    {
     "type": "li",
@@ -134,7 +126,7 @@
    },
    {
     "type": "p",
-    "text": "When you apply to an Employer’s listing, you direct InternFirst to make your application, permitted profile information, resume, and match score available to authorized users associated with that Employer. Employers may download your resume and retain a copy in their own recruiting or recordkeeping systems. InternFirst cannot automatically delete or control a copy that an Employer has lawfully downloaded. Employers are contractually restricted to legitimate recruiting and hiring uses, but you should review your resume and avoid including unnecessary sensitive information. Account deletion or application withdrawal may stop future Platform access, but may not require an Employer to delete information it must lawfully retain or has another legitimate basis to keep. InternFirst stores uploaded resumes, avatars, and other files in private, access-controlled storage. The Platform may provide authorized access through authenticated requests or private, short-lived file URLs that expire after a limited period. These access controls do not prevent an Employer from retaining a resume it lawfully downloads after you apply."
+    "text": "When you apply to an Employer’s listing, you direct InternFirst to make your application, permitted profile information, resume, and match score available to authorized users associated with that Employer. Employers may download your resume and retain a copy in their own recruiting or recordkeeping systems. Once an Employer downloads or otherwise copies your information outside the Platform, InternFirst cannot control that copy or enforce its protection, security, use, retention, or deletion through the Platform. InternFirst cannot guarantee that the Employer will comply with contractual restrictions or a deletion request. The Employer remains responsible for its handling of that information and its applicable legal obligations. Employers are contractually restricted to legitimate recruiting and hiring uses, but you should review your resume and avoid including unnecessary sensitive information. Account deletion or application withdrawal may stop future Platform access, but may not require an Employer to delete information it must lawfully retain or has another legitimate basis to keep. InternFirst stores uploaded resumes, avatars, and other files in private, access-controlled storage. The Platform may provide authorized access through authenticated requests or private, short-lived file URLs that expire after a limited period. These access controls do not prevent an Employer from retaining a resume it lawfully downloads after you apply."
    },
    {
     "type": "h",
@@ -150,7 +142,7 @@
    },
    {
     "type": "p",
-    "text": "InternFirst may offer an optional questionnaire concerning ethnicity, race, gender, veteran status, disability status, work authorization, and sponsorship needs. Participation is voluntary, each question may be declined, and the information is visible only to you through the ordinary Platform interface."
+    "text": "“Self-Identification Information” means information you voluntarily provide about your ethnicity, race, gender, veteran status, disability status, work authorization, and sponsorship needs through an optional self-identification questionnaire. InternFirst may offer this questionnaire separately from the profile and application information shared with Employers. Participation is voluntary, each question may be declined, and the information is visible only to you through the ordinary Platform interface."
    },
    {
     "type": "li",
@@ -158,11 +150,7 @@
    },
    {
     "type": "li",
-    "text": "The information is not used to calculate match scores, rank applicants, rank listings, or determine"
-   },
-   {
-    "type": "p",
-    "text": "access to opportunities."
+    "text": "The information is not used to calculate match scores, rank applicants, rank listings, or determine access to opportunities."
    },
    {
     "type": "li",
@@ -170,11 +158,7 @@
    },
    {
     "type": "li",
-    "text": "InternFirst will not begin demographic or diversity reporting based on this information without updating"
-   },
-   {
-    "type": "p",
-    "text": "the applicable Terms and Privacy Policy, implementing appropriate controls, and obtaining any consent required by law."
+    "text": "InternFirst will not begin demographic or diversity reporting based on this information without updating the applicable Terms and Privacy Policy, implementing appropriate controls, and obtaining any consent required by law."
    },
    {
     "type": "h",
@@ -182,7 +166,7 @@
    },
    {
     "type": "p",
-    "text": "InternFirst may calculate a match score using job-related profile and listing information, such as skills, major, experience, education level, location, availability, and stated requirements. A match score is an informational estimate, not a certification, consumer report, final employment decision, or guarantee of an interview or offer. The detailed matching formula, source code, exact weights, anti-fraud controls, and proprietary methodology are confidential and accessible only to authorized InternFirst personnel. You may request a high-level explanation of the principal factors affecting a particular match score or request correction of inaccurate profile information by emailing lukebaltzell@intern-first.com. InternFirst may provide an explanation without disclosing trade secrets or information that would undermine platform integrity. Job listings may be ranked using relevance, engagement, quality, pricing or promotion tier, freshness, and integrity or operational factors. Paid placement may affect visibility but is not an endorsement or guarantee."
+    "text": "InternFirst may calculate a match score using job-related profile and listing information, such as skills, major, experience, education level, location, availability, and stated requirements. A match score is an informational estimate, not a certification, consumer report, final employment decision, or guarantee of an interview or offer. The detailed matching formula, source code, exact weights, anti-fraud controls, and proprietary methodology are confidential and accessible only to authorized InternFirst personnel. You may request a high-level explanation of the principal factors affecting a particular match score or request correction of inaccurate profile information by emailing lukebaltzell@intern-first.com. InternFirst may provide an explanation without disclosing trade secrets or information that would undermine platform integrity. Job listings may be ranked using relevance, engagement, quality, pricing or promotion tier, freshness, and integrity or operational factors. Paid placement may affect visibility but is not an endorsement or guarantee. InternFirst prohibits the use of match scores, explanations, or job rankings to discriminate based on protected classifications, including race, color, ethnicity, national origin, religion, sex, gender, gender identity, sexual orientation, age, disability, veteran status, or any other characteristic protected by applicable law. This prohibition covers both classification of students on a discriminatory basis and use of scores or rankings that results in unlawful discrimination in access to opportunities or hiring outcomes. Voluntary Self-Identification Information is not used in matching or ranking, as described in Section 11. Suspected discriminatory classifications or results may be reported to lukebaltzell@intern-first.com."
    },
    {
     "type": "h",
@@ -246,19 +230,11 @@
    },
    {
     "type": "li",
-    "text": "Use Platform data to train an external artificial-intelligence model without InternFirst’s and the affected"
-   },
-   {
-    "type": "p",
-    "text": "person’s express written authorization."
+    "text": "Use Platform data to train an external artificial-intelligence model without InternFirst’s and the affected person’s express written authorization."
    },
    {
     "type": "li",
-    "text": "Violate law, intellectual-property rights, privacy rights, confidentiality obligations, or these Student"
-   },
-   {
-    "type": "p",
-    "text": "Terms."
+    "text": "Violate law, intellectual-property rights, privacy rights, confidentiality obligations, or these Student Terms."
    },
    {
     "type": "h",
@@ -290,7 +266,7 @@
    },
    {
     "type": "p",
-    "text": "The Student Privacy Policy explains how InternFirst collects, uses, discloses, secures, and retains student personal information. The Privacy Policy is incorporated for notice purposes but does not convert every statement into a contractual warranty beyond applicable law."
+    "text": "The Student Privacy Policy, provided below these Student Terms, explains how InternFirst collects, uses, discloses, secures, and retains student personal information. The Privacy Policy is incorporated for notice purposes but does not convert every statement into a contractual warranty beyond applicable law."
    },
    {
     "type": "h",
@@ -298,7 +274,7 @@
    },
    {
     "type": "p",
-    "text": "You may initiate account deletion using the “Delete Account” button. Deletion removes your account from active use and schedules profile information for deletion. InternFirst may retain profile information in restricted form for up to six months to permit restoration if you re-enroll or regain eligibility. You may request earlier permanent deletion by emailing lukebaltzell@intern-first.com, subject to legal, security, transaction, dispute, and backup exceptions. InternFirst may restrict, suspend, or terminate an account, remove content, cancel applications, or preserve records if it reasonably believes there has been fraud, impersonation, data misuse, security risk, nonpayment, ineligibility, a material violation, or a need to protect users or comply with law. When appropriate, an appeal may be submitted to lukebaltzell@intern-first.com."
+    "text": "You may initiate account deletion using the “Delete Account” button. Deletion removes your account from active use and schedules profile information for deletion. InternFirst may retain profile information in restricted form for up to 30 days to permit restoration if you re-enroll or regain eligibility. You may request earlier permanent deletion by emailing lukebaltzell@intern-first.com, subject to legal, security, transaction, dispute, and backup exceptions. InternFirst may restrict, suspend, or terminate an account, remove content, cancel applications, or preserve records if it reasonably believes there has been fraud, impersonation, data misuse, security risk, nonpayment, ineligibility, a material violation, or a need to protect users or comply with law. When appropriate, an appeal may be submitted to lukebaltzell@intern-first.com."
    },
    {
     "type": "h",
@@ -350,7 +326,7 @@
    },
    {
     "type": "p",
-    "text": "InternFirst may update these Student Terms prospectively. Material changes will be communicated by email, in-product notice, or another conspicuous method before taking effect. InternFirst may require affirmative reacceptance for material changes involving payments, dispute terms, content rights, or datause obligations. InternFirst will not rely on a general amendment clause to retroactively authorize materially different uses of previously collected personal information where notice or consent is required."
+    "text": "InternFirst may update these Student Terms prospectively. Material changes will be communicated by email, in-product notice, or another conspicuous method before taking effect. InternFirst may require affirmative reacceptance for material changes involving payments, dispute terms, content rights, or data-use obligations. InternFirst will not rely on a general amendment clause to retroactively authorize materially different uses of previously collected personal information where notice or consent is required."
    },
    {
     "type": "h",

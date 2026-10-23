@@ -33,6 +33,7 @@ import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
 import ListingBrandingFields from '@/components/ListingBrandingFields';
 import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
 import LocationPicker, { EMPTY_LOCATION, type LocationValue } from '@/components/LocationPicker';
+import CompanyMark from '@/components/CompanyMark';
 
 export default function NewListingPage() {
   const router = useRouter();
@@ -55,6 +56,7 @@ export default function NewListingPage() {
   const [loading, setLoading] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyIcon, setCompanyIcon] = useState<string | null>(null);
   const [companyWebsite, setCompanyWebsite] = useState<string | null>(null);
   const [employerId, setEmployerId] = useState<string | null>(null);
 
@@ -104,6 +106,7 @@ export default function NewListingPage() {
       if (employer) {
         setCompanyName(employer.company_name || '');
         setCompanyLogo(employer.logo_url || null);
+        setCompanyIcon(employer.icon_url || null);
         setCompanyWebsite(employer.website || null);
         setEmployerId(employer.id);
         setVerification((employer.verification_status as VerificationStatus) ?? 'pending');
@@ -473,13 +476,7 @@ export default function NewListingPage() {
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-              {companyLogo ? (
-                <img src={companyLogo} alt={companyName} style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '1.4rem' }}>
-                  {companyName.charAt(0) || '?'}
-                </div>
-              )}
+              <CompanyMark name={companyName} iconUrl={companyIcon} logoUrl={companyLogo} size={56} radius={12} fontSize="1.4rem" />
               <div>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: title ? 'var(--text)' : 'var(--text-light)' }}>
                   {title || 'Job Title'}

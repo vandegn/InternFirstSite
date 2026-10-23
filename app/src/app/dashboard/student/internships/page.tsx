@@ -12,6 +12,7 @@ import { INDUSTRIES, DURATIONS, splitCompensation } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
 import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
 import { ListingCoreSectionsView } from '@/components/ListingCoreSections';
+import CompanyMark from '@/components/CompanyMark';
 
 type Listing = {
   id: string;
@@ -35,6 +36,7 @@ type Listing = {
   employers: {
     company_name: string;
     logo_url: string | null;
+    icon_url?: string | null;
   };
 };
 
@@ -907,31 +909,16 @@ export default function BrowseInternships() {
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                   {/* Company logo or initial */}
-                  {listing.employers?.logo_url ? (
-                    <img
-                      src={listing.employers.logo_url}
-                      alt={listing.employers.company_name}
-                      style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 8,
-                        background: selectedId === listing.id ? 'var(--primary)' : 'var(--primary-light)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        color: selectedId === listing.id ? 'var(--on-primary)' : 'var(--primary)',
-                        fontSize: '1rem',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {listing.employers?.company_name?.charAt(0) || '?'}
-                    </div>
-                  )}
+                  <CompanyMark
+                    name={listing.employers?.company_name}
+                    iconUrl={listing.employers?.icon_url}
+                    logoUrl={listing.employers?.logo_url}
+                    size={40}
+                    radius={8}
+                    fontSize="1rem"
+                    background={selectedId === listing.id ? 'var(--primary)' : 'var(--primary-light)'}
+                    color={selectedId === listing.id ? 'var(--on-primary)' : 'var(--primary)'}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h4
                       style={{
@@ -1050,31 +1037,14 @@ export default function BrowseInternships() {
 
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
-                  {selectedListing.employers?.logo_url ? (
-                    <img
-                      src={selectedListing.employers.logo_url}
-                      alt={selectedListing.employers.company_name}
-                      style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 12,
-                        background: 'var(--primary-light)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        color: 'var(--primary)',
-                        fontSize: '1.4rem',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {selectedListing.employers?.company_name?.charAt(0) || '?'}
-                    </div>
-                  )}
+                  <CompanyMark
+                    name={selectedListing.employers?.company_name}
+                    iconUrl={selectedListing.employers?.icon_url}
+                    logoUrl={selectedListing.employers?.logo_url}
+                    size={56}
+                    radius={12}
+                    fontSize="1.4rem"
+                  />
                   <div style={{ flex: 1 }}>
                     <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 4px' }}>
                       {selectedListing.title}
@@ -1239,22 +1209,14 @@ export default function BrowseInternships() {
                     background: 'var(--bg-secondary, var(--chip-neutral-bg))',
                     border: '1px solid var(--border)',
                   }}>
-                    {selectedListing.employers?.logo_url ? (
-                      <img
-                        src={selectedListing.employers.logo_url}
-                        alt={selectedListing.employers.company_name}
-                        style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 8,
-                        background: 'var(--primary-light)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 700, color: 'var(--primary)', fontSize: '1rem',
-                      }}>
-                        {selectedListing.employers?.company_name?.charAt(0) || '?'}
-                      </div>
-                    )}
+                    <CompanyMark
+                      name={selectedListing.employers?.company_name}
+                      iconUrl={selectedListing.employers?.icon_url}
+                      logoUrl={selectedListing.employers?.logo_url}
+                      size={40}
+                      radius={8}
+                      fontSize="1rem"
+                    />
                     <div>
                       <p style={{ fontWeight: 600, fontSize: '0.92rem', margin: 0 }}>
                         {selectedListing.employers?.company_name}

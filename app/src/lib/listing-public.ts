@@ -29,6 +29,7 @@ export type PublicListing = {
   employers: {
     company_name: string;
     logo_url: string | null;
+    icon_url?: string | null;
     website?: string | null;
   };
 };
@@ -39,7 +40,7 @@ export async function getPublicListing(id: string): Promise<PublicListing | null
 
   const { data, error } = await supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url, website)')
+    .select('*, employers(company_name, logo_url, icon_url, website)')
     .eq('id', id)
     .maybeSingle();
 

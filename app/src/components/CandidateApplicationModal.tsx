@@ -265,10 +265,6 @@ export default function CandidateApplicationModal({ applicationId, onClose, onCh
                     </span>
                     <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>{matchTone(app.match_score).label}</span>
                   </div>
-                  <p style={muted}>
-                    Scored on skills (40%), industry fit (25%), relevant experience (20%), and
-                    work-environment and duration preferences (7.5% each).
-                  </p>
                   {wanted.length > 0 && (
                     <p style={muted}>
                       <strong style={{ color: 'var(--text)' }}>Preferred skills matched:</strong>{' '}

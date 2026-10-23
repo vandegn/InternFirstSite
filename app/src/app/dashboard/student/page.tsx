@@ -29,6 +29,7 @@ import { useApplicationArchive } from '@/lib/use-application-archive';
 import ApplicationRowAction from '@/components/ApplicationRowAction';
 import ArchiveToast from '@/components/ArchiveToast';
 import { stageColor } from '@/lib/stage-colors';
+import CompanyMark from '@/components/CompanyMark';
 
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
@@ -77,6 +78,7 @@ type StudentApplication = {
     employers: {
       company_name: string;
       logo_url: string | null;
+      icon_url?: string | null;
     };
   };
 };
@@ -89,7 +91,7 @@ type RecommendedListing = {
   is_hybrid: boolean;
   compensation: string | null;
   industry: string;
-  employers: { company_name: string; logo_url: string | null };
+  employers: { company_name: string; logo_url: string | null; icon_url?: string | null };
 };
 
 type StudentInterview = {
@@ -205,9 +207,19 @@ export default function StudentDashboard() {
     [studentApplications, archivedAt],
   );
 
+  // Re-evaluated once a minute so the invitation banner clears on its own
+  // when the proposed time passes, without a reload.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Invitations still worth answering: Accept / Decline mean nothing once the
+  // proposed time has gone by, so the banner hides those automatically.
   const pendingInterviews = useMemo(
-    () => studentInterviews.filter(i => i.status === 'pending'),
-    [studentInterviews],
+    () => studentInterviews.filter(i => i.status === 'pending' && Date.parse(i.scheduled_at) > now),
+    [studentInterviews, now],
   );
   const interviewModalRow = useMemo(
     () => studentInterviews.find(i => i.id === interviewModalId) ?? null,
@@ -550,23 +562,7 @@ export default function StudentDashboard() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {employer?.logo_url ? (
-                        <img
-                          src={employer.logo_url}
-                          alt={employer.company_name}
-                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
-                        />
-                      ) : (
-                        <div style={{
-                          width: 32, height: 32, borderRadius: 6,
-                          background: 'var(--primary-light)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, color: 'var(--primary)', fontSize: '0.8rem',
-                          flexShrink: 0,
-                        }}>
-                          {employer?.company_name?.charAt(0) || '?'}
-                        </div>
-                      )}
+                      <CompanyMark name={employer?.company_name} iconUrl={employer?.icon_url} logoUrl={employer?.logo_url} size={32} radius={6} fontSize="0.8rem" />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {listing.title}
@@ -743,13 +739,7 @@ export default function StudentDashboard() {
                       }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {employer?.logo_url ? (
-                            <img src={employer.logo_url} alt={employer.company_name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-                          ) : (
-                            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem', flexShrink: 0 }}>
-                              {employer?.company_name?.charAt(0) || '?'}
-                            </div>
-                          )}
+                          <CompanyMark name={employer?.company_name} iconUrl={employer?.icon_url} logoUrl={employer?.logo_url} size={36} radius={8} fontSize="0.85rem" />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {listing?.title || 'Untitled Position'}

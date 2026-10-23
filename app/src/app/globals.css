@@ -19,11 +19,16 @@
     outline-offset: 2px;
 }
 
-/* Hidden until focused — the first Tab on any page lands here. */
+/* Hidden until keyboard-focused — the first Tab on any page lands here.
+   Clipped to a 1px box rather than parked off-screen, so it can never sit over
+   the header (an off-screen offset is measured from whichever ancestor is
+   positioned, and on client-side navigation that put it on top of the logo).
+   :focus-visible, not :focus, so the focus the router moves after a click
+   doesn't reveal it either. */
 .skip-link {
     position: absolute;
     left: 12px;
-    top: -100px;
+    top: 12px;
     z-index: 10000;
     padding: 10px 16px;
     background: var(--panel-dark);
@@ -33,8 +38,16 @@
     text-decoration: none;
 }
 
-.skip-link:focus {
-    top: 12px;
+.skip-link:not(:focus-visible) {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

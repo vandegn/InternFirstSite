@@ -29,6 +29,7 @@ import ListingQuestionsEditor from '@/components/ListingQuestionsEditor';
 import ListingBrandingFields from '@/components/ListingBrandingFields';
 import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
 import LocationPicker, { EMPTY_LOCATION, locationFromListing, type LocationValue } from '@/components/LocationPicker';
+import CompanyMark from '@/components/CompanyMark';
 
 const LISTING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   active: { bg: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)' },
@@ -84,6 +85,7 @@ export default function EditListingPage() {
   // signed-in employer, so their own row is the right source.
   const [companyName, setCompanyName] = useState('');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyIcon, setCompanyIcon] = useState<string | null>(null);
   const [companyWebsite, setCompanyWebsite] = useState<string | null>(null);
   const [postedAt, setPostedAt] = useState<string | null>(null);
 
@@ -106,6 +108,7 @@ export default function EditListingPage() {
         setEmployerId(employer.id);
         setCompanyName(employer.company_name || '');
         setCompanyLogo(employer.logo_url || null);
+        setCompanyIcon(employer.icon_url || null);
         setCompanyWebsite(employer.website || null);
         setTitle(listing.title || '');
         setDescription(listing.description || '');
@@ -524,14 +527,7 @@ export default function EditListingPage() {
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-              {companyLogo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={companyLogo} alt={companyName} style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '1.4rem' }}>
-                  {companyName.charAt(0) || '?'}
-                </div>
-              )}
+              <CompanyMark name={companyName} iconUrl={companyIcon} logoUrl={companyLogo} size={56} radius={12} fontSize="1.4rem" />
               <div>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: title ? 'var(--text)' : 'var(--text-light)' }}>
                   {title || 'Job Title'}

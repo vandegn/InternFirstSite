@@ -46,6 +46,9 @@ create table employers (
   company_name text not null,
   description text,
   logo_url text,
+  -- Square company mark for job cards (see migrations/20261023_company_icon.sql).
+  -- logo_url stays the full-size logo.
+  icon_url text,
   website text,
   -- Verification. Every employer starts 'pending'; until they are 'approved'
   -- their listings are hidden and applicant data is invisible to them.

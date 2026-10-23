@@ -305,6 +305,8 @@ export async function updateEmployer(employerId: string, fields: {
   company_name?: string;
   website?: string;
   logo_url?: string;
+  // Square job-card mark. null clears it (the cards fall back to the initial).
+  icon_url?: string | null;
   description?: string;
 }) {
   const { data, error } = await supabase
@@ -448,7 +450,7 @@ export async function getActiveListings(
 
   let query = supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url)', { count: 'exact' })
+    .select('*, employers(company_name, logo_url, icon_url)', { count: 'exact' })
     .eq('status', 'active');
   query = excludeExpired(query);
 
@@ -503,11 +505,22 @@ export async function getActiveListings(
 // Private to the student — see migrations/20260802_saved_listings.sql. Saving
 // never creates an application, so students can track roles without applying.
 
+// Only bookmarks that still point at a listing the student could open: active,
+// not past its deadline, and visible under RLS (approved employer). A saved
+// posting that has since closed or expired stays in saved_listings but is
+// neither counted on the "Saved (n)" toggle nor shown by the Saved filter, so
+// the number always matches the cards.
 export async function getSavedListingIds(studentId: string): Promise<string[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('saved_listings')
-    .select('listing_id')
-    .eq('student_id', studentId);
+    .select('listing_id, listing:internship_listings!inner(id, status, application_deadline)')
+    .eq('student_id', studentId)
+    .eq('listing.status', 'active');
+  query = query.or(
+    `application_deadline.is.null,application_deadline.gte.${todayDateStr()}`,
+    { referencedTable: 'listing' },
+  );
+  const { data, error } = await query;
   if (error) return [];
   return (data ?? []).map((r) => r.listing_id as string);
 }
@@ -532,7 +545,7 @@ export async function unsaveListing(studentId: string, listingId: string) {
 export async function getListingById(id: string) {
   const { data, error } = await supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url, website)')
+    .select('*, employers(company_name, logo_url, icon_url, website)')
     .eq('id', id)
     .single();
   if (error || !data) return null;
@@ -549,7 +562,7 @@ export async function getRecommendedListings(industries: string[], limit = 3) {
   const { data, error } = await excludeExpired(
     supabase
       .from('internship_listings')
-      .select('*, employers(company_name, logo_url)')
+      .select('*, employers(company_name, logo_url, icon_url)')
       .eq('status', 'active')
       .in('industry', listingIndustries)
   )
@@ -1111,13 +1124,14 @@ export async function createStage(opts: {
   // label, keep working on custom columns.
   stageType?: PipelineStage['stage_type'];
 }) {
-  // Insert just before the "Offered" anchor: take the max position
-  // among non-offered stages and add one.
+  // Insert just before the "Offered" anchor: take the max position among
+  // stages that aren't Offered or Rejected (both seeded at the end of the
+  // board) and add one.
   const { data: existing } = await supabase
     .from('pipeline_stages')
     .select('position')
     .eq('listing_id', opts.listingId)
-    .neq('stage_type', 'offered')
+    .not('stage_type', 'in', '("offered","rejected")')
     .order('position', { ascending: false })
     .limit(1);
   const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 1;
@@ -1403,7 +1417,7 @@ export async function getStudentApplications(studentId: string) {
       stage:pipeline_stages!applications_stage_id_fkey(label, color_bg, color_text, stage_type),
       listing:internship_listings!inner(
         id, title, location, is_remote, is_hybrid, compensation, industry, application_deadline,
-        employers:employers!inner(company_name, logo_url)
+        employers:employers!inner(company_name, logo_url, icon_url)
       )
     `)
     .eq('student_id', studentId)
@@ -2023,7 +2037,7 @@ export async function getUniversityPartnerListings(
 
   let query = supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url)', { count: 'exact' })
+    .select('*, employers(company_name, logo_url, icon_url)', { count: 'exact' })
     .eq('status', 'active')
     .in('employer_id', employerIds);
 
@@ -2189,7 +2203,7 @@ export async function getStudentInterviews(studentId: string) {
       *,
       application:applications(id, status),
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url, user_id)
+      employer:employers(id, company_name, logo_url, icon_url, user_id)
     `)
     .eq('student_id', studentId)
     .order('scheduled_at', { ascending: true });
@@ -2204,7 +2218,7 @@ export async function getInterviewById(interviewId: string) {
       *,
       application:applications(id, status),
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url, user_id),
+      employer:employers(id, company_name, logo_url, icon_url, user_id),
       student:students(
         id, major, graduation_year, user_id,
         profile:profiles!inner(full_name, email, avatar_url)
@@ -2559,7 +2573,7 @@ export async function getStudentUpcomingInterviews(studentId: string) {
     .select(`
       *,
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url, user_id)
+      employer:employers(id, company_name, logo_url, icon_url, user_id)
     `)
     .eq('student_id', studentId)
     .eq('status', 'accepted')
@@ -2686,7 +2700,7 @@ export async function extendOffer(opts: {
 export async function getOfferById(offerId: string) {
   const { data, error } = await supabase
     .from('offers')
-    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url)')
+    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url, icon_url)')
     .eq('id', offerId)
     .maybeSingle();
   if (error || !data) return null;
@@ -2695,7 +2709,7 @@ export async function getOfferById(offerId: string) {
   return {
     ...(row as unknown as Offer),
     listing: one<{ id: string; title: string } | null>(row.listing) ?? null,
-    employer: one<{ id: string; company_name: string; logo_url: string | null } | null>(row.employer) ?? null,
+    employer: one<{ id: string; company_name: string; logo_url: string | null; icon_url?: string | null } | null>(row.employer) ?? null,
   };
 }
 
@@ -2714,7 +2728,7 @@ export async function getEmployerOffers(employerId: string): Promise<Offer[]> {
 export async function getStudentOffers(studentId: string) {
   const { data, error } = await supabase
     .from('offers')
-    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url)')
+    .select('*, listing:internship_listings(id, title), employer:employers(id, company_name, logo_url, icon_url)')
     .eq('student_id', studentId)
     .order('extended_at', { ascending: false });
   if (error) return [];
@@ -2724,7 +2738,7 @@ export async function getStudentOffers(studentId: string) {
     return {
       ...(row as unknown as Offer),
       listing: one<{ id: string; title: string } | null>(row.listing) ?? null,
-      employer: one<{ id: string; company_name: string; logo_url: string | null } | null>(row.employer) ?? null,
+      employer: one<{ id: string; company_name: string; logo_url: string | null; icon_url?: string | null } | null>(row.employer) ?? null,
     };
   });
 }
@@ -2777,14 +2791,14 @@ export async function getAvailabilityRequest(requestId: string) {
       *,
       slots:interview_availability_slots(*),
       listing:internship_listings(id, title),
-      employer:employers(id, company_name, logo_url)
+      employer:employers(id, company_name, logo_url, icon_url)
     `)
     .eq('id', requestId)
     .maybeSingle();
   if (error || !data) return null;
   return data as AvailabilityRequest & {
     listing: { id: string; title: string } | null;
-    employer: { id: string; company_name: string; logo_url: string | null } | null;
+    employer: { id: string; company_name: string; logo_url: string | null; icon_url?: string | null } | null;
   };
 }
 

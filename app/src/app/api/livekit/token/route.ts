@@ -1,36 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getServerSupabase } from '@/lib/supabase-server';
 import { generateLiveKitToken, getLiveKitRoomName } from '@/lib/livekit';
 
+// Mints the LiveKit token for one confirmed interview. The caller must be the
+// interview's student or an active member of the hiring company (any
+// teammate, not only the account that registered it), and the request must
+// land inside the join window: 10 minutes before the start until 30 minutes
+// after the meeting's scheduled end.
+//
+// The interview row is read on its own, with no embedded joins: employers has
+// two foreign keys into profiles (user_id and reviewed_by), so an embedded
+// `profiles` join is ambiguous and PostgREST refuses the whole request — which
+// is what used to surface as "Interview not found" on both sides.
 export async function GET(req: NextRequest) {
   const interviewId = req.nextUrl.searchParams.get('interviewId');
   if (!interviewId) return NextResponse.json({ error: 'Missing interviewId' }, { status: 400 });
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    },
-  );
+  const supabase = await getServerSupabase();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // RLS already limits this to the student and the company's active members.
   const { data: interview, error: fetchError } = await supabase
     .from('interview_schedules')
-    .select(`
-      *,
-      student:students!inner(user_id, profile:profiles!inner(full_name)),
-      employer:employers!inner(user_id, profile:profiles!inner(full_name))
-    `)
+    .select('id, student_id, employer_id, status, scheduled_at, duration_minutes')
     .eq('id', interviewId)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !interview) {
     return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
@@ -40,11 +36,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Interview is not confirmed' }, { status: 409 });
   }
 
-  const student = Array.isArray(interview.student) ? interview.student[0] : interview.student;
-  const employer = Array.isArray(interview.employer) ? interview.employer[0] : interview.employer;
+  const [studentRes, memberRes, ownerRes, profileRes] = await Promise.all([
+    supabase
+      .from('students')
+      .select('id')
+      .eq('id', interview.student_id)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('employer_members')
+      .select('id')
+      .eq('employer_id', interview.employer_id)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+    // Original account owner — covers a database the team migration hasn't
+    // reached, where employer_members is empty.
+    supabase
+      .from('employers')
+      .select('id')
+      .eq('id', interview.employer_id)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ]);
 
-  const isStudent = student?.user_id === user.id;
-  const isEmployer = employer?.user_id === user.id;
+  const isStudent = Boolean(studentRes.data);
+  const isEmployer = !isStudent && Boolean(memberRes.data || ownerRes.data);
 
   if (!isStudent && !isEmployer) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -66,11 +88,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'outside_window', message: 'This interview has ended' }, { status: 400 });
   }
 
-  const studentProfile = Array.isArray(student?.profile) ? student.profile[0] : student?.profile;
-  const employerProfile = Array.isArray(employer?.profile) ? employer.profile[0] : employer?.profile;
-  const userName = isEmployer
-    ? (employerProfile?.full_name ?? 'Employer')
-    : (studentProfile?.full_name ?? 'Student');
+  const userName = profileRes.data?.full_name ?? (isEmployer ? 'Employer' : 'Student');
 
   const url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
   if (!url) {

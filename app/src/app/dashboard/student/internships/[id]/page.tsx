@@ -11,6 +11,7 @@ import { ListingCoreSectionsView } from '@/components/ListingCoreSections';
 import ApplicationQuestionsForm, { emptyAnswers, missingRequired, toAnswerInputs, type AnswerState } from '@/components/ApplicationQuestionsForm';
 import EeoConfirmModal from '@/components/EeoConfirmModal';
 import { eeoFromRecord, eeoToData, EMPTY_EEO, type EeoValue } from '@/components/EeoFields';
+import CompanyMark from '@/components/CompanyMark';
 
 type Listing = {
   id: string;
@@ -35,6 +36,7 @@ type Listing = {
   employers: {
     company_name: string;
     logo_url: string | null;
+    icon_url?: string | null;
     website: string | null;
   };
 };
@@ -235,13 +237,7 @@ export default function InternshipDetail() {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          {listing.employers?.logo_url ? (
-            <img src={listing.employers.logo_url} alt={listing.employers.company_name} style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }} />
-          ) : (
-            <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '1.4rem' }}>
-              {listing.employers?.company_name?.charAt(0) || '?'}
-            </div>
-          )}
+          <CompanyMark name={listing.employers?.company_name} iconUrl={listing.employers?.icon_url} logoUrl={listing.employers?.logo_url} size={56} radius={12} fontSize="1.4rem" />
           <div>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{listing.title}</h2>
             <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0' }}>{listing.employers?.company_name}</p>

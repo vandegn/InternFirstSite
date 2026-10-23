@@ -3,6 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, getEmployerByUserId, getProfile, updateEmployer, updateProfile, uploadImage, VERIFICATION_LABELS, type VerificationStatus } from '@/lib/supabase';
 import VerificationBanner, { VERIFICATION_CHIP } from '@/components/VerificationBanner';
+import CompanyMark from '@/components/CompanyMark';
+
+// Accepted icon formats. Checked here, not just via the input's accept
+// attribute, so a drag-and-dropped SVG or GIF can't slip through.
+const ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const ICON_EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
+const ICON_MAX_BYTES = 2 * 1024 * 1024;
 
 export default function EmployerAccountPage() {
   const [loading, setLoading] = useState(true);
@@ -29,6 +36,15 @@ export default function EmployerAccountPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  // Company icon: the small square mark beside the company name on job cards.
+  // Kept apart from the full-size logo above. iconRemoved marks a pending
+  // "Remove" so Save can clear the column; a newly picked file cancels it.
+  const [iconUrl, setIconUrl] = useState('');
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [iconRemoved, setIconRemoved] = useState(false);
+  const [iconError, setIconError] = useState('');
+  const iconInputRef = useRef<HTMLInputElement>(null);
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('pending');
   const [verificationNote, setVerificationNote] = useState<string | null>(null);
 
@@ -55,6 +71,7 @@ export default function EmployerAccountPage() {
         setWebsite(employer.website || '');
         setDescription(employer.description || '');
         setLogoUrl(employer.logo_url || '');
+        setIconUrl(employer.icon_url || '');
         setVerificationStatus((employer.verification_status as VerificationStatus) || 'pending');
         setVerificationNote(employer.verification_note ?? null);
       }
@@ -87,6 +104,35 @@ export default function EmployerAccountPage() {
     }
   }
 
+  function handleIconChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    setIconError('');
+    if (!file) return;
+    if (!ICON_TYPES.has(file.type)) {
+      setIconError('Please choose a PNG, JPG, or WebP image.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > ICON_MAX_BYTES) {
+      setIconError('Please choose an image under 2 MB.');
+      e.target.value = '';
+      return;
+    }
+    setIconFile(file);
+    setIconRemoved(false);
+    const reader = new FileReader();
+    reader.onloadend = () => setIconPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function handleIconRemove() {
+    setIconFile(null);
+    setIconPreview(null);
+    setIconError('');
+    setIconRemoved(true);
+    if (iconInputRef.current) iconInputRef.current.value = '';
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -116,6 +162,24 @@ export default function EmployerAccountPage() {
         if (logoInputRef.current) logoInputRef.current.value = '';
       }
 
+      // undefined = leave icon_url alone; null = clear it; string = new upload.
+      let finalIconUrl: string | null | undefined = undefined;
+      if (iconFile) {
+        const ext = ICON_EXT[iconFile.type] ?? 'png';
+        // A fresh path per upload so browsers and the CDN can't keep serving
+        // the previous icon from cache after a replace.
+        const path = `icons/${employerId}-${Date.now()}.${ext}`;
+        finalIconUrl = await uploadImage('images', path, iconFile);
+        setIconUrl(finalIconUrl);
+        setIconFile(null);
+        setIconPreview(null);
+        if (iconInputRef.current) iconInputRef.current.value = '';
+      } else if (iconRemoved) {
+        finalIconUrl = null;
+        setIconUrl('');
+      }
+      setIconRemoved(false);
+
       await Promise.all([
         updateProfile(userId, {
           full_name: fullName,
@@ -127,6 +191,7 @@ export default function EmployerAccountPage() {
           website: website || undefined,
           description: description || undefined,
           logo_url: finalLogoUrl || undefined,
+          icon_url: finalIconUrl,
         }),
       ]);
 
@@ -255,6 +320,59 @@ export default function EmployerAccountPage() {
               }}>
                 {logoUrl || logoPreview ? 'Change Logo' : 'Upload Logo'}
               </button>
+            </div>
+          </div>
+
+          {/* Company icon */}
+          <div style={{ marginBottom: '24px' }}>
+            <label htmlFor="companyIcon" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+              Company icon
+            </label>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+              Upload a square version of your company logo to appear beside your company name on job postings.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+              <CompanyMark
+                name={companyName}
+                iconUrl={iconRemoved ? null : (iconPreview || iconUrl || null)}
+                size={72}
+                radius="var(--radius-sm)"
+                fontSize="1.5rem"
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="file"
+                    id="companyIcon"
+                    accept="image/png,image/jpeg,image/webp"
+                    ref={iconInputRef}
+                    onChange={handleIconChange}
+                    style={{ display: 'none' }}
+                  />
+                  <button type="button" onClick={() => iconInputRef.current?.click()} style={{
+                    padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                    fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)',
+                  }}>
+                    {(iconUrl && !iconRemoved) || iconPreview ? 'Replace icon' : 'Upload icon'}
+                  </button>
+                  {((iconUrl && !iconRemoved) || iconPreview) && (
+                    <button type="button" onClick={handleIconRemove} style={{
+                      padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                      fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', background: 'var(--surface)',
+                      color: 'var(--danger-fg)',
+                    }}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: 0 }}>
+                  PNG, JPG, or WebP (transparent PNGs work). Square, at least 200 × 200 pixels recommended.
+                  {iconRemoved && ' The icon will be removed when you save; cards will show your initial.'}
+                </p>
+                {iconError && (
+                  <p role="alert" style={{ fontSize: '0.78rem', color: 'var(--danger-fg)', margin: 0 }}>{iconError}</p>
+                )}
+              </div>
             </div>
           </div>
 

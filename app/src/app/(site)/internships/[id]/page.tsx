@@ -15,6 +15,7 @@ import {
 } from '@/lib/listing-public';
 import { jobPostingJsonLd, listingUrl, serializeJsonLd, toMetaDescription } from '@/lib/listing-seo';
 import { breadcrumbJsonLd } from '@/lib/structured-data';
+import CompanyMark from '@/components/CompanyMark';
 
 // This page was entirely client-rendered: the server sent "Loading internship..."
 // and the role, the company, and the description only existed after the browser
@@ -172,31 +173,14 @@ export default async function PublicListingDetailPage({ params }: PageProps) {
             <ListingBanner bannerUrl={listing.banner_url} accentColor={listing.accent_color} />
 
             <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', marginBottom: 20 }}>
-              {listing.employers?.logo_url ? (
-                <img
-                  src={listing.employers.logo_url}
-                  alt={listing.employers.company_name}
-                  style={{ width: 72, height: 72, borderRadius: 14, objectFit: 'cover' }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 14,
-                    background: 'var(--primary-light)',
-                    color: 'var(--primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: 28,
-                    flexShrink: 0,
-                  }}
-                >
-                  {listing.employers?.company_name?.charAt(0) ?? '?'}
-                </div>
-              )}
+              <CompanyMark
+                name={listing.employers?.company_name}
+                iconUrl={listing.employers?.icon_url}
+                logoUrl={listing.employers?.logo_url}
+                size={72}
+                radius={14}
+                fontSize="28px"
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--dark)', marginBottom: 6 }}>
                   {listing.title}

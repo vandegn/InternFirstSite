@@ -36,7 +36,7 @@ async function fetchFirstPage(): Promise<{ listings: Listing[]; totalCount: numb
 
   const { data, error, count } = await supabase
     .from('internship_listings')
-    .select('*, employers(company_name, logo_url)', { count: 'exact' })
+    .select('*, employers(company_name, logo_url, icon_url)', { count: 'exact' })
     .eq('status', 'active')
     .or(`application_deadline.is.null,application_deadline.gte.${today}`)
     .order('created_at', { ascending: false })

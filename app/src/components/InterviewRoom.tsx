@@ -73,6 +73,9 @@ export default function InterviewRoom({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
 
+      // Foreign keys are named explicitly: students -> profiles is the only
+      // path PostgREST can resolve without a hint, but naming it keeps this
+      // query immune to the ambiguity that broke the token route.
       const selectFields =
         role === 'student'
           ? `*,
@@ -80,14 +83,15 @@ export default function InterviewRoom({
              employer:employers(company_name)`
           : `*,
              listing:internship_listings(title),
-             student:students(profile:profiles!inner(full_name))`;
+             student:students(profile:profiles!students_user_id_fkey(full_name))`;
 
-      const { data: row } = await supabase
+      const { data: row, error: rowError } = await supabase
         .from('interview_schedules')
         .select(selectFields)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
+      if (rowError) { setStatus('error'); setErrorMsg(rowError.message); return; }
       if (!row) { setStatus('error'); setErrorMsg('Interview not found.'); return; }
       const typed = row as unknown as InterviewRow;
       if (typed.status !== 'accepted') { setStatus('error'); setErrorMsg('This interview is not confirmed.'); return; }
@@ -103,7 +107,10 @@ export default function InterviewRoom({
       const res = await fetch(`/api/livekit/token?interviewId=${id}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        if (err.error === 'outside_window') { setStatus('too_early'); return; }
+        if (err.error === 'outside_window') {
+          setStatus(getWindowStatus(typed.scheduled_at, typed.duration_minutes) === 'ended' ? 'ended' : 'too_early');
+          return;
+        }
         setStatus('error');
         setErrorMsg(err.message ?? err.error ?? 'Failed to join meeting.');
         return;

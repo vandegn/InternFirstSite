@@ -14,6 +14,7 @@ import {
 import Pagination from '@/components/Pagination';
 import Avatar from '@/components/Avatar';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
+import CompanyMark from '@/components/CompanyMark';
 
 type Listing = {
   id: string;
@@ -64,6 +65,7 @@ function formatInterviewWhen(iso: string) {
 export default function EmployerDashboard() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [companyName, setCompanyName] = useState('');
+  const [companyIcon, setCompanyIcon] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -86,6 +88,7 @@ export default function EmployerDashboard() {
       if (!employer) return;
 
       setCompanyName(employer.company_name);
+      setCompanyIcon(employer.icon_url || null);
       setEmployerId(employer.id);
 
       const [stats, apps, interviews, counts] = await Promise.all([
@@ -243,9 +246,7 @@ export default function EmployerDashboard() {
                 <Link href={`/dashboard/employer/listings/${listing.id}/edit`} key={listing.id} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <div className="listing-card" style={{ cursor: 'pointer' }}>
                     <div className="listing-header">
-                      <div className="listing-logo" style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary)' }}>
-                        {companyName.charAt(0)}
-                      </div>
+                      <CompanyMark className="listing-logo" name={companyName} iconUrl={companyIcon} size={40} radius={8} fontSize="1rem" />
                     </div>
                     <h4>{listing.title}</h4>
                     <p className="listing-company">{companyName}</p>

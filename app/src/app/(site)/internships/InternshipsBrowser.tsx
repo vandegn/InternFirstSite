@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getActiveListings } from '@/lib/supabase';
 import { INDUSTRIES } from '@/lib/constants';
 import Pagination from '@/components/Pagination';
+import CompanyMark from '@/components/CompanyMark';
 
 export type Listing = {
   id: string;
@@ -18,6 +19,7 @@ export type Listing = {
   employers: {
     company_name: string;
     logo_url: string | null;
+    icon_url?: string | null;
   };
 };
 
@@ -238,29 +240,14 @@ export default function InternshipsBrowser({
                 {listings.map((l) => (
                   <article key={l.id} className="internship-card">
                     <div style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border)' }}>
-                      {l.employers?.logo_url ? (
-                        <img
-                          src={l.employers.logo_url}
-                          alt={l.employers.company_name}
-                          style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 10,
-                            background: 'var(--primary-light)',
-                            color: 'var(--primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {l.employers?.company_name?.charAt(0) ?? '?'}
-                        </div>
-                      )}
+                      <CompanyMark
+                        name={l.employers?.company_name}
+                        iconUrl={l.employers?.icon_url}
+                        logoUrl={l.employers?.logo_url}
+                        size={44}
+                        radius={10}
+                        fontSize="1rem"
+                      />
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontWeight: 600, fontSize: 14, margin: 0, color: 'var(--dark)' }}>
                           {l.employers?.company_name ?? 'Employer'}

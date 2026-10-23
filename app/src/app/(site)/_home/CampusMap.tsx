@@ -87,7 +87,7 @@ export default function CampusMap({ dots, width, height }: { dots: Dot[]; width:
           <input
             id={`${listId}-input`}
             className={s.input}
-            placeholder="Start typing, like Ohio State or UNC"
+            placeholder="Start typing, like NC State or Miami University"
             value={query}
             autoComplete="off"
             role="combobox"

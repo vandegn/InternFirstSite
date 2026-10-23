@@ -28,6 +28,7 @@ import { useApplicationArchive } from '@/lib/use-application-archive';
 import ApplicationRowAction from '@/components/ApplicationRowAction';
 import ArchiveToast from '@/components/ArchiveToast';
 import { stageColor } from '@/lib/stage-colors';
+import CompanyMark from '@/components/CompanyMark';
 
 type Application = {
   id: string;
@@ -53,6 +54,7 @@ type Application = {
     employers: {
       company_name: string;
       logo_url: string | null;
+      icon_url?: string | null;
     };
   };
 };
@@ -409,37 +411,14 @@ export default function MyApplications() {
                 style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '20px' }}
               >
                 {/* Logo */}
-                {employer?.logo_url ? (
-                  <img
-                    src={employer.logo_url}
-                    alt={employer.company_name}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 'var(--radius-sm)',
-                      objectFit: 'cover',
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'var(--primary-light)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      color: 'var(--primary)',
-                      fontSize: '1.2rem',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {employer?.company_name?.charAt(0) || '?'}
-                  </div>
-                )}
+                <CompanyMark
+                  name={employer?.company_name}
+                  iconUrl={employer?.icon_url}
+                  logoUrl={employer?.logo_url}
+                  size={48}
+                  radius="var(--radius-sm)"
+                  fontSize="1.2rem"
+                />
 
                 {/* Details */}
                 <div style={{ flex: 1, minWidth: 0 }}>

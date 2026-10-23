@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import BrandLogo from '@/components/BrandLogo';
+import Header from '@/components/Header';
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -45,7 +45,9 @@ function VerifyEmailContent() {
   }
 
   return (
-    <main className="auth-page">
+    <>
+      <Header />
+      <main id="main-content" className="auth-page">
       <div className="auth-container narrow">
         <button
           type="button"
@@ -59,11 +61,6 @@ function VerifyEmailContent() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
           Back
         </button>
-        <div className="auth-logo">
-          <Link href="/">
-            <BrandLogo />
-          </Link>
-        </div>
 
         <h1>Check your email</h1>
         <p className="auth-subtitle">
@@ -113,7 +110,8 @@ function VerifyEmailContent() {
           Already verified? <Link href="/login">Sign in</Link>
         </p>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import BrandLogo from '@/components/BrandLogo';
+import Header from '@/components/Header';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -33,7 +33,9 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="auth-page">
+    <>
+      <Header />
+      <main id="main-content" className="auth-page">
       <div className="auth-container narrow">
         <button
           type="button"
@@ -47,11 +49,6 @@ export default function ForgotPasswordPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
           Back
         </button>
-        <div className="auth-logo">
-          <Link href="/">
-            <BrandLogo />
-          </Link>
-        </div>
 
         {sent ? (
           <>
@@ -124,6 +121,7 @@ export default function ForgotPasswordPage() {
           </>
         )}
       </div>
-    </main>
+      </main>
+    </>
   );
 }

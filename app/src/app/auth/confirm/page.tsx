@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import BrandLogo from '@/components/BrandLogo';
+import Header from '@/components/Header';
 
 // Interstitial for email confirmation and password-reset links. The email
 // lands here with ?token_hash=&type=, but verification only fires when the
@@ -53,13 +53,10 @@ function ConfirmEmailContent() {
   }
 
   return (
-    <div className="auth-page">
+    <>
+      <Header />
+      <div id="main-content" className="auth-page">
       <div className="auth-container narrow">
-        <div className="auth-logo">
-          <Link href="/">
-            <BrandLogo />
-          </Link>
-        </div>
 
         {!tokenHash ? (
           <>
@@ -106,7 +103,8 @@ function ConfirmEmailContent() {
             : <>Already verified? <Link href="/login">Sign in</Link></>}
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

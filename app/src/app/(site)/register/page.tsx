@@ -15,7 +15,7 @@ import PolicyAgreementModal from '@/components/PolicyAgreementModal';
 import { getPolicyVersions } from '@/lib/policies';
 
 import { registrationFlow, trackProductEvent } from '@/lib/product-analytics-client';
-import BrandLogo from '@/components/BrandLogo';
+import Header from '@/components/Header';
 
 type Role = 'student' | 'employer';
 
@@ -172,7 +172,9 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
   }
 
   return (
-    <main className="auth-page">
+    <>
+      <Header />
+      <main id="main-content" className="auth-page">
       <div className="auth-container" style={{ maxWidth: 680 }}>
         <button
           type="button"
@@ -186,11 +188,6 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
           Back
         </button>
-        <div className="auth-logo">
-          <Link href="/">
-            <BrandLogo />
-          </Link>
-        </div>
         <h1>Register</h1>
         <p className="auth-subtitle">Create your account. Select your role to get started.</p>
 
@@ -387,7 +384,8 @@ function RegisterPage({ initialRole }: { initialRole: Role }) {
 
         <p className="auth-footer">Already have an account? <Link href="/login">Sign in</Link></p>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

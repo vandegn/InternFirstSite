@@ -230,104 +230,115 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* ========== STYLES FROM styles.css ========== */
 /* ========================================
-   HEADER
+   HEADER — the navy band from the homepage, shared by every public page
+   (marketing, auth, policy). Brand navy on both themes on purpose: it is the
+   same bar wherever you land, and the homepage never flips with the theme.
    ======================================== */
 .header {
+    --nav-navy: #1A2D49;
+    --nav-navy-deep: #13223A;
+    --nav-line: #2C4366;
+    --nav-lime: #9FC63C;
+    --nav-ink: #D3DBE7;
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(255, 255, 255, 0.97);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
+    background: var(--nav-navy);
+    color: #fff;
 }
 
 .header-inner {
-    max-width: none;
-    margin: 0;
-    padding: 0 32px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px;
     display: flex;
     align-items: center;
-    gap: 32px;
-    height: 72px;
+    justify-content: space-between;
+    gap: 24px;
+    height: 76px;
 }
 
 .header-inner .logo {
     flex-shrink: 0;
+    display: inline-flex;
+}
+
+.logo-chip {
+    display: inline-flex;
+    background: #fff;
+    padding: 9px 14px;
+    border-radius: 10px;
+}
+
+.logo-chip img {
+    height: 24px;
+    width: auto;
+    display: block;
 }
 
 .header-inner .main-nav {
-    flex: 1;
     display: flex;
     align-items: center;
-}
-
-.header-inner .header-actions {
-    margin-left: auto;
-}
-
-.logo img {
-    height: 42px;
-    width: auto;
-    /* border: 2px solid var(--primary); */
-    border-radius: var(--radius-sm);
-    padding: 2px;
+    gap: 28px;
 }
 
 .main-nav ul {
     display: flex;
-    gap: 32px;
+    align-items: center;
+    gap: 28px;
 }
 
 .main-nav a {
-    font-size: 15px;
+    font-size: 0.95rem;
     font-weight: 500;
-    color: var(--text);
+    color: var(--nav-ink);
     transition: color var(--transition);
 }
 
 .main-nav a:hover {
-    color: var(--primary);
+    color: #fff;
 }
 
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 28px;
 }
 
 .btn-login {
-    font-size: 15px;
+    font-size: 0.95rem;
     font-weight: 500;
-    color: var(--text);
-    padding: 8px 20px;
-    border-radius: var(--radius-sm);
+    color: var(--nav-ink);
     transition: color var(--transition);
 }
 
 .btn-login:hover {
-    color: var(--primary);
+    color: #fff;
 }
 
-.btn-register {
-    font-size: 15px;
-    font-weight: 600;
-    color: #fff;
-    background: var(--primary);
-    padding: 10px 24px;
-    border-radius: var(--radius-sm);
+/* The CTA stays a white pill on both themes: it belongs to the navy bar, not
+   to the page theme, so the dark-mode button recolors below leave it alone. */
+.btn-register,
+.btn-register:hover,
+.main-nav .header-actions .btn-register,
+.main-nav .header-actions .btn-register:hover {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--nav-navy);
+    background: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
     transition: background var(--transition);
 }
 
-.btn-register:hover {
-    background: var(--primary-dark);
+.btn-register:hover,
+.main-nav .header-actions .btn-register:hover {
+    background: #EEF5DA;
 }
 
-/* The action buttons live inside .main-nav (so they appear in the mobile
-   dropdown), so keep their own text colors instead of inheriting the
-   .main-nav link color / hover color. */
-.main-nav .header-actions .btn-register,
-.main-nav .header-actions .btn-register:hover {
-    color: #fff;
+.header a:focus-visible,
+.header button:focus-visible {
+    outline-color: var(--nav-lime) !important;
 }
 
 .mobile-menu-toggle {
@@ -344,7 +355,7 @@ img { max-width: 100%; height: auto; display: block; }
     display: block;
     width: 24px;
     height: 2px;
-    background: var(--text);
+    background: #fff;
     border-radius: 2px;
     transition: var(--transition);
 }
@@ -2027,7 +2038,11 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* Active nav link */
 .main-nav a.active {
-    color: var(--primary);
+    color: #fff;
+    text-decoration: underline;
+    text-decoration-color: #9FC63C;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
 }
 
 /* ========================================
@@ -2063,13 +2078,13 @@ img { max-width: 100%; height: auto; display: block; }
     .main-nav {
         display: none;
         position: absolute;
-        top: 72px;
+        top: 76px;
         left: 0;
         right: 0;
-        background: var(--surface);
-        border-bottom: 1px solid var(--border);
+        background: var(--nav-navy-deep);
+        border-bottom: 1px solid var(--nav-line);
         padding: 20px 24px;
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 20px 40px -12px rgba(0,0,0,.5);
     }
 
     .header-inner .main-nav {
@@ -2109,7 +2124,7 @@ img { max-width: 100%; height: auto; display: block; }
         gap: 12px;
         margin: 20px 0 0;
         padding-top: 20px;
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--nav-line);
     }
 
     .main-nav .header-actions a {
@@ -3421,24 +3436,34 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* ========== AUTH PAGES ========== */
+/* The homepage's navy field continues under the bar, and the form is one of
+   its slabs (same navy edge and drop as the Students / Employers cards). The
+   field is navy on both themes, like the homepage; only the card follows the
+   theme. */
 .auth-page,
 .auth-body {
     font-family: "Inter", system-ui, -apple-system, sans-serif;
-    background: #f6f9ee;
-    min-height: 100vh;
+    background:
+        radial-gradient(1200px 600px at 75% 40%, #22395C 0%, transparent 70%),
+        #1A2D49;
+    min-height: calc(100vh - 76px);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
+    padding: 56px 20px 72px;
 }
 
 .auth-container {
     background: var(--surface);
+    border: 2px solid #1A2D49;
+    border-top-width: 8px;
     border-radius: 20px;
-    padding: 48px 40px;
+    padding: 44px 40px 48px;
     width: 100%;
     max-width: 680px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    box-shadow:
+        0 12px 0 0 #13223A,
+        0 36px 40px -16px rgba(0,0,0,.45);
 }
 
 .auth-container.narrow { max-width: 560px; }
@@ -4100,9 +4125,6 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* --- Primary CTAs: brand green with espresso type --- */
 [data-theme="dark"] .btn-primary,
-[data-theme="dark"] .btn-register,
-[data-theme="dark"] .main-nav .header-actions .btn-register,
-[data-theme="dark"] .main-nav .header-actions .btn-register:hover,
 [data-theme="dark"] .btn-apply,
 [data-theme="dark"] .newsletter-form button,
 [data-theme="dark"] .video-badge,
@@ -4114,7 +4136,6 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 [data-theme="dark"] .btn-primary:hover,
-[data-theme="dark"] .btn-register:hover,
 [data-theme="dark"] .btn-apply:hover,
 [data-theme="dark"] .newsletter-form button:hover,
 [data-theme="dark"] .btn-white:hover {
@@ -4123,8 +4144,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 [data-theme="dark"] .btn-primary:active,
-[data-theme="dark"] .btn-apply:active,
-[data-theme="dark"] .btn-register:active {
+[data-theme="dark"] .btn-apply:active {
     background: #8FB534;
 }
 
@@ -4154,11 +4174,6 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* --- Chrome: header, hero, footers, feature panels --- */
-[data-theme="dark"] .header {
-    background: rgba(21, 18, 15, 0.92);
-    border-bottom-color: var(--border);
-}
-
 [data-theme="dark"] .hero,
 [data-theme="dark"] .lp-hero {
     background:
@@ -4353,16 +4368,11 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* --- Auth pages --- */
-[data-theme="dark"] .auth-page,
-[data-theme="dark"] .auth-body {
-    background:
-        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(159, 198, 60, 0.06) 0%, transparent 70%),
-        var(--bg);
-}
-
 [data-theme="dark"] .auth-container {
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-lg);
+    border-color: var(--border);
+    box-shadow:
+        0 12px 0 0 #0B1526,
+        0 36px 40px -16px rgba(0,0,0,.6);
 }
 
 /* Green pill with --primary type: on dark --primary is amber, so pin the ink */

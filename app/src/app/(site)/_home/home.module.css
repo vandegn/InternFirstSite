@@ -16,22 +16,11 @@
 
 .heroBand {
   background:
-    radial-gradient(1200px 600px at 75% 60%, #22395C 0%, transparent 70%),
+    radial-gradient(1200px 600px at 75% 50%, #22395C 0%, transparent 70%),
     var(--navy);
   color: #fff;
   overflow: hidden;
 }
-.nav {
-  max-width: 1280px; margin: 0 auto; padding: 22px 24px;
-  display: flex; align-items: center; justify-content: space-between; gap: 24px;
-}
-.logoChip { display: inline-flex; background: #fff; padding: 9px 14px; border-radius: 10px; }
-.logo { height: 24px; width: auto; display: block; }
-.nav a { text-decoration: none; }
-.nav nav { display: flex; align-items: center; gap: 28px; }
-.nav nav a { color: #D3DBE7; font-weight: 500; font-size: .95rem; }
-.nav nav a:hover { color: #fff; }
-.nav nav a[data-variant='cta'] { color: var(--navy); background: #fff; padding: 10px 16px; border-radius: 8px; font-weight: 700; }
 .page a:focus-visible, .page button:focus-visible, .input:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }
 
 .hero {
@@ -138,7 +127,6 @@
   .lookup { margin-left: 0; }
   .split { grid-template-columns: 1fr; gap: 24px; }
   .side { padding: 32px 24px; }
-  .nav nav a:not([data-variant='cta']) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dot, .dotLit, .dotOn { animation: none; }

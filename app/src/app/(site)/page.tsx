@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Red_Hat_Display } from 'next/font/google';
+import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { pageMetadata } from '@/lib/site';
 import { organizationJsonLd, serializeJsonLd } from '@/lib/structured-data';
@@ -40,20 +41,9 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationJsonLd()) }}
       />
 
+      <Header />
       <div className={`${s.page} ${display.className}`}>
         <section className={s.heroBand}>
-          <header className={s.nav}>
-            <Link href="/" aria-label="InternFirst home">
-              <span className={s.logoChip}><img src="/internfirst-logo.png" alt="InternFirst" className={s.logo} /></span>
-            </Link>
-            <nav>
-              <Link href="/about">About</Link>
-              <Link href="/internships">Internships</Link>
-              <Link href="/contact">Contact</Link>
-              <Link href="/login">Log in</Link>
-              <Link href="/register" data-variant="cta">Create account</Link>
-            </nav>
-          </header>
           <div className={s.hero} id="main-content">
             <div className={s.heroCopy}>
               <h1 className={`${s.h1} ${s.h1Inter}`}>For everyone whose parents don’t know the CEO</h1>

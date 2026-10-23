@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import RoleSelector from '@/components/RoleSelector';
 import PasswordInput from '@/components/PasswordInput';
 import { supabase, getProfile, DASHBOARD_ROUTES, isEduEmail } from '@/lib/supabase';
-import BrandLogo from '@/components/BrandLogo';
+import Header from '@/components/Header';
 
 type Role = 'student' | 'employer';
 
@@ -86,7 +86,9 @@ function LoginForm() {
   }
 
   return (
-    <main className="auth-page">
+    <>
+      <Header />
+      <main id="main-content" className="auth-page">
       <div className="auth-container">
         <button
           type="button"
@@ -100,11 +102,6 @@ function LoginForm() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
           Back
         </button>
-        <div className="auth-logo">
-          <Link href="/">
-            <BrandLogo />
-          </Link>
-        </div>
         <h1>Login</h1>
         <p className="auth-subtitle">Welcome back. Select your role and sign in.</p>
 
@@ -155,7 +152,8 @@ function LoginForm() {
 
         <p className="auth-footer">Don&apos;t have an account? <Link href="/register">Create one</Link></p>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

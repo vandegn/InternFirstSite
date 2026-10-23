@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { validatePassword } from '@/lib/password';
-import BrandLogo from '@/components/BrandLogo';
+import Header from '@/components/Header';
 
 type InviteInfo = {
   state: 'valid' | 'expired' | 'revoked' | 'accepted';
@@ -98,16 +98,14 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
 
   function frame(children: React.ReactNode) {
     return (
-      <div className="auth-page">
-        <div className="auth-container" style={{ maxWidth: 480 }}>
-          <div className="auth-logo">
-            <Link href="/">
-              <BrandLogo />
-            </Link>
+      <>
+        <Header />
+        <div id="main-content" className="auth-page">
+          <div className="auth-container" style={{ maxWidth: 480 }}>
+            {children}
           </div>
-          {children}
         </div>
-      </div>
+      </>
     );
   }
 

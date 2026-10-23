@@ -14,6 +14,7 @@ import {
 import Pagination from '@/components/Pagination';
 import Avatar from '@/components/Avatar';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
+import { joinWindowStatus } from '@/lib/interview-join';
 import CompanyMark from '@/components/CompanyMark';
 
 type Listing = {
@@ -38,13 +39,6 @@ type EmployerInterview = {
   listing: { id: string; title: string };
   student: { profile: { full_name: string; avatar_url: string | null } };
 };
-
-function joinWindowOpen(scheduledAt: string, durationMinutes: number): boolean {
-  const now = Date.now();
-  const start = new Date(scheduledAt).getTime();
-  const end = start + (durationMinutes + 30) * 60_000;
-  return now >= start - 10 * 60_000 && now <= end;
-}
 
 const PAGE_SIZE = 10;
 
@@ -207,7 +201,7 @@ export default function EmployerDashboard() {
                       {badge.label}
                     </span>
                   )}
-                  {iv.status === 'accepted' && interviewFormatOf(iv) !== 'phone' && joinWindowOpen(iv.scheduled_at, iv.duration_minutes) && (
+                  {iv.status === 'accepted' && interviewFormatOf(iv) !== 'phone' && joinWindowStatus(iv.scheduled_at, iv.duration_minutes) === 'open' && (
                     <Link
                       href={interviewFormatOf(iv) === 'external_link' && iv.meeting_url ? iv.meeting_url : `/dashboard/employer/interviews/${iv.id}`}
                       {...(interviewFormatOf(iv) === 'external_link' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}

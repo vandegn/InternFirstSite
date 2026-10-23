@@ -25,6 +25,7 @@ import type { CareerSurveyFormData } from '@/components/CareerSurveyModal';
 import InterviewBanner from '@/components/InterviewBanner';
 import InterviewResponseModal from '@/components/InterviewResponseModal';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
+import { joinWindowStatus } from '@/lib/interview-join';
 import { useApplicationArchive } from '@/lib/use-application-archive';
 import ApplicationRowAction from '@/components/ApplicationRowAction';
 import ArchiveToast from '@/components/ArchiveToast';
@@ -106,15 +107,6 @@ type StudentInterview = {
   listing: { id: string; title: string };
   employer: { id: string; company_name: string; logo_url: string | null; user_id?: string } | null;
 };
-
-function joinWindowStatus(scheduledAt: string, durationMinutes: number): 'too_early' | 'open' | 'ended' {
-  const now = Date.now();
-  const start = new Date(scheduledAt).getTime();
-  const end = start + (durationMinutes + 30) * 60 * 1000;
-  if (now < start - 10 * 60 * 1000) return 'too_early';
-  if (now > end) return 'ended';
-  return 'open';
-}
 
 // Track drawn when a listing has no readable pipeline_stages rows (legacy
 // listings seeded before the stages table existed). Real listings always have

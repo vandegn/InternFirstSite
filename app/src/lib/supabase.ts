@@ -2572,37 +2572,35 @@ export async function getApplicationForReview(applicationId: string) {
 
 export type ApplicationForReview = NonNullable<Awaited<ReturnType<typeof getApplicationForReview>>>;
 
-// Confirmed screenings and interviews still to come, soonest first.
-//
+// Every confirmed screening and interview — upcoming and past — for the
+// Interviews page, which splits them by time with splitInterviewsByTime in
+// lib/interview-join. 'completed' is a meeting the system has closed out; it
+// belongs with the past ones.
+const CONFIRMED_INTERVIEW_STATUSES = ['accepted', 'completed'];
+
 // Employer side: the meetings this teammate owns (organizer_user_id). On a
 // database without migrations/20261009_employer_proposed_interview_slots.sql
 // that column doesn't exist, so fall back to every meeting the company has.
-export async function getEmployerUpcomingInterviews(employerId: string, userId: string) {
+export async function getEmployerConfirmedInterviews(employerId: string, userId: string) {
   const select = `
     *,
     listing:internship_listings(id, title),
     student:students(id, user_id, profile:profiles!students_user_id_fkey(full_name, avatar_url))
   `;
-  // Still upcoming = hasn't ended. The longest meeting is 60 minutes, so
-  // anything that started within the last hour may still be running.
-  const since = new Date(Date.now() - 60 * 60_000).toISOString();
   const base = () => supabase
     .from('interview_schedules')
     .select(select)
     .eq('employer_id', employerId)
-    .eq('status', 'accepted')
-    .gte('scheduled_at', since)
+    .in('status', CONFIRMED_INTERVIEW_STATUSES)
     .order('scheduled_at', { ascending: true });
 
   const mine = await base().eq('organizer_user_id', userId);
   const rows = mine.error ? (await base()).data : mine.data;
-  return ((rows ?? []) as Record<string, unknown>[])
-    .filter(r => Date.parse(r.scheduled_at as string) + (r.duration_minutes as number) * 60_000 > Date.now());
+  return (rows ?? []) as Record<string, unknown>[];
 }
 
-// Student side: every confirmed meeting still to come.
-export async function getStudentUpcomingInterviews(studentId: string) {
-  const since = new Date(Date.now() - 60 * 60_000).toISOString();
+// Student side: every confirmed meeting, upcoming and past.
+export async function getStudentConfirmedInterviews(studentId: string) {
   const { data, error } = await supabase
     .from('interview_schedules')
     .select(cardSelect(`
@@ -2611,12 +2609,10 @@ export async function getStudentUpcomingInterviews(studentId: string) {
       employer:employers(${await employerCardColumns(supabase, ['id', 'user_id'])})
     `))
     .eq('student_id', studentId)
-    .eq('status', 'accepted')
-    .gte('scheduled_at', since)
+    .in('status', CONFIRMED_INTERVIEW_STATUSES)
     .order('scheduled_at', { ascending: true });
   if (error) return [];
-  return ((data ?? []) as Record<string, unknown>[])
-    .filter(r => Date.parse(r.scheduled_at as string) + (r.duration_minutes as number) * 60_000 > Date.now());
+  return (data ?? []) as Record<string, unknown>[];
 }
 
 // ---- Offers ----

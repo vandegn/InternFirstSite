@@ -13,6 +13,7 @@ import {
 import '@livekit/components-styles';
 import { supabase } from '@/lib/supabase';
 import { interviewFormatOf } from '@/lib/interview-format';
+import { joinWindowStatus } from '@/lib/interview-join';
 
 type TokenResponse = {
   token: string;
@@ -35,15 +36,6 @@ type InterviewRow = {
   employer?: { company_name?: string } | { company_name?: string }[];
   student?: { profile?: { full_name?: string } | { full_name?: string }[] } | { profile?: { full_name?: string } | { full_name?: string }[] }[];
 };
-
-function getWindowStatus(scheduledAt: string, durationMinutes: number): 'too_early' | 'open' | 'ended' {
-  const now = Date.now();
-  const start = new Date(scheduledAt).getTime();
-  const end = start + (durationMinutes + 30) * 60 * 1000;
-  if (now < start - 10 * 60 * 1000) return 'too_early';
-  if (now > end) return 'ended';
-  return 'open';
-}
 
 function pick<T>(v: T | T[] | undefined): T | undefined {
   return Array.isArray(v) ? v[0] : v;
@@ -117,7 +109,7 @@ export default function InterviewRoom({
       if (interviewFormatOf(typed) !== 'internfirst') { setStatus('off_platform'); return; }
 
       const opensAt = new Date(typed.scheduled_at).getTime() - 10 * 60 * 1000;
-      const ws = getWindowStatus(typed.scheduled_at, typed.duration_minutes);
+      const ws = joinWindowStatus(typed.scheduled_at, typed.duration_minutes);
       if (ws === 'too_early') { setStatus('too_early'); retryAt(opensAt); return; }
       if (ws === 'ended') { setStatus('ended'); return; }
 
@@ -126,7 +118,7 @@ export default function InterviewRoom({
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         if (err.error === 'outside_window') {
-          if (getWindowStatus(typed.scheduled_at, typed.duration_minutes) === 'ended') { setStatus('ended'); return; }
+          if (joinWindowStatus(typed.scheduled_at, typed.duration_minutes) === 'ended') { setStatus('ended'); return; }
           // The server's clock says not yet; ask again shortly.
           setStatus('too_early');
           retryAt(Date.now() + 15_000);

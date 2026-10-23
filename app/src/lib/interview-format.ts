@@ -134,7 +134,7 @@ export function buildConfirmedMeetingMessage(opts: {
   const where =
     opts.format === 'external_link' ? `Link: ${opts.meetingUrl ?? ''}`
     : opts.format === 'phone' ? `Location: Phone call — ${opts.companyName} will call you. Please reply here with the best phone number to reach you.`
-    : 'Location: InternFirst video room — join from Upcoming Interviews when it opens (10 minutes before the start).';
+    : 'Location: InternFirst video room — use the Join button on your Interviews page when it opens (10 minutes before the start).';
 
   return [
     `${opts.rescheduled ? 'Updated: ' : ''}${typeLabel} confirmed — ${opts.listingTitle} at ${opts.companyName}`,
@@ -146,7 +146,7 @@ export function buildConfirmedMeetingMessage(opts: {
     where,
     ...(notes ? ['', `Notes: ${notes}`] : []),
     '',
-    'This meeting is confirmed and shows on your Upcoming Interviews page.',
+    'This meeting is confirmed and shows on your Interviews page.',
   ].join('\n');
 }
 

@@ -32,6 +32,7 @@ import Avatar from '@/components/Avatar';
 import ConfirmActionModal from '@/components/ConfirmActionModal';
 import CandidateApplicationModal from '@/components/CandidateApplicationModal';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
+import { joinWindowStatus } from '@/lib/interview-join';
 import { stageColor } from '@/lib/stage-colors';
 
 type ListingWithStats = {
@@ -110,15 +111,6 @@ type Interview = {
   format?: InterviewFormat | null;
   meeting_url?: string | null;
 };
-
-function joinWindowStatus(scheduledAt: string, durationMinutes: number): 'too_early' | 'open' | 'ended' {
-  const now = Date.now();
-  const start = new Date(scheduledAt).getTime();
-  const end = start + (durationMinutes + 30) * 60 * 1000;
-  if (now < start - 10 * 60 * 1000) return 'too_early';
-  if (now > end) return 'ended';
-  return 'open';
-}
 
 const INTERVIEW_STATUS_LABELS: Record<string, string> = {
   pending: 'Interview Pending',

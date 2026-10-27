@@ -2295,6 +2295,17 @@ img { max-width: 100%; height: auto; display: block; }
     height: 64px;
 }
 
+.dash-header .logo {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.dash-header .logo img {
+    height: 42px;
+    width: auto;
+    display: block;
+}
+
 .portal-label {
     font-family: 'Inter', sans-serif;
     font-size: 0.95rem;

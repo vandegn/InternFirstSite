@@ -2406,3 +2406,70 @@ revoke select on employers from anon;
 grant select (id, company_name, description, logo_url, icon_url, website,
               verification_status, verified, created_at)
   on employers to anon;
+
+-- ============================================
+-- GEO CONTENT ENGINE (mirrors migrations/20261111_content_articles.sql)
+-- Topic queue + generated guides published at /blog/[slug]. See docs/geo-seo.md.
+-- ============================================
+create table if not exists content_topics (
+  id uuid primary key default gen_random_uuid(),
+  topic text not null check (length(trim(topic)) > 0),
+  target_query text,
+  audience text not null default 'student'
+    check (audience in ('student', 'employer', 'both')),
+  notes text,
+  status text not null default 'queued'
+    check (status in ('queued', 'generating', 'generated', 'failed', 'skipped')),
+  last_error text,
+  created_by uuid references profiles(user_id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_content_topics_status_created on content_topics(status, created_at);
+
+create table if not exists content_articles (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  title text not null check (length(trim(title)) > 0),
+  description text not null check (length(description) <= 320),
+  body_markdown text not null,
+  key_takeaways text[] not null default '{}',
+  faq jsonb not null default '[]'::jsonb,
+  tags text[] not null default '{}',
+  audience text not null default 'student'
+    check (audience in ('student', 'employer', 'both')),
+  target_query text,
+  status text not null default 'draft'
+    check (status in ('draft', 'published', 'archived')),
+  topic_id uuid references content_topics(id) on delete set null,
+  generated_by text,
+  generation_meta jsonb,
+  reviewed_by uuid references profiles(user_id) on delete set null,
+  published_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint content_articles_published_has_date check (status <> 'published' or published_at is not null)
+);
+create index if not exists idx_content_articles_status_published on content_articles(status, published_at desc);
+
+create trigger set_content_topics_updated_at before update on content_topics for each row execute function update_updated_at();
+create trigger set_content_articles_updated_at before update on content_articles for each row execute function update_updated_at();
+
+alter table content_topics enable row level security;
+alter table content_articles enable row level security;
+
+create policy "Admins manage content topics"
+  on content_topics for all to authenticated
+  using (is_intern_first_admin(auth.uid()))
+  with check (is_intern_first_admin(auth.uid()));
+
+-- The anon read of published rows is what /blog, sitemap.xml and /llms.txt
+-- rely on: a draft can never be advertised to a crawler.
+create policy "Published articles are public"
+  on content_articles for select to anon, authenticated
+  using (status = 'published');
+
+create policy "Admins manage content articles"
+  on content_articles for all to authenticated
+  using (is_intern_first_admin(auth.uid()))
+  with check (is_intern_first_admin(auth.uid()));

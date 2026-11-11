@@ -14,6 +14,7 @@ const display = Red_Hat_Display({ subsets: ['latin'], weight: ['500', '700'] });
 const navLinks = [
   { href: '/about', label: 'About' },
   { href: '/internships', label: 'Internships' },
+  { href: '/blog', label: 'Guides' },
   { href: '/contact', label: 'Contact' },
 ];
 

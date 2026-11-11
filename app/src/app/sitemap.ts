@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { getAnonSupabase } from '@/lib/supabase-server';
 import { SITE_URL } from '@/lib/site';
+import { getPublishedArticles } from '@/lib/content-public';
 
 // Regenerated at most once an hour. A sitemap is a hint, not a contract, so
 // hourly is plenty fresh for new listings while keeping this off the hot path
@@ -31,6 +32,8 @@ const STATIC_ROUTES: StaticRoute[] = [
   { path: '/', lastModified: '2026-08-03', priority: 1.0, changeFrequency: 'daily' },
   { path: '/internships', lastModified: '2026-08-27', priority: 0.9, changeFrequency: 'daily' },
   { path: '/about', lastModified: '2026-08-02', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/blog', lastModified: '2026-11-11', priority: 0.7, changeFrequency: 'weekly' },
+  { path: '/faq', lastModified: '2026-11-11', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/career-resources', lastModified: '2026-08-28', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/contact', lastModified: '2026-08-03', priority: 0.5, changeFrequency: 'yearly' },
   { path: '/privacy', lastModified: '2026-08-03', priority: 0.3, changeFrequency: 'yearly' },
@@ -40,7 +43,6 @@ const STATIC_ROUTES: StaticRoute[] = [
 
 // Deliberately NOT listed, and each for a different reason:
 //   /home            — near-duplicate of '/', now 301s there (see next.config.ts)
-//   /blog            — placeholder posts, noindex until real posts ship
 //   /waitlist        — superseded by a working /register; product call pending
 // Dashboards, admin, the auth flow, /join/[token] and /api/* are absent too —
 // see DISALLOWED_PATHS in lib/site.ts.
@@ -100,7 +102,7 @@ async function fetchPublicListings(): Promise<ListingRow[]> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const listings = await fetchPublicListings();
+  const [listings, articles] = await Promise.all([fetchPublicListings(), getPublishedArticles()]);
 
   return [
     ...STATIC_ROUTES.map(({ path, lastModified, priority, changeFrequency }) => ({
@@ -118,6 +120,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(listing.updated_at ?? listing.created_at ?? now),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
+    })),
+    // Published guides only — getPublishedArticles reads through the anon
+    // client, so a draft can't reach the sitemap.
+    ...articles.map((article) => ({
+      url: `${SITE_URL}/blog/${article.slug}`,
+      lastModified: new Date(article.updated_at ?? article.published_at ?? now),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
     })),
   ];
 }

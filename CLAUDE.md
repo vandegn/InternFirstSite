@@ -44,9 +44,11 @@ npm run lint     # ESLint
 
 **Two user roles** drive the application: `student` and `employer`. Each role has its own dashboard (`/dashboard/student`, `/dashboard/employer`), role-specific registration fields, and database tables.
 
-**Public pages:** `/about`, `/blog`, `/career-resources`, `/contact`, `/home` — marketing and informational pages outside the dashboard.
+**Public pages:** `/about`, `/blog` (+ `/blog/[slug]` guides), `/faq`, `/career-resources`, `/contact` — marketing and informational pages outside the dashboard (`/home` 301s to `/`).
 
 **Admin analytics:** `/dashboard/admin/analytics` reports first-party listing views, key CTA clicks, registration/application/posting funnels, daily activity, and existing-record totals. Browser events go through `/api/analytics/events`; completion events come from database triggers. Apply `migrations/20260916_product_analytics.sql` before deploying (adds `internship_listings.analytics_flow_id`). See `docs/product-analytics.md` for definitions and rollout.
+
+**SEO / GEO:** `lib/ai-crawlers.ts` is the one place the AI-crawler policy lives (search/user bots always allowed, training bots behind `ALLOW_TRAINING_CRAWLERS`); `app/robots.ts` emits a rule per bot from it. `/llms.txt` (`app/llms.txt/route.ts`) is the llmstxt.org summary, rendered from `lib/brand-facts.ts` (the only facts the content agent may state about InternFirst — update it first when pricing/eligibility change), the FAQ (`(site)/home-faq-data.ts`, also served at `/faq` with FAQPage JSON-LD) and the published guides. **Content engine:** admins queue `content_topics` on `/dashboard/admin/content`; `POST /api/content/generate` (CRON_SECRET or admin session) runs `lib/content-generation.ts` — one Claude request per topic (`content-generation-claude.ts`, structured output against the schema in `lib/content-articles.ts`), validated, stored as a `content_articles` **draft**. Nothing publishes automatically: `PATCH /api/content/articles/[id]` is where an admin edits/publishes, and it revalidates `/blog`, `/blog/[slug]`, `/llms.txt` and the sitemap. Public pages read through the anon client, so RLS (published rows only) is the whole definition of "public". Pure rules + JSON-LD in `lib/content-articles.ts`, service seam in `content-generation.ts` (`ArticleWriter`, `ContentRepo`), repo in `-repo.ts`. Apply `migrations/20261111_content_articles.sql`; needs `ANTHROPIC_API_KEY`. See `docs/geo-seo.md`.
 
 **Feedback:** the floating Feedback button on every student/employer dashboard page posts to `/api/feedback`, which writes a row to `feedback_submissions`. Admins review it at `/dashboard/admin/feedback` and mark items new → reviewed → resolved. Submitter email/name/role are snapshotted onto the row so feedback survives account deletion. RLS restricts reads to `intern_first_admin`; there is no recipient lookup and no email routing.
 
@@ -124,6 +126,8 @@ npm run lint     # ESLint
 - `/team` — team roster; Master Admins invite teammates, assign roles, (de)activate members
 - `/account` — company account page
 - `/settings` — account settings
+
+**Admin** (`/dashboard/admin`): waitlist, `/analytics`, `/employers` (verification), `/events`, `/feedback`, `/content` (GEO topic queue + draft review/publish)
 
 ## Listing Flow
 

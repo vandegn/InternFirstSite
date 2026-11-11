@@ -4,7 +4,7 @@ import { Red_Hat_Display } from 'next/font/google';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { pageMetadata } from '@/lib/site';
-import { organizationJsonLd, serializeJsonLd } from '@/lib/structured-data';
+import { organizationJsonLd, serializeJsonLd, webSiteJsonLd } from '@/lib/structured-data';
 import schools from '@/data/us-schools.json';
 import CampusMap from './_home/CampusMap';
 import PressCard from '@/components/PressCard';
@@ -39,6 +39,10 @@ export default function LandingPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationJsonLd()) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(webSiteJsonLd()) }}
       />
 
       <Header />

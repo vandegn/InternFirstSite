@@ -77,3 +77,19 @@ export function breadcrumbJsonLd(
     })),
   };
 }
+
+// schema.org WebSite. Names the site and ties it to the Organization so an
+// answer engine resolving "intern-first.com" lands on the same entity as the
+// brand name. No SearchAction: the public listing search has no query URL
+// yet, and a sitelinks search box that 404s is worse than none.
+export function webSiteJsonLd(): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${SITE_URL}/#website`,
+    name: SITE_NAME,
+    url: SITE_URL,
+    inLanguage: 'en-US',
+    publisher: { '@id': `${SITE_URL}/#organization` },
+  };
+}

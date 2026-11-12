@@ -4911,3 +4911,96 @@ img { max-width: 100%; height: auto; display: block; }
 .candidate-name-link:focus-visible {
     text-decoration: underline;
 }
+
+/* ============================================
+   GUIDES (/blog, /blog/[slug]) — see docs/geo-seo.md
+   ============================================ */
+.guide-section { margin-bottom: 48px; }
+.guide-section > h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 16px;
+}
+.guide-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+.guide-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    transition: box-shadow var(--transition), transform var(--transition);
+}
+.guide-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.guide-card-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 500;
+}
+.guide-card-audience {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 600;
+}
+.guide-card h2 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; color: var(--dark); }
+.guide-card h2 a { color: inherit; }
+.guide-card p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.55; flex: 1; }
+.guide-card-link { color: var(--primary); font-weight: 600; font-size: 14px; }
+.guide-empty { text-align: center; padding: 48px 0; display: grid; gap: 16px; justify-items: center; color: var(--text-secondary); }
+
+.guide-page { background: var(--bg); padding: 40px 0 80px; }
+.guide-article { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.guide-breadcrumb { font-size: 14px; color: var(--text-light); margin-bottom: 20px; }
+.guide-breadcrumb a { color: var(--primary); font-weight: 600; }
+.guide-header h1 { font-size: 2.1rem; line-height: 1.2; font-weight: 800; color: var(--dark); margin-bottom: 14px; }
+.guide-lede { font-size: 1.15rem; line-height: 1.6; color: var(--text-secondary); margin-bottom: 12px; }
+.guide-byline { font-size: 14px; color: var(--text-light); margin-bottom: 28px; }
+.guide-takeaways {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+}
+.guide-takeaways h2 { font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-light); margin-bottom: 10px; }
+.guide-takeaways ul { list-style: disc outside; padding-left: 20px; display: grid; gap: 6px; color: var(--dark); }
+.guide-body { font-size: 1.05rem; line-height: 1.75; }
+.guide-body h2 { font-size: 1.45rem; font-weight: 700; color: var(--dark); margin: 36px 0 12px; line-height: 1.3; }
+.guide-body h3 { font-size: 1.15rem; font-weight: 700; color: var(--dark); margin: 24px 0 8px; }
+.guide-body p { margin-bottom: 16px; }
+.guide-body ul, .guide-body ol { margin-bottom: 16px; }
+.guide-faq { margin-top: 44px; }
+.guide-faq h2 { font-size: 1.45rem; font-weight: 700; color: var(--dark); margin-bottom: 12px; }
+.guide-faq-item { border-top: 1px solid var(--border); padding: 14px 0; }
+.guide-faq-item:last-child { border-bottom: 1px solid var(--border); }
+.guide-faq-item summary { cursor: pointer; font-weight: 600; color: var(--dark); list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.guide-faq-item summary::-webkit-details-marker { display: none; }
+.guide-faq-item summary::after { content: '+'; color: var(--text-light); font-weight: 500; }
+.guide-faq-item[open] summary::after { content: '−'; }
+.guide-faq-item p { margin-top: 10px; color: var(--text-secondary); line-height: 1.65; }
+.guide-cta {
+    margin-top: 48px;
+    padding: 32px;
+    border-radius: 16px;
+    text-align: center;
+    color: #fff;
+    background: linear-gradient(135deg, var(--panel-dark) 0%, var(--panel-dark-2) 100%);
+}
+.guide-cta h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 8px; color: #fff; }
+.guide-cta p { color: rgba(255,255,255,0.75); margin-bottom: 18px; }
+@media (max-width: 640px) {
+    .guide-header h1 { font-size: 1.65rem; }
+    .guide-page { padding-top: 24px; }
+}

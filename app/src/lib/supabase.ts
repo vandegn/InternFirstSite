@@ -6,6 +6,7 @@ import { MAX_STUDENT_SKILLS, surveyIndustriesToListingIndustries, type CompType,
 import { isFreeEmailProvider } from '@/lib/domain-signals';
 import type { InterviewFormat } from '@/lib/interview-format';
 import { archiveErrorMessage } from '@/lib/listing-archive';
+import { ARTICLE_COLUMNS, type ContentArticle, type ContentAudience, type ContentTopic } from '@/lib/content-articles';
 import {
   localToday,
   type AvailabilityRequest,
@@ -3035,4 +3036,67 @@ export async function updateFeedbackStatus(
     .single();
   if (error) throw error;
   return data as FeedbackSubmission;
+}
+
+// ----- GEO content engine (admin reads; writes go through /api/content/*) -----
+// Admin-only RLS on both tables (migrations/20261111_content_articles.sql), so
+// these simply return nothing for anyone else. Article edits and publishing
+// go through PATCH /api/content/articles/[id] so the public pages revalidate.
+
+export type { ContentArticle, ContentTopic };
+
+export async function getContentTopics(): Promise<ContentTopic[]> {
+  const { data, error } = await supabase
+    .from('content_topics')
+    .select('id, topic, target_query, audience, notes, status, last_error, created_at, updated_at')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Failed to load content topics:', error);
+    return [];
+  }
+  return (data as ContentTopic[]) || [];
+}
+
+export async function addContentTopic(input: {
+  topic: string;
+  target_query?: string | null;
+  audience: ContentAudience;
+  notes?: string | null;
+}): Promise<ContentTopic> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('content_topics')
+    .insert({
+      topic: input.topic.trim(),
+      target_query: input.target_query?.trim() || null,
+      audience: input.audience,
+      notes: input.notes?.trim() || null,
+      created_by: user?.id ?? null,
+    })
+    .select('id, topic, target_query, audience, notes, status, last_error, created_at, updated_at')
+    .single();
+  if (error) throw new Error(error.message);
+  return data as ContentTopic;
+}
+
+export async function setContentTopicStatus(id: string, status: 'queued' | 'skipped'): Promise<void> {
+  const { error } = await supabase.from('content_topics').update({ status, last_error: null }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteContentTopic(id: string): Promise<void> {
+  const { error } = await supabase.from('content_topics').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function getContentArticles(): Promise<ContentArticle[]> {
+  const { data, error } = await supabase
+    .from('content_articles')
+    .select(ARTICLE_COLUMNS)
+    .order('updated_at', { ascending: false });
+  if (error) {
+    console.error('Failed to load content articles:', error);
+    return [];
+  }
+  return (data as unknown as ContentArticle[]) || [];
 }

@@ -69,7 +69,10 @@ function VerifyEmailContent() {
           Click the link in the email to activate your account.
         </p>
         <p className="auth-subtitle" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Don&apos;t see it? Check your spam folder.
+          Don&apos;t see it within a few minutes? Check your spam, junk or quarantine folder
+          (and Promotions in Gmail). The email comes from <strong>noreply@intern-first.com</strong>.
+          School email filters can be strict, so if it&apos;s still missing, ask your campus IT
+          help desk to allow intern-first.com.
         </p>
 
         {error && (

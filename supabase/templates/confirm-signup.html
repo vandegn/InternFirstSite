@@ -1,0 +1,44 @@
+<!--
+  Supabase Auth -> Email Templates -> Confirm signup
+  Subject: Confirm your InternFirst account
+  See supabase/templates/README.md for where to paste this and why it is built this way.
+-->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+  Confirm your email address to finish setting up your InternFirst account. Request ref {{ slice .TokenHash 0 8 }}.
+</div>
+<div style="font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #1A2D49; font-size: 15px; line-height: 1.6;">
+  <p style="margin: 0 0 16px;">Hi,</p>
+
+  <p style="margin: 0 0 16px;">
+    Thanks for signing up for InternFirst. Please confirm that <strong>{{ .Email }}</strong>
+    is your email address so we can finish setting up your account.
+  </p>
+
+  <p style="margin: 24px 0;">
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email"
+       style="display: inline-block; background: #1A2D49; color: #ffffff; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+      Confirm email address
+    </a>
+  </p>
+
+  <p style="margin: 0 0 16px;">
+    If the button doesn't work, copy and paste this link into your browser:<br />
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email" style="color: #1A2D49; word-break: break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email</a>
+  </p>
+
+  <p style="margin: 0 0 16px;">
+    This link expires in 1 hour and can only be used once. If it has expired, sign in with
+    your email and password and you can request a new one.
+  </p>
+
+  <p style="margin: 0 0 16px;">
+    Didn't create an InternFirst account? You can safely ignore this email.
+  </p>
+
+  <p style="margin: 0 0 24px;">The InternFirst Team</p>
+
+  <hr style="border: none; border-top: 1px solid #DFE0E1; margin: 0 0 16px;" />
+  <p style="font-size: 12px; color: #6b7280; margin: 0;">
+    Request ref {{ slice .TokenHash 0 8 }} &middot; Sent to {{ .Email }} by InternFirst ({{ .SiteURL }}).
+  </p>
+</div>

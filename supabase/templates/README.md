@@ -51,10 +51,25 @@ If the dashboard rejects `slice` (it's a built-in Go template function, so it
 shouldn't), delete the two "Request ref …" fragments. The fallback link alone still
 makes each email's visible text different.
 
-## Confirm signup
+## Confirm signup (`confirm-signup.html`)
 
-The confirm-signup (verify email) template is only in the Supabase dashboard; there
-is no copy in the repo yet. Its link is
-`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`. If you change
-it, consider adding a copy here using `reset-password.html` as the model, so both
-emails match.
+Where it goes: **Supabase dashboard → Authentication → Email Templates → Confirm signup**.
+
+1. **Subject:** `Confirm your InternFirst account`
+2. **Message body:** paste the whole of `confirm-signup.html`, then save.
+3. Sign up with a fresh `.edu` address and a Gmail address and check which folder each lands in.
+
+It's built the same way as the reset template: plain text, one button, a fallback link,
+and a per-send request reference. The link is
+`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, which
+`POST /api/auth/confirm` already accepts. The same 1-hour expiry note applies.
+
+## Keeping auth emails out of spam
+
+The template only helps once the email comes from our own domain. Supabase's built-in
+mailer sends from a shared server that isn't authorized for intern-first.com, which
+spam filters (especially university ones) distrust. Turn on **Authentication → Emails →
+SMTP Settings → Custom SMTP** with Resend, which already has DKIM set up on intern-first.com:
+
+- Host `smtp.resend.com`, port `465`, username `resend`, password = a Resend API key
+- Sender email `noreply@intern-first.com`, sender name `InternFirst`

@@ -64,7 +64,7 @@ export default function ContactPage() {
                   </svg>
                 </div>
                 <h2>Email</h2>
-                <p>jonahkeshguerian@intern-first.com</p>
+                <p>maxvandessel@intern-first.com</p>
               </PressCard>
 
               <PressCard padding="24px" className="contact-card">

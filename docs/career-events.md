@@ -45,6 +45,10 @@ Tests: `lib/career-events.test.ts` and `lib/career-events-flow.test.ts`.
 
 Look for "Subscribe", "iCal", "Export" or "Add to calendar" on the career center's events page. Localist feeds usually look like `https://calendar.<school>.edu/calendar.ics`, and they also have filtered versions such as `/api/2/events?...&format=ics` or per-department `.ics` links. Prefer the career center's own feed. Otherwise, use the general campus feed with keywords such as `career, internship, employer, recruit, resume`. `localhost` and private-network URLs are rejected.
 
+## Add to calendar
+
+Each event card has an **Add to calendar** menu. **Google Calendar** opens Google's new-event page with the title, time, place and links filled in. **Apple / Outlook** downloads a one-event `.ics` file. Both are built in the browser from the event row (`lib/event-calendar-export.ts`, UI in `components/AddToCalendar.tsx`), and nothing is stored. Timed events with no end are shown as an hour long. All-day events use the event's local date, with an exclusive end. "Event details" and "Join online" are underlined links with an open-in-new-tab icon.
+
 ## Feed finder (adds feeds automatically)
 
 `/api/career-events/discover` looks for public iCal feeds at the schools our students attend and **adds the useful ones as event sources on its own**. Each new source is tagged to its school, so only that school's students ever see its events. The route then pulls the new feeds' events right away. Notifications for them go out on the next hourly sync.

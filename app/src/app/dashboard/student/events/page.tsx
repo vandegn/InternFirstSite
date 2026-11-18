@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { supabase, getStudentByUserId } from '@/lib/supabase';
 import Calendar, { type CalendarEvent } from '@/components/Calendar';
+import AddToCalendar from '@/components/AddToCalendar';
 import {
   EVENT_CATEGORIES,
   EVENT_CATEGORY_LABELS,
@@ -67,6 +68,27 @@ function whenLabel(event: CareerEvent): string {
   // Timed events in the student's own zone; all-day events on their own calendar date.
   if (event.all_day) return formatEventWhen(event);
   return formatEventWhen(event, Intl.DateTimeFormat().resolvedOptions().timeZone);
+}
+
+/** An off-site link that looks like one: underlined, with the open-in-new-tab arrow. */
+function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--primary)',
+        textDecoration: 'underline', textUnderlineOffset: 3,
+      }}
+    >
+      {children}
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+      </svg>
+      <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>(opens in a new tab)</span>
+    </a>
+  );
 }
 
 function EventCard({
@@ -167,20 +189,11 @@ function EventCard({
           </p>
         )}
 
-        {(event.url || event.virtual_url) && (
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 10 }}>
-            {event.virtual_url && (
-              <a href={event.virtual_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--primary)' }}>
-                Join online
-              </a>
-            )}
-            {event.url && (
-              <a href={event.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--primary)' }}>
-                Event details
-              </a>
-            )}
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+          <AddToCalendar event={event} />
+          {event.virtual_url && <ExternalLink href={event.virtual_url}>Join online</ExternalLink>}
+          {event.url && <ExternalLink href={event.url}>Event details</ExternalLink>}
+        </div>
       </div>
     </div>
   );

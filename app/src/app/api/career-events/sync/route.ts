@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
-import { getAdminSupabase, getServerSupabase } from '@/lib/supabase-server';
+import { getAdminSupabase } from '@/lib/supabase-server';
+import { authorizeCronOrAdmin } from '@/lib/cron-or-admin-auth';
 import { createCareerEventsRepo } from '@/lib/career-events-repo';
 import { httpFeedFetcher, runCareerEventsSync } from '@/lib/career-events-service';
 
@@ -15,28 +15,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-function secretMatches(provided: string | null): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected || !provided) return false;
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-async function authorize(req: NextRequest): Promise<{ ok: true; via: 'cron' | 'admin' } | { ok: false; res: NextResponse }> {
-  const bearer = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? null;
-  if (secretMatches(req.headers.get('x-cron-secret')) || secretMatches(bearer)) return { ok: true, via: 'cron' };
-
-  const db = await getServerSupabase();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return { ok: false, res: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  const { data: profile } = await db.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
-  if (profile?.role !== 'intern_first_admin') return { ok: false, res: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
-  return { ok: true, via: 'admin' };
-}
-
 async function handle(req: NextRequest) {
-  const auth = await authorize(req);
+  const auth = await authorizeCronOrAdmin(req);
   if (!auth.ok) return auth.res;
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' }, { status: 503 });

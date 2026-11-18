@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import SchoolPicker, { EMPTY_SCHOOL, type SchoolValue } from '@/components/SchoolPicker';
+import FeedSuggestions from './FeedSuggestions';
 import {
   EVENT_CATEGORIES,
   EVENT_CATEGORY_LABELS,
@@ -437,6 +438,8 @@ export default function AdminCareerEventsPage() {
           {lastSync.notificationError && <> · notifications failed: {lastSync.notificationError}</>}
         </div>
       )}
+
+      <FeedSuggestions onApproved={(s) => { setSources((p) => [s, ...p]); sync(s.id); }} />
 
       <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '8px 0 12px' }}>Sources</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>

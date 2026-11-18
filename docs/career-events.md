@@ -45,15 +45,27 @@ Tests: `lib/career-events.test.ts` and `lib/career-events-flow.test.ts`.
 
 Look for "Subscribe", "iCal", "Export" or "Add to calendar" on the career center's events page. Localist feeds usually look like `https://calendar.<school>.edu/calendar.ics`, and they also have filtered versions such as `/api/2/events?...&format=ics` or per-department `.ics` links. Prefer the career center's own feed. Otherwise, use the general campus feed with keywords such as `career, internship, employer, recruit, resume`. `localhost` and private-network URLs are rejected.
 
+## Feed finder (automatic suggestions)
+
+`/api/career-events/discover` looks for public iCal feeds at the schools our students attend and stores them as **suggestions** in `feed_candidates`. It never creates an event source. An admin approves each one under **Suggested feeds** on `/dashboard/admin/events`. Approving creates the `event_sources` row, tagged to that school, and syncs it right away.
+
+- **Which schools.** Each school's domain comes from its students' `.edu` emails (`kenan-flagler.unc.edu` → `unc.edu`, picking the most common one). Each run checks up to 5 schools: never-checked ones first, then ones last checked more than 30 days ago. `feed_discovery_checks` records every check, including the ones that found nothing, and the admin page lists those so they can be added by hand. **Check a school** runs the finder for any school and domain, with or without students.
+- **Where it looks.** Guessed addresses: Engage `<slug>.campuslabs.com/engage/events.ics`, Localist `calendar.<domain>/calendar.ics` and `events.<domain>/calendar.ics`, LiveWhale `/live/ical/events`, and The Events Calendar `careers.<domain>/events/?ical=1`. It also scans `events.`, `calendar.`, `www.<domain>/events/` and the career-center events pages for `.ics`/`webcal` links and platform fingerprints: a Localist page, a Trumba embed's `webName`, 25Live Publisher and Engage links.
+- **What counts.** A candidate must parse as iCal and have at least one event in the sync window. `upcoming_count` and `career_count` come from `eventsFromFeed`, the function the sync itself uses. `career_count` applies `CAREER_KEYWORDS`, the same list an approved "career-related only" source is created with, so the numbers match what will be imported. If fewer than half the events are career-related, approval defaults to the career-only filter. The same feed at two addresses is suggested once. Feeds that are already sources are skipped. A dismissed suggestion stays dismissed on later runs.
+- **Safety.** Redirects are followed by hand, and each hop is re-checked against `normalizeFeedUrl`. Requests have an 8-second timeout and a 5 MB cap, run at most 4 at a time per school, and send a `InternFirst-FeedFinder/1.0` user agent.
+- **Code.** Pure rules: `lib/feed-discovery.ts`. Flow: `feed-discovery-service.ts`, against the `FeedDiscoveryRepo` seam. Database layer (service role): `-repo.ts`. Browser helpers: `-client.ts`. UI: `app/dashboard/admin/events/FeedSuggestions.tsx`. Auth is shared with the sync through `lib/cron-or-admin-auth.ts`.
+- **Setup.** Apply `migrations/20261117_feed_discovery.sql`. The daily run is optional: `migrations/20261117_feed_discovery_cron.sql`, which reuses the sync cron's Vault secrets.
+- **First real run (2026-11-17, 8 student schools).** It found 11 feeds at 6 schools: Engage (Fullerton, UNC, NC State, UNCW), Localist (FSU, UNC, NC State), Trumba (Texas State) and The Events Calendar (NC State's career center). Two schools had nothing: CSU Bakersfield and University of the People. UNCW also links a CMS feed, but it uses non-standard dates and is skipped. Most feeds cover the whole campus, with 5–25% of events career-related.
+
 ## Known limitations
 
-- **No scraping, no paid APIs.** Coverage depends entirely on which feeds an admin registers.
+- **No scraping, no paid APIs.** Coverage depends on which feeds an admin approves or registers. The feed finder only suggests them.
 - **Location means state.** `us-schools.json` has no city or coordinates, so "nearby" means the same state. The `latitude`/`longitude` columns exist but aren't used yet.
 - **RRULE is not expanded.** Only the first occurrence of a recurring series is imported. Localist and most campus platforms emit one VEVENT per occurrence, so this rarely matters. `RECURRENCE-ID` overrides are kept as separate rows.
 - **Time zones.** `VTIMEZONE` blocks are ignored. Times are resolved from the IANA or Windows `TZID` through `Intl`, or the source's default zone for floating times.
 - **Sync overwrites edits.** Admin edits to a synced event's details (title, time, category and so on) are replaced on the next sync. Only `is_major` sticks. Events removed from a feed are not deleted, but they age out of view.
 - **Notifications go to the in-app bell only.** No email yet.
-- **Redirects aren't re-checked.** The fetcher follows redirects without checking the redirect target against the private-network rule. Only admins can register URLs.
+- **Redirects aren't re-checked by the sync.** The sync fetcher follows redirects without checking the target against the private-network rule. Only admins can register URLs. The feed finder's fetcher does re-check every hop.
 
 ## Future options
 

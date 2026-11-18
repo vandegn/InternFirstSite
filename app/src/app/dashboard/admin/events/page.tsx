@@ -439,7 +439,7 @@ export default function AdminCareerEventsPage() {
         </div>
       )}
 
-      <FeedSuggestions onApproved={(s) => { setSources((p) => [s, ...p]); sync(s.id); }} />
+      <FeedSuggestions onAdded={(s) => { if (s) { setSources((p) => [s, ...p]); sync(s.id); } else { reload(); } }} />
 
       <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '8px 0 12px' }}>Sources</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>

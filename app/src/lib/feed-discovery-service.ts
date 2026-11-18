@@ -3,9 +3,11 @@
 // ============================================
 // One run = pick the schools that are due (or the one an admin asked for),
 // try every guessed address and scan every events page for each, score the
-// feeds that answer, and store the useful ones as *suggestions*
-// (feed_candidates). Approving a suggestion is an admin action on the events
-// page; this flow never creates an event source.
+// feeds that answer, and add the useful ones as event sources straight away
+// (planAutoAdd decides: career-only filter for whole-campus feeds, skip feeds
+// that would import nothing, one feed per site). Every feed found is logged
+// in feed_candidates, added or skipped with the reason, so a feed an admin
+// later removes is never re-added.
 //
 // Same seam as the sync (career-events-service.ts): a narrow repo (Supabase
 // implementation in feed-discovery-repo.ts) and an injected page fetcher, so
@@ -21,6 +23,10 @@ import {
   pagesToScan,
   targetsFromStudents,
   timeZoneForState,
+  candidateSourceName,
+  hostOf,
+  planAutoAdd,
+  CAREER_KEYWORDS,
   DEFAULT_SCHOOLS_PER_RUN,
   MAX_LINKS_PER_SCHOOL,
   type DiscoveryTarget,
@@ -45,6 +51,23 @@ export type FeedCandidateInput = {
   last_checked_at: string;
 };
 
+/** How a found feed was handled. 'approved' = added as a source. */
+export type FeedCandidateRow = FeedCandidateInput & {
+  status: 'approved' | 'dismissed';
+  source_id: string | null;
+  note: string | null;
+};
+
+export type NewSourceRow = {
+  name: string;
+  ical_url: string;
+  school_id: number;
+  school_name: string;
+  school_state: string | null;
+  default_timezone: string;
+  include_keywords: string[] | null;
+};
+
 export type DiscoveryCheck = {
   school_id: number;
   school_name: string;
@@ -62,8 +85,10 @@ export type FeedDiscoveryRepo = {
   listSourceUrls(): Promise<string[]>;
   /** Which of these URLs are already suggestions (any status). */
   getCandidateUrls(urls: string[]): Promise<string[]>;
+  /** Creates the event source; null when its URL is already registered. */
+  createSource(row: NewSourceRow): Promise<string | null>;
   /** Insert, ignoring URLs that already exist. */
-  insertCandidates(rows: FeedCandidateInput[]): Promise<void>;
+  insertCandidates(rows: FeedCandidateRow[]): Promise<void>;
   /** Refresh counts/samples of existing suggestions. Never touches status. */
   refreshCandidates(rows: FeedCandidateInput[]): Promise<void>;
   recordCheck(check: DiscoveryCheck): Promise<void>;
@@ -77,11 +102,13 @@ export type SchoolDiscoveryResult = {
   schoolName: string;
   domain: string;
   found: number;
+  /** Feeds added as event sources this run. */
   added: number;
+  skipped: number;
   error?: string;
 };
 
-export type DiscoverySummary = { schools: SchoolDiscoveryResult[]; added: number };
+export type DiscoverySummary = { schools: SchoolDiscoveryResult[]; added: number; newSourceIds: string[] };
 
 function message(e: unknown): string {
   const m = e instanceof Error ? e.message : String(e);
@@ -190,12 +217,15 @@ export async function runFeedDiscovery(
     const [rows, checks] = await Promise.all([repo.listStudentSchools(), repo.listChecks()]);
     targets = dueTargets(targetsFromStudents(rows), checks, now, opts.limit ?? DEFAULT_SCHOOLS_PER_RUN);
   }
-  if (targets.length === 0) return { schools: [], added: 0 };
+  if (targets.length === 0) return { schools: [], added: 0, newSourceIds: [] };
 
   const registered = new Set((await repo.listSourceUrls()).map((u) => {
     const safe = normalizeFeedUrl(u);
     return safe.ok ? safe.url : u;
   }));
+  // Shared across schools (they run two at a time) so one site never gets two sources.
+  const takenHosts = new Set([...registered].map(hostOf));
+  const newSourceIds: string[] = [];
 
   const schools = await mapLimit(targets, 2, async (t): Promise<SchoolDiscoveryResult> => {
     const base = { schoolId: t.schoolId, schoolName: t.schoolName, domain: t.domain };
@@ -209,11 +239,47 @@ export async function runFeedDiscovery(
       const existing = new Set(found.length ? await repo.getCandidateUrls(found.map((c) => c.ical_url)) : []);
       const fresh = found.filter((c) => !existing.has(c.ical_url));
       const stale = found.filter((c) => existing.has(c.ical_url));
-      if (fresh.length) await repo.insertCandidates(fresh);
+
+      const rows: FeedCandidateRow[] = [];
+      let added = 0;
+      for (const d of planAutoAdd(fresh, takenHosts)) {
+        const c = d.candidate;
+        if (!d.add) {
+          rows.push({ ...c, status: 'dismissed', source_id: null, note: d.reason });
+          continue;
+        }
+        const host = hostOf(c.ical_url);
+        // Another school in this run may have just taken the site.
+        if (takenHosts.has(host)) {
+          rows.push({ ...c, status: 'dismissed', source_id: null, note: `A feed from ${host} is already a source.` });
+          continue;
+        }
+        takenHosts.add(host);
+        const sourceId = await repo.createSource({
+          name: candidateSourceName(c),
+          ical_url: c.ical_url,
+          school_id: c.school_id,
+          school_name: c.school_name,
+          school_state: c.school_state,
+          default_timezone: c.timezone,
+          include_keywords: d.careerOnly ? CAREER_KEYWORDS : null,
+        });
+        if (sourceId) {
+          added++;
+          newSourceIds.push(sourceId);
+        }
+        rows.push({
+          ...c,
+          status: sourceId ? 'approved' : 'dismissed',
+          source_id: sourceId,
+          note: sourceId ? (d.careerOnly ? 'Added: career-related events only.' : 'Added: all events.') : 'Already registered as a source.',
+        });
+      }
+      if (rows.length) await repo.insertCandidates(rows);
       if (stale.length) await repo.refreshCandidates(stale);
       const error = reachable ? null : `Could not reach any address at ${t.domain}.`;
       await repo.recordCheck(check(candidates.length, error));
-      return { ...base, found: candidates.length, added: fresh.length, ...(error ? { error } : {}) };
+      return { ...base, found: candidates.length, added, skipped: rows.length - added, ...(error ? { error } : {}) };
     } catch (e) {
       const error = message(e);
       try {
@@ -221,11 +287,11 @@ export async function runFeedDiscovery(
       } catch {
         // recording the failure must not stop the other schools
       }
-      return { ...base, found: 0, added: 0, error };
+      return { ...base, found: 0, added: 0, skipped: 0, error };
     }
   });
 
-  return { schools, added: schools.reduce((n, s) => n + s.added, 0) };
+  return { schools, added: schools.reduce((n, s) => n + s.added, 0), newSourceIds };
 }
 
 // ----- Real page fetcher -----

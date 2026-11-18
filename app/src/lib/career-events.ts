@@ -511,19 +511,31 @@ export function eventScopeFor(
 
 export type ScopedEvent<E> = E & { scope: EventScope };
 
-/** Upcoming (or in-progress), active events the student should see, soonest first. */
-export function relevantEventsForStudent<E extends Pick<CareerEvent, 'school_id' | 'state' | 'starts_at' | 'ends_at' | 'status'>>(
+/**
+ * Upcoming (or in-progress), active events the student should see, soonest
+ * first. A school can have several feeds (Engage and the campus calendar
+ * often both list the career fair), so the same title at the same start time
+ * is shown once.
+ */
+export function relevantEventsForStudent<E extends Pick<CareerEvent, 'school_id' | 'state' | 'starts_at' | 'ends_at' | 'status'> & { title?: string }>(
   events: E[],
   student: StudentLocation,
   now: Date,
 ): ScopedEvent<E>[] {
   const out: ScopedEvent<E>[] = [];
+  const seen = new Set<string>();
   for (const ev of events) {
     if (ev.status !== 'active') continue;
     const end = new Date(ev.ends_at ?? ev.starts_at).getTime();
     if (end < now.getTime()) continue;
     const scope = eventScopeFor(ev, student);
-    if (scope) out.push({ ...ev, scope });
+    if (!scope) continue;
+    if (ev.title) {
+      const key = `${ev.title.trim().toLowerCase().replace(/\s+/g, ' ')}|${new Date(ev.starts_at).getTime()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    out.push({ ...ev, scope });
   }
   return out.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 }

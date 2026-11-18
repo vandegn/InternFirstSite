@@ -1,6 +1,7 @@
 // Supabase-backed FeedDiscoveryRepo. Runs with the service-role client: the
 // finder reads every student's school + email domain, which no single user's
-// RLS allows, and it is a trusted server job (cron or an admin-triggered run).
+// RLS allows, it creates event sources, and it is a trusted server job (cron
+// or an admin-triggered run).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { FeedDiscoveryRepo } from './feed-discovery-service';
@@ -65,6 +66,28 @@ export function createFeedDiscoveryRepo(db: SupabaseClient): FeedDiscoveryRepo {
         out.push(...(data ?? []).map((r) => r.ical_url as string));
       }
       return out;
+    },
+
+    async createSource(row) {
+      const { data, error } = await db
+        .from('event_sources')
+        .upsert(
+          {
+            name: row.name,
+            ical_url: row.ical_url,
+            school_id: row.school_id,
+            school_name: row.school_name,
+            state: row.school_state,
+            default_category: 'other',
+            default_timezone: row.default_timezone,
+            include_keywords: row.include_keywords,
+            created_by: null,
+          },
+          { onConflict: 'ical_url', ignoreDuplicates: true },
+        )
+        .select('id');
+      fail('Adding event source', error);
+      return (data?.[0]?.id as string | undefined) ?? null;
     },
 
     async insertCandidates(rows) {

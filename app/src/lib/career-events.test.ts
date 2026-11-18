@@ -236,6 +236,15 @@ describe('relevance', () => {
     ], student, NOW);
     expect(list.map((e) => [e.id, e.scope])).toEqual([['ongoing', 'online'], ['soon', 'campus'], ['later', 'local']]);
   });
+
+  it('shows an event listed by two of the school’s feeds once', () => {
+    const list = relevantEventsForStudent([
+      ev({ id: 'engage', title: 'Fall Career Fair', starts_at: '2026-10-20T14:00:00.000Z', school_id: 199120 }),
+      ev({ id: 'localist', title: '  fall career  fair ', starts_at: '2026-10-20T14:00:00Z', school_id: 199120 }),
+      ev({ id: 'next-day', title: 'Fall Career Fair', starts_at: '2026-10-21T14:00:00.000Z', school_id: 199120 }),
+    ], student, NOW);
+    expect(list.map((e) => e.id)).toEqual(['engage', 'next-day']);
+  });
 });
 
 // ----- Notification planning -----

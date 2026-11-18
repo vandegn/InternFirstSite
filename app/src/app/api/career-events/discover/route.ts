@@ -5,9 +5,12 @@ import { authorizeCronOrAdmin } from '@/lib/cron-or-admin-auth';
 import { createFeedDiscoveryRepo } from '@/lib/feed-discovery-repo';
 import { httpPageFetcher, runFeedDiscovery } from '@/lib/feed-discovery-service';
 import { normalizeDomainInput, type DiscoveryTarget } from '@/lib/feed-discovery';
+import { createCareerEventsRepo } from '@/lib/career-events-repo';
+import { httpFeedFetcher, runCareerEventsSync } from '@/lib/career-events-service';
 
-// Looks for public iCal feeds at schools and stores them as suggestions
-// (feed_candidates) for an admin to approve on /dashboard/admin/events.
+// Looks for public iCal feeds at schools, adds the useful ones as event
+// sources (tagged to the school, so only its students see them) and pulls
+// their events right away. Every feed found is logged in feed_candidates.
 // Called two ways:
 //   * daily by pg_cron (migrations/20261117_feed_discovery_cron.sql) — checks
 //     the schools our students attend that are due (never checked first);
@@ -41,8 +44,21 @@ async function handle(req: NextRequest) {
   }
 
   try {
-    const summary = await runFeedDiscovery(createFeedDiscoveryRepo(getAdminSupabase()), httpPageFetcher, new Date(), { target });
-    return NextResponse.json({ ...summary, via: auth.via }, { headers: { 'Cache-Control': 'no-store' } });
+    const db = getAdminSupabase();
+    const summary = await runFeedDiscovery(createFeedDiscoveryRepo(db), httpPageFetcher, new Date(), { target });
+    // First pull of the new feeds now, so students don't wait for the hourly
+    // sync. Notifications are left to that sync (major events stay eligible
+    // for 72 hours), which keeps this request short.
+    let eventsImported = 0;
+    for (const sourceId of summary.newSourceIds) {
+      try {
+        const r = await runCareerEventsSync(createCareerEventsRepo(db), httpFeedFetcher, new Date(), { sourceId, notify: false });
+        eventsImported += r.sources.reduce((n, x) => n + x.count, 0);
+      } catch (e) {
+        console.error('First sync of discovered feed failed:', e);
+      }
+    }
+    return NextResponse.json({ ...summary, eventsImported, via: auth.via }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     console.error('Feed discovery failed:', e);
     return NextResponse.json(

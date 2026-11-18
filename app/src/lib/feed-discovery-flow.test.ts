@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { runFeedDiscovery, type DiscoveryCheck, type FeedCandidateInput, type FeedDiscoveryRepo, type PageFetcher } from './feed-discovery-service';
-import type { StudentSchoolRow } from './feed-discovery';
+import {
+  runFeedDiscovery,
+  type DiscoveryCheck,
+  type FeedCandidateRow,
+  type FeedDiscoveryRepo,
+  type NewSourceRow,
+  type PageFetcher,
+} from './feed-discovery-service';
+import { CAREER_KEYWORDS, type StudentSchoolRow } from './feed-discovery';
 
 const NOW = new Date('2026-11-17T12:00:00Z');
 
@@ -12,25 +19,33 @@ function ics(name: string, events: [string, string][]): string {
   ].join('\r\n');
 }
 
-// In-memory repo mirroring the real one: unique ical_url with ignore-duplicate
-// inserts, refreshes that leave status alone, one check row per school.
+// In-memory repo mirroring the real one: unique ical_url on sources and on the
+// feed log (ignore-duplicate inserts), refreshes that leave status alone, one
+// check row per school.
 function memoryRepo(init: { students: StudentSchoolRow[]; sources?: string[]; checks?: DiscoveryCheck[] }) {
+  let seq = 0;
   const state = {
-    candidates: [] as (FeedCandidateInput & { status: string })[],
+    log: [] as FeedCandidateRow[],
     checks: new Map((init.checks ?? []).map((c) => [c.school_id, c])),
-    sources: init.sources ?? [],
+    sources: (init.sources ?? []).map((url) => ({ id: `pre${++seq}`, ical_url: url } as NewSourceRow & { id: string })),
   };
   const repo: FeedDiscoveryRepo = {
     async listStudentSchools() { return init.students; },
     async listChecks() { return [...state.checks.values()]; },
-    async listSourceUrls() { return state.sources; },
-    async getCandidateUrls(urls) { return state.candidates.filter((c) => urls.includes(c.ical_url)).map((c) => c.ical_url); },
+    async listSourceUrls() { return state.sources.map((s) => s.ical_url); },
+    async getCandidateUrls(urls) { return state.log.filter((c) => urls.includes(c.ical_url)).map((c) => c.ical_url); },
+    async createSource(row) {
+      if (state.sources.some((s) => s.ical_url === row.ical_url)) return null;
+      const id = `src${++seq}`;
+      state.sources.push({ ...row, id });
+      return id;
+    },
     async insertCandidates(rows) {
-      for (const r of rows) if (!state.candidates.some((c) => c.ical_url === r.ical_url)) state.candidates.push({ ...r, status: 'new' });
+      for (const r of rows) if (!state.log.some((c) => c.ical_url === r.ical_url)) state.log.push({ ...r });
     },
     async refreshCandidates(rows) {
       for (const r of rows) {
-        const c = state.candidates.find((x) => x.ical_url === r.ical_url)!;
+        const c = state.log.find((x) => x.ical_url === r.ical_url)!;
         Object.assign(c, { upcoming_count: r.upcoming_count, career_count: r.career_count, sample_titles: r.sample_titles, last_checked_at: r.last_checked_at });
       }
     },
@@ -39,10 +54,8 @@ function memoryRepo(init: { students: StudentSchoolRow[]; sources?: string[]; ch
   return { repo, state };
 }
 
-function webFrom(pages: Record<string, string | { status: number; redirect?: string }>): { fetcher: PageFetcher; hits: string[] } {
-  const hits: string[] = [];
-  const fetcher: PageFetcher = async (url) => {
-    hits.push(url);
+function webFrom(pages: Record<string, string | { status: number; redirect?: string }>): PageFetcher {
+  return async (url) => {
     let current = url;
     for (let i = 0; i < 4; i++) {
       const page = pages[current];
@@ -53,19 +66,21 @@ function webFrom(pages: Record<string, string | { status: number; redirect?: str
     }
     throw new Error('loop');
   };
-  return { fetcher, hits };
 }
 
 const UNC: StudentSchoolRow = { school_id: 199120, school_name: 'UNC', school_state: 'North Carolina', email: 's@unc.edu' };
+const UNC_TARGET = { schoolId: 199120, schoolName: 'UNC', schoolState: 'North Carolina', domain: 'unc.edu' };
 
 describe('runFeedDiscovery', () => {
-  it('finds guessed and linked feeds, scores them, and records the check', async () => {
-    const localist = ics('UNC Calendar', [['a', 'Career Fair'], ['b', 'Concert'], ['c', 'Football'], ['d', 'Lecture']]);
-    const { fetcher } = webFrom({
+  it('adds useful feeds as sources tagged to the school, with the career filter on campus-wide feeds', async () => {
+    const fetcher = webFrom({
+      // Mostly career events: added with no filter.
       'https://unc.campuslabs.com/engage/events.ics': ics('Engage', [['e1', 'Resume clinic'], ['e2', 'Internship panel']]),
+      // Whole-campus calendar: added career-only.
       'https://events.unc.edu/': { status: 301, redirect: 'https://calendar.unc.edu/' },
       'https://calendar.unc.edu/': '<script src="https://localist-images.azureedge.net/x.js"></script>',
-      'https://calendar.unc.edu/calendar.ics': localist,
+      'https://calendar.unc.edu/calendar.ics': ics('UNC Calendar', [['a', 'Career Fair'], ['b', 'Concert'], ['c', 'Football'], ['d', 'Lecture']]),
+      // Nothing career-related: skipped.
       'https://www.unc.edu/events/': '<a href="_data/current.ics">ics</a>',
       'https://www.unc.edu/events/_data/current.ics': ics('News', [['n1', 'Board meeting']]),
     });
@@ -73,39 +88,59 @@ describe('runFeedDiscovery', () => {
 
     const summary = await runFeedDiscovery(repo, fetcher, NOW);
 
-    expect(summary.added).toBe(3);
-    expect(state.candidates.map((c) => [c.ical_url, c.platform, c.upcoming_count, c.career_count]).sort()).toEqual([
-      ['https://calendar.unc.edu/calendar.ics', 'localist', 4, 1],
-      ['https://unc.campuslabs.com/engage/events.ics', 'engage', 2, 2],
-      ['https://www.unc.edu/events/_data/current.ics', 'other', 1, 0],
-    ]);
-    const linked = state.candidates.find((c) => c.ical_url.endsWith('current.ics'))!;
-    expect(linked.found_on).toBe('https://www.unc.edu/events/');
-    expect(linked.timezone).toBe('America/New_York');
+    expect(summary.added).toBe(2);
+    expect(summary.newSourceIds).toHaveLength(2);
+    expect(summary.schools[0]).toMatchObject({ found: 3, added: 2, skipped: 1 });
+
+    const engage = state.sources.find((s) => s.ical_url.includes('campuslabs'))!;
+    expect(engage).toMatchObject({ school_id: 199120, school_name: 'UNC', school_state: 'North Carolina', include_keywords: null, default_timezone: 'America/New_York' });
+    const localist = state.sources.find((s) => s.ical_url === 'https://calendar.unc.edu/calendar.ics')!;
+    expect(localist.include_keywords).toEqual(CAREER_KEYWORDS);
+    expect(localist.name).toBe('UNC Calendar'); // already names the school
+
+    const skipped = state.log.find((c) => c.ical_url.endsWith('current.ics'))!;
+    expect(skipped).toMatchObject({ status: 'dismissed', source_id: null, note: 'No career-related events in this feed.' });
+    expect(state.log.filter((c) => c.status === 'approved').every((c) => c.source_id)).toBe(true);
     expect(state.checks.get(199120)).toMatchObject({ domain: 'unc.edu', feeds_found: 3, error: null });
   });
 
-  it('suggests the same feed once, skips registered sources, and keeps a dismissal on re-run', async () => {
-    const feed = ics('Engage', [['e1', 'Career Fair']]);
-    const { fetcher } = webFrom({
-      'https://unc.campuslabs.com/engage/events.ics': feed,
-      'https://careers.unc.edu/events/?ical=1': feed, // same events, second address
-      'https://calendar.unc.edu/calendar.ics': ics('Cal', [['c1', 'Concert']]),
+  it('keeps one feed per site, the one importing the most', async () => {
+    const fetcher = webFrom({
+      'https://calendar.unc.edu/calendar.ics': ics('All', [['a', 'Career Fair'], ['b', 'Concert'], ['c', 'Football']]),
+      'https://calendar.unc.edu/': '<a href="/calendar/1.ics">Featured</a>',
+      'https://calendar.unc.edu/calendar/1.ics': ics('Featured', [['x', 'Career Fair'], ['y', 'Employer info session'], ['z', 'Concert']]),
     });
-    const { repo, state } = memoryRepo({ students: [UNC], sources: ['https://calendar.unc.edu/calendar.ics'] });
+    const { repo, state } = memoryRepo({ students: [UNC] });
 
     await runFeedDiscovery(repo, fetcher, NOW);
-    expect(state.candidates).toHaveLength(1);
-    state.candidates[0].status = 'dismissed';
 
-    const again = await runFeedDiscovery(repo, fetcher, NOW, { target: { schoolId: 199120, schoolName: 'UNC', schoolState: 'North Carolina', domain: 'unc.edu' } });
+    expect(state.sources.map((s) => s.ical_url)).toEqual(['https://calendar.unc.edu/calendar/1.ics']);
+    expect(state.log.find((c) => c.ical_url.endsWith('/calendar.ics'))!.note).toContain('Same site as https://calendar.unc.edu/calendar/1.ics');
+  });
+
+  it('never re-adds a logged feed, so removing a source sticks; skips sites that already have a source', async () => {
+    const feed = ics('Engage', [['e1', 'Career Fair']]);
+    const fetcher = webFrom({
+      'https://unc.campuslabs.com/engage/events.ics': feed,
+      'https://careers.unc.edu/events/?ical=1': feed, // same events, second address
+      'https://calendar.unc.edu/calendar.ics': ics('Cal', [['c1', 'Career Expo']]),
+    });
+    const { repo, state } = memoryRepo({ students: [UNC], sources: ['https://calendar.unc.edu/feeds/other.ics'] });
+
+    await runFeedDiscovery(repo, fetcher, NOW);
+    // Same feed at two addresses → one; calendar.unc.edu already has a source → skipped.
+    expect(state.sources.map((s) => s.ical_url).sort()).toEqual(['https://calendar.unc.edu/feeds/other.ics', 'https://unc.campuslabs.com/engage/events.ics']);
+    expect(state.log.find((c) => c.ical_url === 'https://calendar.unc.edu/calendar.ics')!.note).toBe('A feed from calendar.unc.edu is already a source.');
+
+    // The admin removes the Engage source; a re-run must not bring it back.
+    state.sources = state.sources.filter((s) => !s.ical_url.includes('campuslabs'));
+    const again = await runFeedDiscovery(repo, fetcher, NOW, { target: UNC_TARGET });
     expect(again.added).toBe(0);
-    expect(state.candidates).toHaveLength(1);
-    expect(state.candidates[0].status).toBe('dismissed');
+    expect(state.sources.some((s) => s.ical_url.includes('campuslabs'))).toBe(false);
   });
 
   it('isolates an unreachable school and skips schools checked recently', async () => {
-    const { fetcher } = webFrom({
+    const fetcher = webFrom({
       'https://unc.campuslabs.com/engage/events.ics': ics('Engage', [['e1', 'Career Fair']]),
     });
     const { repo, state } = memoryRepo({
@@ -120,20 +155,20 @@ describe('runFeedDiscovery', () => {
     const summary = await runFeedDiscovery(repo, fetcher, NOW);
 
     expect(summary.schools.map((s) => s.schoolId)).toEqual([199120, 2]);
-    expect(summary.schools[1]).toMatchObject({ found: 0, error: 'Could not reach any address at ghost.edu.' });
+    expect(summary.schools[1]).toMatchObject({ found: 0, added: 0, error: 'Could not reach any address at ghost.edu.' });
     expect(state.checks.get(2)?.error).toContain('ghost.edu');
-    expect(state.candidates).toHaveLength(1);
+    expect(state.sources).toHaveLength(1);
   });
 
   it('ignores feeds with nothing upcoming and pages that are not calendars', async () => {
-    const { fetcher } = webFrom({
+    const fetcher = webFrom({
       'https://unc.campuslabs.com/engage/events.ics': ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:x', 'SUMMARY:Old', 'DTSTART:20200101T000000Z', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'),
       'https://calendar.unc.edu/calendar.ics': '<html>Not found</html>',
     });
     const { repo, state } = memoryRepo({ students: [UNC] });
     const summary = await runFeedDiscovery(repo, fetcher, NOW);
     expect(summary.added).toBe(0);
-    expect(state.candidates).toHaveLength(0);
+    expect(state.log).toHaveLength(0);
     expect(state.checks.get(199120)).toMatchObject({ feeds_found: 0, error: null });
   });
 });

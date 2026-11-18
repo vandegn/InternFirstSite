@@ -1,25 +1,26 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import SchoolPicker, { EMPTY_SCHOOL, type SchoolValue } from '@/components/SchoolPicker';
 import type { EventSource } from '@/lib/career-events';
 import { FEED_PLATFORM_LABELS, normalizeDomainInput, suggestCareerOnly, type FeedPlatform } from '@/lib/feed-discovery';
-import type { DiscoverySummary } from '@/lib/feed-discovery-service';
 import {
-  approveFeedCandidate,
-  dismissFeedCandidate,
+  addSkippedFeed,
   listDiscoveryChecks,
   listFeedCandidates,
   triggerFeedDiscovery,
   type DiscoveryCheckRow,
+  type DiscoveryResponse,
   type FeedCandidate,
 } from '@/lib/feed-discovery-client';
 
-// "Suggested feeds" on /dashboard/admin/events: iCal feeds the finder
-// (/api/career-events/discover) turned up at our students' schools. Approving
-// one creates the event source; nothing is synced before that.
+// "Feed finder" on /dashboard/admin/events. The finder
+// (/api/career-events/discover) adds useful feeds at our students' schools as
+// sources on its own; this panel runs it on demand, shows what it added and
+// skipped (with an "Add anyway"), and lists schools where it found nothing.
+// Added feeds are managed like any other source (pause / remove) below.
 
-const card: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', background: 'var(--surface)' };
+const card: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', background: 'var(--surface)' };
 const input: React.CSSProperties = {
   width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)',
   background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'inherit',
@@ -32,66 +33,64 @@ function platformLabel(p: string): string {
   return FEED_PLATFORM_LABELS[p as FeedPlatform] ?? FEED_PLATFORM_LABELS.other;
 }
 
-function summaryText(s: DiscoverySummary): string {
-  if (s.schools.length === 0) return 'Every school with students was checked in the last 30 days — nothing to do.';
+function summaryText(s: DiscoveryResponse): string {
+  if (s.schools.length === 0) return 'Every school with students was checked in the last 30 days, so there was nothing to do.';
   const found = s.schools.reduce((n, x) => n + x.found, 0);
   const failed = s.schools.filter((x) => x.error).length;
-  return `Checked ${s.schools.length} school${s.schools.length === 1 ? '' : 's'} · ${found} feed${found === 1 ? '' : 's'} found · ${s.added} new suggestion${s.added === 1 ? '' : 's'}${failed ? ` · ${failed} unreachable` : ''}`;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  return [
+    `Checked ${plural(s.schools.length, 'school')}`,
+    `${plural(found, 'feed')} found`,
+    `${s.added} added`,
+    s.eventsImported != null ? `${plural(s.eventsImported, 'event')} imported` : null,
+    failed ? `${failed} unreachable` : null,
+  ].filter(Boolean).join(' · ');
 }
 
-function CandidateCard({ c, busy, onApprove, onDismiss }: {
-  c: FeedCandidate; busy: boolean;
-  onApprove: (careerOnly: boolean) => void; onDismiss: () => void;
-}) {
-  const [careerOnly, setCareerOnly] = useState(() => suggestCareerOnly(c));
+function FeedRow({ c, busy, onAdd }: { c: FeedCandidate; busy: boolean; onAdd: (careerOnly: boolean) => void }) {
+  const added = c.status === 'approved';
   return (
-    <div style={card}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+    <div style={{ ...card, opacity: added ? 1 : 0.85 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
         <span style={{ fontWeight: 600, color: 'var(--text)' }}>{c.calendar_name || platformLabel(c.platform)}</span>
         <span style={{ ...chip, background: 'var(--chip-indigo-bg)', color: 'var(--chip-indigo-ink)' }}>{platformLabel(c.platform)}</span>
+        {added
+          ? <span style={{ ...chip, background: 'var(--chip-green-bg)', color: 'var(--chip-green-ink)' }}>Added</span>
+          : <span style={{ ...chip, background: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-ink)' }}>Skipped</span>}
       </div>
-      <p style={{ fontSize: '0.78rem', color: 'var(--text-light)', fontFamily: 'monospace', overflowWrap: 'anywhere', marginBottom: 6 }}>{c.ical_url}</p>
+      <p style={{ fontSize: '0.78rem', color: 'var(--text-light)', fontFamily: 'monospace', overflowWrap: 'anywhere', marginBottom: 4 }}>{c.ical_url}</p>
       <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-        {c.upcoming_count} upcoming events · {c.career_count} career-related · {c.found_on ? <>linked from <span style={{ overflowWrap: 'anywhere' }}>{c.found_on}</span></> : 'found at a standard platform address'}
+        {c.upcoming_count} upcoming · {c.career_count} career-related{c.note ? <> · {c.note}</> : null}
       </p>
-      {c.sample_titles.length > 0 && (
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4, overflowWrap: 'anywhere' }}>
-          e.g. {c.sample_titles.slice(0, 3).join(' · ')}
-        </p>
-      )}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: 'var(--text)', marginTop: 10 }}>
-        <input type="checkbox" checked={careerOnly} onChange={(e) => setCareerOnly(e.target.checked)} style={{ accentColor: 'var(--primary)' }} />
-        Only import career-related events ({c.career_count} of {c.upcoming_count})
-      </label>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-        <button type="button" className="btn-primary" style={smallBtn} disabled={busy} onClick={() => onApprove(careerOnly)}>
-          {busy ? 'Working…' : 'Approve & sync'}
+      {!added && (
+        <button type="button" className="btn-secondary" style={{ ...smallBtn, marginTop: 8 }} disabled={busy}
+          onClick={() => onAdd(suggestCareerOnly(c) && c.career_count > 0)}>
+          {busy ? 'Adding…' : 'Add anyway'}
         </button>
-        <button type="button" className="btn-secondary" style={smallBtn} disabled={busy} onClick={onDismiss}>Dismiss</button>
-      </div>
+      )}
     </div>
   );
 }
 
-export default function FeedSuggestions({ onApproved }: { onApproved: (source: EventSource) => void }) {
-  const [candidates, setCandidates] = useState<FeedCandidate[]>([]);
+export default function FeedSuggestions({ onAdded }: { onAdded: (source: EventSource | null) => void }) {
+  const [feeds, setFeeds] = useState<FeedCandidate[]>([]);
   const [checks, setChecks] = useState<DiscoveryCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [running, setRunning] = useState<'all' | 'one' | null>(null);
-  const [lastRun, setLastRun] = useState<DiscoverySummary | null>(null);
+  const [lastRun, setLastRun] = useState<DiscoveryResponse | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [school, setSchool] = useState<SchoolValue>(EMPTY_SCHOOL);
   const [domain, setDomain] = useState('');
 
   async function reload() {
     try {
-      const [c, k] = await Promise.all([listFeedCandidates(), listDiscoveryChecks()]);
-      setCandidates(c);
+      const [f, k] = await Promise.all([listFeedCandidates(), listDiscoveryChecks()]);
+      setFeeds(f);
       setChecks(k);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? `${err.message} — has migrations/20261117_feed_discovery.sql been applied?` : 'Could not load suggested feeds.');
+      setError(err instanceof Error ? `${err.message} (have the 20261117_feed_discovery migrations been applied?)` : 'Could not load the feed finder.');
     } finally {
       setLoading(false);
     }
@@ -103,8 +102,10 @@ export default function FeedSuggestions({ onApproved }: { onApproved: (source: E
     setRunning(target ? 'one' : 'all');
     setError('');
     try {
-      setLastRun(await triggerFeedDiscovery(target));
+      const result = await triggerFeedDiscovery(target);
+      setLastRun(result);
       await reload();
+      if (result.added > 0) onAdded(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Feed search failed.');
     } finally {
@@ -120,34 +121,34 @@ export default function FeedSuggestions({ onApproved }: { onApproved: (source: E
     run({ schoolId: school.id, domain: d.domain });
   }
 
-  async function act(id: string, fn: () => Promise<void>) {
-    setBusyId(id);
+  async function addAnyway(c: FeedCandidate, careerOnly: boolean) {
+    setBusyId(c.id);
     setError('');
-    try { await fn(); } catch (err) { setError(err instanceof Error ? err.message : 'Something went wrong.'); } finally { setBusyId(null); }
+    try {
+      const source = await addSkippedFeed(c, { careerOnly });
+      setFeeds((p) => p.map((x) => x.id === c.id ? { ...x, status: 'approved', source_id: source.id, note: 'Added by an admin.' } : x));
+      onAdded(source);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add the feed.');
+    } finally {
+      setBusyId(null);
+    }
   }
 
-  const bySchool = useMemo(() => {
-    const groups = new Map<number, { name: string; items: FeedCandidate[] }>();
-    for (const c of candidates) {
-      const g = groups.get(c.school_id) ?? { name: c.school_name, items: [] };
-      g.items.push(c);
-      groups.set(c.school_id, g);
-    }
-    return [...groups.values()];
-  }, [candidates]);
   const empty = checks.filter((k) => k.feeds_found === 0);
 
   return (
     <section style={{ marginBottom: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '8px 0 6px' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Suggested feeds</h3>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Feed finder</h3>
         <button type="button" className="btn-secondary" onClick={() => run()} disabled={!!running} style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
           {running === 'all' ? 'Searching…' : 'Find feeds now'}
         </button>
       </div>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 12, lineHeight: 1.55 }}>
-        Found automatically at the schools our students attend (checked daily; each school again every 30 days).
-        Nothing syncs until you approve it. Whole-campus calendars default to importing only career-related events.
+        Every day, the finder looks for calendar feeds at the schools our students attend and adds the useful ones as sources.
+        Each school is checked again every 30 days. Only that school&apos;s students see its events.
+        Whole-campus calendars import career-related events only. Remove or pause an added feed under Sources and it won&apos;t be added again.
       </p>
 
       {error && (
@@ -161,33 +162,7 @@ export default function FeedSuggestions({ onApproved }: { onApproved: (source: E
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 14 }}>
-        {loading ? (
-          <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
-        ) : bySchool.length === 0 ? (
-          <div style={{ padding: '22px 20px', textAlign: 'center', color: 'var(--text-secondary)', border: '1px dashed var(--border)', borderRadius: 12, fontSize: '0.88rem' }}>
-            No suggestions waiting. Press &ldquo;Find feeds now&rdquo; or check a specific school below.
-          </div>
-        ) : bySchool.map((g) => (
-          <div key={g.name} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <p style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text)' }}>{g.name}</p>
-            {g.items.map((c) => (
-              <CandidateCard key={c.id} c={c} busy={busyId === c.id}
-                onApprove={(careerOnly) => act(c.id, async () => {
-                  const source = await approveFeedCandidate(c, { careerOnly });
-                  setCandidates((p) => p.filter((x) => x.id !== c.id));
-                  onApproved(source);
-                })}
-                onDismiss={() => act(c.id, async () => {
-                  await dismissFeedCandidate(c.id);
-                  setCandidates((p) => p.filter((x) => x.id !== c.id));
-                })} />
-            ))}
-          </div>
-        ))}
-      </div>
-
-      <form onSubmit={checkSchool} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <form onSubmit={checkSchool} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
         <p style={{ fontWeight: 600, color: 'var(--text)' }}>Check a school</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
           <div style={labelStyle}>
@@ -206,9 +181,27 @@ export default function FeedSuggestions({ onApproved }: { onApproved: (source: E
         </div>
       </form>
 
+      {loading ? (
+        <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
+      ) : feeds.length > 0 && (
+        <details>
+          <summary style={{ cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Feeds found: {feeds.filter((f) => f.status === 'approved').length} added, {feeds.filter((f) => f.status !== 'approved').length} skipped
+          </summary>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+            {feeds.map((c) => (
+              <div key={c.id}>
+                <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>{c.school_name}</p>
+                <FeedRow c={c} busy={busyId === c.id} onAdd={(careerOnly) => addAnyway(c, careerOnly)} />
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
       {empty.length > 0 && (
-        <details style={{ marginTop: 12, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-          <summary style={{ cursor: 'pointer' }}>{empty.length} school{empty.length === 1 ? '' : 's'} checked with no feed found — add these by hand</summary>
+        <details style={{ marginTop: 10, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+          <summary style={{ cursor: 'pointer' }}>{empty.length} school{empty.length === 1 ? '' : 's'} checked with no feed found. Add these by hand.</summary>
           <ul style={{ margin: '8px 0 0 18px', display: 'flex', flexDirection: 'column', gap: 4 }}>
             {empty.map((k) => (
               <li key={k.school_id}>

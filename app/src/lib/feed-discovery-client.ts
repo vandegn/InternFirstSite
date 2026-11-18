@@ -21,8 +21,10 @@ export type FeedCandidate = {
   upcoming_count: number;
   career_count: number;
   sample_titles: string[];
+  /** approved = added as a source; dismissed = skipped (see note). */
   status: 'new' | 'approved' | 'dismissed';
   source_id: string | null;
+  note: string | null;
   discovered_at: string;
   last_checked_at: string;
 };
@@ -37,18 +39,20 @@ export type DiscoveryCheckRow = {
   error: string | null;
 };
 
+export type DiscoveryResponse = DiscoverySummary & { eventsImported?: number };
+
 function check(error: { message: string } | null, fallback: string): void {
   if (error) throw new Error(error.message || fallback);
 }
 
+/** Every feed the finder has found, newest first. */
 export async function listFeedCandidates(): Promise<FeedCandidate[]> {
   const { data, error } = await supabase
     .from('feed_candidates')
     .select('*')
-    .eq('status', 'new')
-    .order('school_name')
-    .order('career_count', { ascending: false });
-  check(error, 'Could not load suggested feeds.');
+    .order('discovered_at', { ascending: false })
+    .limit(200);
+  check(error, 'Could not load found feeds.');
   return (data ?? []) as FeedCandidate[];
 }
 
@@ -58,17 +62,8 @@ export async function listDiscoveryChecks(): Promise<DiscoveryCheckRow[]> {
   return (data ?? []) as DiscoveryCheckRow[];
 }
 
-async function markReviewed(id: string, patch: { status: 'approved' | 'dismissed'; source_id?: string }): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase
-    .from('feed_candidates')
-    .update({ ...patch, reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString() })
-    .eq('id', id);
-  check(error, 'Could not update the suggestion.');
-}
-
-/** Creates the event source (tagged to the candidate's school) and marks the suggestion approved. */
-export async function approveFeedCandidate(c: FeedCandidate, opts: { careerOnly: boolean }): Promise<EventSource> {
+/** "Add anyway" for a feed the finder skipped. */
+export async function addSkippedFeed(c: FeedCandidate, opts: { careerOnly: boolean }): Promise<EventSource> {
   const source = await createEventSource({
     name: candidateSourceName(c),
     ical_url: c.ical_url,
@@ -80,15 +75,22 @@ export async function approveFeedCandidate(c: FeedCandidate, opts: { careerOnly:
     default_timezone: c.timezone || 'America/New_York',
     include_keywords: opts.careerOnly ? CAREER_KEYWORDS : null,
   });
-  await markReviewed(c.id, { status: 'approved', source_id: source.id });
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from('feed_candidates')
+    .update({
+      status: 'approved',
+      source_id: source.id,
+      note: opts.careerOnly ? 'Added by an admin: career-related events only.' : 'Added by an admin: all events.',
+      reviewed_by: user?.id ?? null,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', c.id);
+  check(error, 'Added the feed, but could not update the log.');
   return source;
 }
 
-export async function dismissFeedCandidate(id: string): Promise<void> {
-  await markReviewed(id, { status: 'dismissed' });
-}
-
-export async function triggerFeedDiscovery(target?: { schoolId: number; domain: string }): Promise<DiscoverySummary> {
+export async function triggerFeedDiscovery(target?: { schoolId: number; domain: string }): Promise<DiscoveryResponse> {
   const res = await fetch('/api/career-events/discover', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -96,5 +98,5 @@ export async function triggerFeedDiscovery(target?: { schoolId: number; domain: 
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `Feed search failed (HTTP ${res.status}).`);
-  return body as DiscoverySummary;
+  return body as DiscoveryResponse;
 }

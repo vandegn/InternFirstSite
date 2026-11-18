@@ -6,7 +6,9 @@ import {
   eduDomainFromEmail,
   feedLinksFromHtml,
   guessedFeeds,
+  importCount,
   normalizeDomainInput,
+  planAutoAdd,
   platformForUrl,
   suggestCareerOnly,
   targetsFromStudents,
@@ -166,5 +168,30 @@ describe('scoring a feed', () => {
     expect(timeZoneForState('Texas')).toBe('America/Chicago');
     expect(timeZoneForState('California')).toBe('America/Los_Angeles');
     expect(timeZoneForState(null)).toBe('America/New_York');
+  });
+});
+
+describe('adding feeds without review', () => {
+  const feed = (url: string, upcoming: number, career: number) => ({ ical_url: url, upcoming_count: upcoming, career_count: career });
+
+  it('adds campus-wide feeds career-only, skips empty ones, keeps one per site', () => {
+    const decisions = planAutoAdd([
+      feed('https://calendar.x.edu/calendar.ics', 600, 40),
+      feed('https://calendar.x.edu/calendar/1.ics', 500, 80),
+      feed('https://x.campuslabs.com/engage/events.ics', 10, 8),
+      feed('https://www.trumba.com/calendars/x.ics', 200, 0),
+    ], new Set());
+    expect(decisions.map((d) => (d.add ? `add${d.careerOnly ? ':career' : ''}` : 'skip'))).toEqual(['skip', 'add:career', 'add', 'skip']);
+    expect(decisions[3]).toMatchObject({ add: false, reason: 'No career-related events in this feed.' });
+  });
+
+  it('treats a site that already has a source as taken', () => {
+    const [d] = planAutoAdd([feed('https://calendar.x.edu/calendar.ics', 10, 9)], new Set(['calendar.x.edu']));
+    expect(d).toMatchObject({ add: false, reason: 'A feed from calendar.x.edu is already a source.' });
+  });
+
+  it('counts what the chosen filter would import', () => {
+    expect(importCount(feed('a', 600, 40))).toBe(40);
+    expect(importCount(feed('a', 10, 8))).toBe(10);
   });
 });

@@ -312,3 +312,54 @@ export function candidateSourceName(c: { school_name: string; calendar_name: str
   const name = label.toLowerCase().includes(c.school_name.toLowerCase()) ? label : `${c.school_name} — ${label}`;
   return name.slice(0, 200);
 }
+
+// ----- Adding feeds without review -----
+
+export type AutoAddDecision<C> =
+  | { candidate: C; add: true; careerOnly: boolean }
+  | { candidate: C; add: false; reason: string };
+
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return url;
+  }
+}
+
+/** How many events a feed would import under the filter it gets added with. */
+export function importCount(c: { upcoming_count: number; career_count: number }): number {
+  return suggestCareerOnly(c) ? c.career_count : c.upcoming_count;
+}
+
+/**
+ * Which newly found feeds become event sources straight away. Students only
+ * ever see a campus feed's events if they attend that school, so the rules
+ * just keep out noise and duplicates:
+ *   * a whole-campus feed (under half career-related) imports career events
+ *     only;
+ *   * a feed that would import nothing under that rule is skipped;
+ *   * one feed per site — Localist serves the same calendar at several
+ *     addresses — keeping the one that imports the most. A site that already
+ *     has a registered source counts as taken.
+ * Decisions come back in input order.
+ */
+export function planAutoAdd<C extends { ical_url: string; upcoming_count: number; career_count: number }>(
+  found: C[],
+  takenHosts: ReadonlySet<string>,
+): AutoAddDecision<C>[] {
+  const winner = new Map<string, C>();
+  for (const c of [...found].sort((a, b) => importCount(b) - importCount(a))) {
+    if (importCount(c) === 0) continue;
+    const host = hostOf(c.ical_url);
+    if (!takenHosts.has(host) && !winner.has(host)) winner.set(host, c);
+  }
+  return found.map((c): AutoAddDecision<C> => {
+    const host = hostOf(c.ical_url);
+    if (importCount(c) === 0) return { candidate: c, add: false, reason: 'No career-related events in this feed.' };
+    if (takenHosts.has(host)) return { candidate: c, add: false, reason: `A feed from ${host} is already a source.` };
+    const best = winner.get(host)!;
+    if (best !== c) return { candidate: c, add: false, reason: `Same site as ${best.ical_url}, which has more events.` };
+    return { candidate: c, add: true, careerOnly: suggestCareerOnly(c) };
+  });
+}

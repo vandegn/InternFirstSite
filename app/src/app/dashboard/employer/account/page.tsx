@@ -4,12 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase, getEmployerByUserId, getProfile, updateEmployer, updateProfile, uploadImage, VERIFICATION_LABELS, type VerificationStatus } from '@/lib/supabase';
 import VerificationBanner, { VERIFICATION_CHIP } from '@/components/VerificationBanner';
 import CompanyMark from '@/components/CompanyMark';
-
-// Accepted icon formats. Checked here, not just via the input's accept
-// attribute, so a drag-and-dropped SVG or GIF can't slip through.
-const ICON_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const ICON_EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
-const ICON_MAX_BYTES = 2 * 1024 * 1024;
+import { ICON_ACCEPT, iconStoragePath, validateIconFile } from '@/lib/company-icon';
 
 export default function EmployerAccountPage() {
   const [loading, setLoading] = useState(true);
@@ -108,13 +103,9 @@ export default function EmployerAccountPage() {
     const file = e.target.files?.[0] || null;
     setIconError('');
     if (!file) return;
-    if (!ICON_TYPES.has(file.type)) {
-      setIconError('Please choose a PNG, JPG, or WebP image.');
-      e.target.value = '';
-      return;
-    }
-    if (file.size > ICON_MAX_BYTES) {
-      setIconError('Please choose an image under 2 MB.');
+    const problem = validateIconFile(file);
+    if (problem) {
+      setIconError(problem);
       e.target.value = '';
       return;
     }
@@ -165,11 +156,7 @@ export default function EmployerAccountPage() {
       // undefined = leave icon_url alone; null = clear it; string = new upload.
       let finalIconUrl: string | null | undefined = undefined;
       if (iconFile) {
-        const ext = ICON_EXT[iconFile.type] ?? 'png';
-        // A fresh path per upload so browsers and the CDN can't keep serving
-        // the previous icon from cache after a replace.
-        const path = `icons/${employerId}-${Date.now()}.${ext}`;
-        finalIconUrl = await uploadImage('images', path, iconFile);
+        finalIconUrl = await uploadImage('images', iconStoragePath(employerId, iconFile.type), iconFile);
         setIconUrl(finalIconUrl);
         setIconFile(null);
         setIconPreview(null);
@@ -344,7 +331,7 @@ export default function EmployerAccountPage() {
                   <input
                     type="file"
                     id="companyIcon"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept={ICON_ACCEPT}
                     ref={iconInputRef}
                     onChange={handleIconChange}
                     style={{ display: 'none' }}

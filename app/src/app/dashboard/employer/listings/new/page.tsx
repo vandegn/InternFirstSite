@@ -34,6 +34,7 @@ import ListingBrandingFields from '@/components/ListingBrandingFields';
 import ListingCustomBlocks, { ListingBanner, RoleTagPills } from '@/components/ListingCustomBlocks';
 import LocationPicker, { EMPTY_LOCATION, type LocationValue } from '@/components/LocationPicker';
 import CompanyMark from '@/components/CompanyMark';
+import CompanyIconPrompt from '@/components/CompanyIconPrompt';
 
 export default function NewListingPage() {
   const router = useRouter();
@@ -57,6 +58,7 @@ export default function NewListingPage() {
   const [companyName, setCompanyName] = useState('');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyIcon, setCompanyIcon] = useState<string | null>(null);
+  const [memberRole, setMemberRole] = useState<string | null>(null);
   const [companyWebsite, setCompanyWebsite] = useState<string | null>(null);
   const [employerId, setEmployerId] = useState<string | null>(null);
 
@@ -109,6 +111,7 @@ export default function NewListingPage() {
         setCompanyIcon(employer.icon_url || null);
         setCompanyWebsite(employer.website || null);
         setEmployerId(employer.id);
+        setMemberRole(employer.member_role ?? null);
         setVerification((employer.verification_status as VerificationStatus) ?? 'pending');
         setVerificationNote(employer.verification_note ?? null);
       }
@@ -235,6 +238,17 @@ export default function NewListingPage() {
           status={verification}
           note={verificationNote}
           style={{ marginBottom: '20px' }}
+        />
+      )}
+
+      {employerLoaded && employerId && (
+        <CompanyIconPrompt
+          employerId={employerId}
+          companyName={companyName}
+          iconUrl={companyIcon}
+          memberRole={memberRole}
+          onUploaded={setCompanyIcon}
+          compact
         />
       )}
 

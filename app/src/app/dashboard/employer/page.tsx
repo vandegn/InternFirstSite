@@ -16,6 +16,7 @@ import Avatar from '@/components/Avatar';
 import { interviewFormatOf, type InterviewFormat } from '@/lib/interview-format';
 import { joinWindowStatus } from '@/lib/interview-join';
 import CompanyMark from '@/components/CompanyMark';
+import CompanyIconPrompt from '@/components/CompanyIconPrompt';
 
 type Listing = {
   id: string;
@@ -72,6 +73,7 @@ export default function EmployerDashboard() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const [employerId, setEmployerId] = useState<string | null>(null);
+  const [memberRole, setMemberRole] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchEmployer() {
@@ -84,6 +86,7 @@ export default function EmployerDashboard() {
       setCompanyName(employer.company_name);
       setCompanyIcon(employer.icon_url || null);
       setEmployerId(employer.id);
+      setMemberRole(employer.member_role ?? null);
 
       const [stats, apps, interviews, counts] = await Promise.all([
         getEmployerStats(employer.id),
@@ -123,6 +126,17 @@ export default function EmployerDashboard() {
 
   return (
     <div className="dash-main">
+      {employerId && (
+        <CompanyIconPrompt
+          employerId={employerId}
+          companyName={companyName}
+          iconUrl={companyIcon}
+          memberRole={memberRole}
+          onUploaded={setCompanyIcon}
+          dismissible
+        />
+      )}
+
       {/* Stats - 4 column */}
       <div className="dash-stats four-col">
         <div className="stat-card">

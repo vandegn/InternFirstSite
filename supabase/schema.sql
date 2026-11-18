@@ -2473,3 +2473,81 @@ create policy "Admins manage content articles"
   on content_articles for all to authenticated
   using (is_intern_first_admin(auth.uid()))
   with check (is_intern_first_admin(auth.uid()));
+
+-- ============================================
+-- FUNCTION EXECUTE GRANTS (mirrors migrations/20261112_lock_down_definer_functions.sql)
+-- ============================================
+
+revoke all on function public.close_listings_on_account_deletion() from public, anon, authenticated;
+revoke all on function public.flag_knockout_answer() from public, anon, authenticated;
+revoke all on function public.guard_application_on_archived_listing() from public, anon, authenticated;
+revoke all on function public.handle_deleted_application() from public, anon, authenticated;
+revoke all on function public.handle_new_application() from public, anon, authenticated;
+revoke all on function public.seed_master_admin_member() from public, anon, authenticated;
+revoke all on function public.seed_pipeline_stages_for_listing() from public, anon, authenticated;
+revoke all on function public.set_default_application_stage() from public, anon, authenticated;
+revoke all on function public.sync_application_status_from_stage() from public, anon, authenticated;
+revoke all on function public.sync_stage_on_availability_requested() from public, anon, authenticated;
+revoke all on function public.sync_stage_on_interview_closed() from public, anon, authenticated;
+revoke all on function public.sync_stage_on_interview_created() from public, anon, authenticated;
+revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+
+revoke all on function public.publish_due_listings() from public, anon, authenticated;
+revoke all on function public.purge_expired_account_deletions() from public, anon, authenticated;
+
+revoke all on function public.employer_ids_of_user(uuid) from public, anon, authenticated;
+revoke all on function public.can_manage_employer_listings(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.move_application_to_stage_type(uuid, text) from public, anon, authenticated;
+
+revoke all on function public.acting_employer_ids(uuid) from public, anon;
+revoke all on function public.application_is_attached(uuid) from public, anon;
+revoke all on function public.can_view_employer(uuid) from public, anon;
+revoke all on function public.can_view_profile(uuid) from public, anon;
+revoke all on function public.can_view_student(uuid) from public, anon;
+revoke all on function public.is_approved_employer(uuid) from public, anon;
+revoke all on function public.is_employer_master_admin(uuid, uuid) from public, anon;
+revoke all on function public.is_intern_first_admin(uuid) from public, anon;
+grant execute on function public.acting_employer_ids(uuid) to authenticated;
+grant execute on function public.application_is_attached(uuid) to authenticated;
+grant execute on function public.can_view_employer(uuid) to authenticated;
+grant execute on function public.can_view_profile(uuid) to authenticated;
+grant execute on function public.can_view_student(uuid) to authenticated;
+grant execute on function public.is_approved_employer(uuid) to authenticated;
+grant execute on function public.is_employer_master_admin(uuid, uuid) to authenticated;
+grant execute on function public.is_intern_first_admin(uuid) to authenticated;
+
+revoke all on function public.employer_pending_applicant_count() from public, anon;
+revoke all on function public.record_listing_view(uuid) from public, anon;
+grant execute on function public.employer_pending_applicant_count() to authenticated;
+grant execute on function public.record_listing_view(uuid) to authenticated;
+
+grant execute on function
+  public.close_listings_on_account_deletion(),
+  public.flag_knockout_answer(),
+  public.guard_application_on_archived_listing(),
+  public.handle_deleted_application(),
+  public.handle_new_application(),
+  public.seed_master_admin_member(),
+  public.seed_pipeline_stages_for_listing(),
+  public.set_default_application_stage(),
+  public.sync_application_status_from_stage(),
+  public.sync_stage_on_availability_requested(),
+  public.sync_stage_on_interview_closed(),
+  public.sync_stage_on_interview_created(),
+  public.rls_auto_enable(),
+  public.publish_due_listings(),
+  public.purge_expired_account_deletions(),
+  public.employer_ids_of_user(uuid),
+  public.can_manage_employer_listings(uuid, uuid),
+  public.move_application_to_stage_type(uuid, text),
+  public.acting_employer_ids(uuid),
+  public.application_is_attached(uuid),
+  public.can_view_employer(uuid),
+  public.can_view_profile(uuid),
+  public.can_view_student(uuid),
+  public.is_approved_employer(uuid),
+  public.is_employer_master_admin(uuid, uuid),
+  public.is_intern_first_admin(uuid),
+  public.employer_pending_applicant_count(),
+  public.record_listing_view(uuid)
+to service_role;

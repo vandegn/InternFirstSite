@@ -186,8 +186,18 @@ export async function ensureProfileFromMetadata(
   return 'created';
 }
 
+// Students without a .edu address whom the team has approved by hand (e.g.
+// schools abroad). Lowercase. Every student email check (register, login,
+// profile creation) goes through isEduEmail, so adding a row here is the whole
+// exception.
+export const STUDENT_EMAIL_EXCEPTIONS: readonly string[] = [
+  'r0994833@student.kuleuven.be',
+  'thibaut@insightconsulting.be',
+];
+
 export function isEduEmail(email: string): boolean {
-  return email.trim().toLowerCase().endsWith('.edu');
+  const normalized = email.trim().toLowerCase();
+  return normalized.endsWith('.edu') || STUDENT_EMAIL_EXCEPTIONS.includes(normalized);
 }
 
 // Shown at signup and re-thrown server-side by createProfileAndRoleData, so the
